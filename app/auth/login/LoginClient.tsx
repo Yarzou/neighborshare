@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -28,6 +28,38 @@ export default function LoginClient() {
 
   const supabase = createClient()
 
+  // Cas fréquent: on arrive ici via un redirect de route protégée
+  // (/auth/login?redirect=/listings/new) alors qu'une session existe déjà.
+  // Dans ce cas, on renvoie directement vers la destination.
+  useEffect(() => {
+    let cancelled = false
+
+    const go = async () => {
+      const { data } = await supabase.auth.getSession()
+      if (!cancelled && data.session) {
+        router.replace(redirect)
+        router.refresh()
+      }
+    }
+
+    void go()
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (cancelled) return
+      if (session) {
+        router.replace(redirect)
+        router.refresh()
+      }
+    })
+
+    return () => {
+      cancelled = true
+      subscription.unsubscribe()
+    }
+  }, [supabase, router, redirect])
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -36,13 +68,14 @@ export default function LoginClient() {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
 
     if (error) {
-      setError('Email ou mot de passe incorrect.')
+      setError(error.message || 'Email ou mot de passe incorrect.')
       setLoading(false)
       return
     }
 
-    router.push(redirect)
+    router.replace(redirect)
     router.refresh()
+    setLoading(false)
   }
 
   return (
