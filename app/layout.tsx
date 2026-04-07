@@ -1,9 +1,8 @@
 import type { Metadata } from 'next'
-import { Geist } from 'next/font/google'
+import { GeistSans } from 'geist/font/sans'
+import { GeistMono } from 'geist/font/mono'
 import './globals.css'
 import { Navbar } from '@/components/layout/Navbar'
-
-const geist = Geist({ subsets: ['latin'], variable: '--font-geist-sans' })
 
 export const metadata: Metadata = {
   title: 'NeighborShare — Partagez avec vos voisins',
@@ -13,7 +12,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fr">
-      <body className={`${geist.variable} font-sans bg-gray-50 text-gray-900 antialiased`}>
+      <body
+        className={`${GeistSans.variable} ${GeistMono.variable} font-sans bg-gray-50 text-gray-900 antialiased`}
+      >
         <Navbar />
         <main className="min-h-screen pt-16">
           {children}
