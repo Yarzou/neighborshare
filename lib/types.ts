@@ -1,6 +1,12 @@
 export type ListingType = 'pret' | 'don' | 'echange' | 'service'
 export type ListingStatus = 'disponible' | 'reserve' | 'termine'
 
+export const LISTING_TYPES = ['pret', 'don', 'echange', 'service'] as const
+
+export function isListingType(value: unknown): value is ListingType {
+  return typeof value === 'string' && (LISTING_TYPES as readonly string[]).includes(value)
+}
+
 export interface Category {
   id: number
   slug: string
