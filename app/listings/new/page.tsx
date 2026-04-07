@@ -29,6 +29,42 @@ export default function NewListingPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [locLoading, setLocLoading] = useState(false)
+  const [authReady, setAuthReady] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
+
+  // S'assure que la session est bien chargée côté client avant d'autoriser la publication.
+  // Sans ça, supabase.auth.getUser() peut rendre null juste après un login/redirect.
+  useEffect(() => {
+    let cancelled = false
+
+    const init = async () => {
+      try {
+        const { data: sessionData } = await supabase.auth.getSession()
+        const sessionUserId = sessionData.session?.user?.id ?? null
+        if (!cancelled) setUserId(sessionUserId)
+
+        // Se re-synchronise avec l'état auth au fil du temps.
+        const {
+          data: { subscription },
+        } = supabase.auth.onAuthStateChange((_event, session) => {
+          if (cancelled) return
+          setUserId(session?.user?.id ?? null)
+        })
+
+        if (!cancelled) setAuthReady(true)
+
+        return () => subscription.unsubscribe()
+      } catch {
+        if (!cancelled) setAuthReady(true)
+      }
+    }
+
+    const cleanupPromise = init()
+    return () => {
+      cancelled = true
+      void cleanupPromise
+    }
+  }, [supabase])
 
   useEffect(() => {
     supabase.from('categories').select('*').then(({ data }) => {
@@ -63,8 +99,20 @@ export default function NewListingPage() {
     setLoading(true)
     setError(null)
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return router.push('/auth/login')
+    if (!authReady) {
+      setError('Chargement de votre session... réessayez dans un instant.')
+      setLoading(false)
+      return
+    }
+
+    // Préfère la session si dispo (plus fiable juste après redirect).
+    const { data: sessionData } = await supabase.auth.getSession()
+    const user = sessionData.session?.user ?? (await supabase.auth.getUser()).data.user
+
+    if (!user) {
+      setLoading(false)
+      return router.push(`/auth/login?redirect=${encodeURIComponent('/listings/new')}`)
+    }
 
     let image_url = null
 
