@@ -5,7 +5,7 @@ import './globals.css'
 import { Navbar } from '@/components/layout/Navbar'
 
 export const metadata: Metadata = {
-  title: 'NeighborShare — Partagez avec vos voisins',
+  title: 'Les voisins du Cèdre — Partagez avec vos voisins',
   description: 'Plateforme d\'entraide locale géolocalisée : outils, services, garde d\'enfant et plus encore.',
 }
 

@@ -60,7 +60,7 @@ export default function RegisterPage() {
         <div className="text-center mb-8">
           <div className="text-4xl mb-3">🏘️</div>
           <h1 className="text-2xl font-bold text-gray-900">Rejoignez la communauté</h1>
-          <p className="text-gray-500 mt-1">Créez votre compte NeighborShare</p>
+          <p className="text-gray-500 mt-1">Créez votre compte Les voisins du Cèdre</p>
         </div>
 
         <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8">
