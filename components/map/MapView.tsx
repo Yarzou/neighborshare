@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { Listing } from '@/lib/types'
 import { ListingCard } from '@/components/listings/ListingCard'
 import { FilterBar } from '@/components/map/FilterBar'
-import { MapPin, Loader2, X } from 'lucide-react'
+import { MapPin, Loader2, X, Map, List } from 'lucide-react'
 import { formatDistance } from '@/lib/utils'
 
 // Dynamic import pour éviter SSR avec Leaflet
@@ -30,6 +30,7 @@ export function MapView() {
   const [loading, setLoading] = useState(true)
   const [searchedLocation, setSearchedLocation] = useState<[number, number] | null>(null)
   const [slugToId, setSlugToId] = useState<Record<string, number>>({})
+  const [mobileView, setMobileView] = useState<'list' | 'map'>('list')
   const supabase = createClient()
 
   // Charge le mapping slug → id une seule fois
@@ -83,9 +84,33 @@ export function MapView() {
   }
 
   return (
-    <div className="flex h-full">
+    <div className="flex flex-col h-full md:flex-row">
+      {/* Toggle mobile */}
+      <div className="md:hidden flex border-b border-gray-200 bg-white shrink-0">
+        <button
+          onClick={() => setMobileView('list')}
+          className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium transition-colors ${
+            mobileView === 'list'
+              ? 'text-brand-600 border-b-2 border-brand-600'
+              : 'text-gray-500'
+          }`}
+        >
+          <List size={16} /> Liste
+        </button>
+        <button
+          onClick={() => setMobileView('map')}
+          className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium transition-colors ${
+            mobileView === 'map'
+              ? 'text-brand-600 border-b-2 border-brand-600'
+              : 'text-gray-500'
+          }`}
+        >
+          <Map size={16} /> Carte
+        </button>
+      </div>
+
       {/* Sidebar */}
-      <div className="w-full md:w-96 flex flex-col bg-white border-r border-gray-200 overflow-hidden z-10">
+      <div className={`w-full md:w-96 flex flex-col bg-white border-r border-gray-200 overflow-hidden z-10 ${mobileView === 'map' ? 'hidden md:flex' : 'flex'}`}>
         <FilterBar
           radius={radius}
           onRadiusChange={setRadius}
@@ -122,7 +147,7 @@ export function MapView() {
       </div>
 
       {/* Map */}
-      <div className="flex-1 relative hidden md:block">
+      <div className={`flex-1 relative ${mobileView === 'list' ? 'hidden md:block' : 'block'}`}>
         {userLocation && (
           <LeafletMap
             center={userLocation}
