@@ -20,11 +20,16 @@ const LeafletMap = dynamic(() => import('@/components/map/LeafletMap'), {
   ),
 })
 
+const NEIGHBORHOOD: [number, number] = [47.300837, -1.560131]
+
 export function MapView() {
   const searchParams = useSearchParams()
   const [listings, setListings] = useState<Listing[]>([])
   const [selected, setSelected] = useState<Listing | null>(null)
-  const [userLocation, setUserLocation] = useState<[number, number] | null>(null)
+  // searchCenter: centre utilisé pour le rayon de recherche (La Chapelle par défaut)
+  const [searchCenter, setSearchCenter] = useState<[number, number]>(NEIGHBORHOOD)
+  // userGeoLocation: position GPS réelle (uniquement pour le marqueur bleu)
+  const [userGeoLocation, setUserGeoLocation] = useState<[number, number] | null>(null)
   const [radius, setRadius] = useState(5)
   const [category, setCategory] = useState(searchParams.get('category') || '')
   const [loading, setLoading] = useState(true)
@@ -44,19 +49,17 @@ export function MapView() {
     })
   }, [])
 
-  // Géolocalisation
+  // Géolocalisation — uniquement pour le marqueur "Vous êtes ici"
   useEffect(() => {
     navigator.geolocation?.getCurrentPosition(
-        pos => setUserLocation([pos.coords.latitude, pos.coords.longitude]),
-        () => setUserLocation([48.8566, 2.3522]) // Paris par défaut
+      pos => setUserGeoLocation([pos.coords.latitude, pos.coords.longitude]),
     )
   }, [])
 
   // Fetch annonces
   const fetchListings = useCallback(async () => {
-    if (!userLocation) return
     setLoading(true)
-    const [lat, lng] = userLocation
+    const [lat, lng] = searchCenter
 
     const { data, error } = await supabase.rpc('listings_within_radius', {
       lat, lng, radius_km: radius,
@@ -73,13 +76,13 @@ export function MapView() {
       setListings(filtered)
     }
     setLoading(false)
-  }, [userLocation, radius, category, slugToId])
+  }, [searchCenter, radius, category, slugToId])
 
   useEffect(() => { fetchListings() }, [fetchListings])
 
   const handleLocationSelect = (lat: number, lon: number) => {
     const coords: [number, number] = [lat, lon]
-    setUserLocation(coords)
+    setSearchCenter(coords)
     setSearchedLocation(coords)
   }
 
@@ -149,7 +152,7 @@ export function MapView() {
         {/* Map */}
         <div className={`flex-1 relative ${mobileView === 'list' ? 'hidden md:block' : 'block'}`}>
           <LeafletMap
-              userPosition={userLocation}
+              userPosition={userGeoLocation}
               listings={listings}
               onSelectListing={setSelected}
               selectedId={selected?.id}
