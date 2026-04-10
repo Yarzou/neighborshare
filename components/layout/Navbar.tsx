@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { MapPin, Plus, MessageCircle, User, LogOut, Menu, X } from 'lucide-react'
+import { MapPin, Plus, MessageCircle, User, LogOut, Menu, X, Sparkles } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
@@ -99,6 +99,17 @@ export function Navbar() {
               <MessageCircle size={16} /> Messages
             </button>
           )}
+          {user && (
+            <Link href="/recent"
+              className={cn(
+                'flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-colors',
+                pathname === '/recent'
+                  ? 'bg-brand-50 text-brand-700'
+                  : 'text-gray-600 hover:bg-gray-100'
+              )}>
+              <Sparkles size={16} /> Derniers ajouts
+            </Link>
+          )}
         </div>
 
         {/* Auth */}
@@ -155,6 +166,15 @@ export function Navbar() {
               )}>
               <MessageCircle size={16} /> Messages
             </button>
+          )}
+          {user && (
+            <Link href="/recent" onClick={() => setMenuOpen(false)}
+              className={cn(
+                'flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-100',
+                pathname === '/recent' ? 'text-brand-700' : 'text-gray-700'
+              )}>
+              <Sparkles size={16} /> Derniers ajouts
+            </Link>
           )}
           <div className="border-t border-gray-100 mt-2 pt-2">
             {user ? (
