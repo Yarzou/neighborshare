@@ -22,12 +22,12 @@ export default function NewConversationPage() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) {
         router.push('/auth/login?redirect=%2Fmessages%2Fnew')
         return
       }
-      setUserId(session.user.id)
+      setUserId(user.id)
     })
   }, [])
 

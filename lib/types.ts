@@ -1,5 +1,5 @@
 export type ListingType = 'pret' | 'don' | 'echange' | 'service'
-export type ListingStatus = 'disponible' | 'reserve' | 'termine'
+export type ListingStatus = 'disponible' | 'reserve' | 'termine' | 'en_cours' | 'validee'
 
 export const LISTING_TYPES = ['pret', 'don', 'echange', 'service'] as const
 
@@ -37,6 +37,8 @@ export interface Listing {
   address: string | null
   city: string | null
   created_at: string
+  responder_id?: string | null
+  conversation_id?: string | null
   // From RPC function
   distance_m?: number
   lat_out?: number
@@ -99,6 +101,16 @@ export const LISTING_STATUS_LABELS: Record<ListingStatus, string> = {
   disponible: 'Disponible',
   reserve: 'Réservé',
   termine: 'Terminé',
+  en_cours: 'En cours',
+  validee: 'Validée',
+}
+
+export const LISTING_STATUS_COLORS: Record<ListingStatus, string> = {
+  disponible: 'bg-green-100 text-green-700',
+  reserve: 'bg-yellow-100 text-yellow-700',
+  termine: 'bg-gray-100 text-gray-500',
+  en_cours: 'bg-orange-100 text-orange-700',
+  validee: 'bg-brand-100 text-brand-700',
 }
 
 export const LISTING_TYPE_COLORS: Record<ListingType, string> = {

@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { ArrowLeft, Send, Loader2, Users, UserCircle2 } from 'lucide-react'
 import type { DirectMessage, ConversationParticipant, Profile } from '@/lib/types'
-import { formatDate } from '@/lib/utils'
+import { formatDate, formatDateTime } from '@/lib/utils'
 
 export default function ConversationPage() {
   const router = useRouter()
@@ -31,31 +31,23 @@ export default function ConversationPage() {
 
   useEffect(() => {
     const init = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
         router.push(`/auth/login?redirect=${encodeURIComponent(`/messages/${id}`)}`)
         return
       }
-      const uid = session.user.id
+      const uid = user.id
       setUserId(uid)
 
-      // Vérifie que l'utilisateur est bien participant
-      const { data: participation } = await supabase
-        .from('conversation_participants')
-        .select('conversation_id')
-        .eq('conversation_id', id)
-        .eq('user_id', uid)
-        .single()
-
-      if (!participation) { setNotFound(true); setLoading(false); return }
-
-      // Conversation info
-      const { data: conv } = await supabase
+      // Vérifie l'accès via la conversation (RLS non self-référentielle)
+      const { data: conv, error: convError } = await supabase
         .from('conversations')
-        .select('name')
+        .select('id, name')
         .eq('id', id)
         .single()
-      setConvName(conv?.name ?? null)
+
+      if (convError || !conv) { setNotFound(true); setLoading(false); return }
+      setConvName(conv.name ?? null)
 
       // Participants avec profil
       const { data: parts } = await supabase
@@ -242,7 +234,7 @@ export default function ConversationPage() {
                 } ${msg.id.startsWith('temp-') ? 'opacity-60' : ''}`}>
                   {msg.content}
                 </div>
-                <span className="text-[11px] text-gray-400 px-1">{formatDate(msg.created_at)}</span>
+                <span className="text-[11px] text-gray-400 px-1">{formatDateTime(msg.created_at)}</span>
               </div>
             </div>
           )

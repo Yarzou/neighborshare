@@ -34,13 +34,13 @@ export default function ProfileClient() {
   // Load data client-side — no server redirect involved
   useEffect(() => {
     const load = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
         router.push('/auth/login?redirect=%2Fprofile')
         return
       }
 
-      const uid = session.user.id
+      const uid = user.id
       setUserId(uid)
 
       const [{ data: prof }, { data: lists }] = await Promise.all([

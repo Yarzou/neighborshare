@@ -77,13 +77,13 @@ export default function MessagesClient() {
 
   useEffect(() => {
     const init = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
         router.push('/auth/login?redirect=%2Fmessages')
         return
       }
-      setUserId(session.user.id)
-      await buildConversations(session.user.id)
+      setUserId(user.id)
+      await buildConversations(user.id)
       setLoading(false)
     }
     init()

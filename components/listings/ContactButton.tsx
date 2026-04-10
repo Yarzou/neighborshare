@@ -3,43 +3,48 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { MessageCircle, Loader2 } from 'lucide-react'
+import { MessageCircle, Loader2, CheckCircle } from 'lucide-react'
+import type { ListingStatus } from '@/lib/types'
 
 interface Props {
   listingId: string
   receiverId: string
+  listingStatus: ListingStatus
 }
 
-export function ContactButton({ listingId, receiverId }: Props) {
+export function ContactButton({ listingId, receiverId, listingStatus }: Props) {
   const [message, setMessage] = useState('')
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [sent, setSent] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
+
+  if (listingStatus !== 'disponible') {
+    return (
+      <div className="w-full py-3 text-center bg-gray-50 text-gray-400 rounded-xl text-sm font-medium border border-gray-200">
+        {listingStatus === 'en_cours' ? '⏳ Une demande est en cours' : '✅ Annonce validée'}
+      </div>
+    )
+  }
 
   const handleSend = async () => {
     if (!message.trim()) return
     setLoading(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return router.push('/auth/login')
+    setError(null)
 
-    await supabase.from('messages').insert({
-      listing_id: listingId,
-      sender_id: user.id,
-      receiver_id: receiverId,
-      content: message.trim(),
+    const { data: convId, error: rpcError } = await supabase.rpc('contact_listing', {
+      p_listing_id: listingId,
+      p_first_message: message.trim(),
     })
-    setSent(true)
-    setLoading(false)
-  }
 
-  if (sent) {
-    return (
-      <div className="w-full py-3 text-center bg-green-50 text-green-700 rounded-xl text-sm font-medium">
-        ✓ Message envoyé !
-      </div>
-    )
+    if (rpcError) {
+      setError(rpcError.message || 'Erreur lors de l\'envoi. Réessayez.')
+      setLoading(false)
+      return
+    }
+
+    router.push(`/messages/${convId}`)
   }
 
   return (
@@ -53,14 +58,17 @@ export function ContactButton({ listingId, receiverId }: Props) {
             placeholder="Bonjour, je suis intéressé(e) par votre annonce..."
             className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm resize-none"
           />
+          {error && (
+            <p className="text-xs text-red-500 px-1">{error}</p>
+          )}
           <div className="flex gap-2">
-            <button onClick={() => setOpen(false)}
+            <button onClick={() => { setOpen(false); setError(null) }}
               className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
               Annuler
             </button>
             <button onClick={handleSend} disabled={loading || !message.trim()}
               className="flex-1 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 transition-colors disabled:opacity-60 flex items-center justify-center gap-1">
-              {loading ? <Loader2 size={14} className="animate-spin" /> : null}
+              {loading ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
               Envoyer
             </button>
           </div>

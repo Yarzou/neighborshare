@@ -39,8 +39,8 @@ export default function NewListingPage() {
 
     const init = async () => {
       try {
-        const { data: sessionData } = await supabase.auth.getSession()
-        const sessionUserId = sessionData.session?.user?.id ?? null
+      const { data: { user: currentUser } } = await supabase.auth.getUser()
+        const sessionUserId = currentUser?.id ?? null
         if (!cancelled) setUserId(sessionUserId)
 
         // Se re-synchronise avec l'état auth au fil du temps.
@@ -105,8 +105,7 @@ export default function NewListingPage() {
     }
 
     // Préfère la session si dispo (plus fiable juste après redirect).
-    const { data: sessionData } = await supabase.auth.getSession()
-    const user = sessionData.session?.user ?? (await supabase.auth.getUser()).data.user
+    const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
       setLoading(false)

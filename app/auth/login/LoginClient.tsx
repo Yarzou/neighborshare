@@ -34,8 +34,8 @@ export default function LoginClient() {
     let cancelled = false
 
     const go = async () => {
-      const { data } = await supabase.auth.getSession()
-      if (!cancelled && data.session) {
+      const { data } = await supabase.auth.getUser()
+      if (!cancelled && data.user) {
         // Full navigation so server components get the fresh session cookie
         window.location.href = redirect
       }

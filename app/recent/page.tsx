@@ -31,7 +31,7 @@ export default function RecentPage() {
 
     const { data, count } = await supabase
       .from('listings')
-      .select('*, categories(*), profiles(id, username, full_name, avatar_url)', { count: 'exact' })
+      .select('*, categories(*), profiles!user_id(id, username, full_name, avatar_url)', { count: 'exact' })
       .eq('status', 'disponible')
       .order('created_at', { ascending: false })
       .range(from, to)
