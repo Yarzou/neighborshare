@@ -81,7 +81,7 @@ export default function LoginClient() {
         <div className="text-center mb-8">
           <div className="text-4xl mb-3">🏘️</div>
           <h1 className="text-2xl font-bold text-gray-900">Bon retour !</h1>
-          <p className="text-gray-500 mt-1">Connectez-vous à NeighborShare</p>
+          <p className="text-gray-500 mt-1">Connectez-vous aux voisins du Cèdre</p>
         </div>
 
         <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8">
