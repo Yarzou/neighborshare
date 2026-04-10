@@ -28,7 +28,20 @@ export function MapView() {
   const [radius, setRadius] = useState(5)
   const [category, setCategory] = useState(searchParams.get('category') || '')
   const [loading, setLoading] = useState(true)
+  const [searchedLocation, setSearchedLocation] = useState<[number, number] | null>(null)
+  const [slugToId, setSlugToId] = useState<Record<string, number>>({})
   const supabase = createClient()
+
+  // Charge le mapping slug → id une seule fois
+  useEffect(() => {
+    supabase.from('categories').select('id, slug').then(({ data }) => {
+      if (data) {
+        const map: Record<string, number> = {}
+        data.forEach(c => { map[c.slug] = c.id })
+        setSlugToId(map)
+      }
+    })
+  }, [])
 
   // Géolocalisation
   useEffect(() => {
@@ -50,16 +63,24 @@ export function MapView() {
 
     if (!error && data) {
       let filtered = data as Listing[]
-      if (category) filtered = filtered.filter(l => {
-        // Filter par slug catégorie via join si disponible
-        return true // simplifié — à affiner avec un join sur categories
-      })
+      if (category) {
+        const catId = slugToId[category]
+        if (catId !== undefined) {
+          filtered = filtered.filter(l => l.category_id === catId)
+        }
+      }
       setListings(filtered)
     }
     setLoading(false)
-  }, [userLocation, radius, category])
+  }, [userLocation, radius, category, slugToId])
 
   useEffect(() => { fetchListings() }, [fetchListings])
+
+  const handleLocationSelect = (lat: number, lon: number) => {
+    const coords: [number, number] = [lat, lon]
+    setUserLocation(coords)
+    setSearchedLocation(coords)
+  }
 
   return (
     <div className="flex h-full">
@@ -72,6 +93,7 @@ export function MapView() {
           onCategoryChange={setCategory}
           count={listings.length}
           loading={loading}
+          onLocationSelect={handleLocationSelect}
         />
 
         <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
@@ -107,6 +129,7 @@ export function MapView() {
             listings={listings}
             onSelectListing={setSelected}
             selectedId={selected?.id}
+            searchedLocation={searchedLocation}
           />
         )}
 

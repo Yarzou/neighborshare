@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { AlertCircle, Loader2, Lock, Mail } from 'lucide-react'
 
@@ -16,7 +16,6 @@ function safeRedirectPath(value: string | null) {
 }
 
 export default function LoginClient() {
-  const router = useRouter()
   const searchParams = useSearchParams()
 
   const redirect = useMemo(() => safeRedirectPath(searchParams.get('redirect')), [searchParams])
@@ -37,8 +36,8 @@ export default function LoginClient() {
     const go = async () => {
       const { data } = await supabase.auth.getSession()
       if (!cancelled && data.session) {
-        router.replace(redirect)
-        router.refresh()
+        // Full navigation so server components get the fresh session cookie
+        window.location.href = redirect
       }
     }
 
@@ -48,9 +47,8 @@ export default function LoginClient() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (cancelled) return
-      if (session) {
-        router.replace(redirect)
-        router.refresh()
+      if (session && _event === 'SIGNED_IN') {
+        window.location.href = redirect
       }
     })
 
@@ -58,7 +56,7 @@ export default function LoginClient() {
       cancelled = true
       subscription.unsubscribe()
     }
-  }, [supabase, router, redirect])
+  }, [supabase, redirect])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -73,9 +71,8 @@ export default function LoginClient() {
       return
     }
 
-    router.replace(redirect)
-    router.refresh()
-    setLoading(false)
+    // Full page navigation so the middleware reads the fresh session cookie
+    window.location.href = redirect
   }
 
   return (

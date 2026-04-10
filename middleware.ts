@@ -21,17 +21,23 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  // getSession() reads the JWT from cookies without a network call — more reliable
+  // than getUser() in middleware where network failures cause false logouts.
+  const { data: { session } } = await supabase.auth.getSession()
 
-  // Protéger les routes qui nécessitent une auth
-  const protectedPaths = ['/listings/new', '/profile', '/messages']
+  const protectedPaths: string[] = []  // Auth gérée côté client (comme /profile et /messages)
   const isProtected = protectedPaths.some(p => request.nextUrl.pathname.startsWith(p))
 
-  if (isProtected && !user) {
+  if (isProtected && !session) {
     const url = request.nextUrl.clone()
     url.pathname = '/auth/login'
     url.searchParams.set('redirect', request.nextUrl.pathname)
-    return NextResponse.redirect(url)
+    const redirectResponse = NextResponse.redirect(url)
+    // Forward any refreshed session cookies so the browser stays in sync
+    supabaseResponse.cookies.getAll().forEach(cookie => {
+      redirectResponse.cookies.set(cookie.name, cookie.value)
+    })
+    return redirectResponse
   }
 
   return supabaseResponse

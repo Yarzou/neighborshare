@@ -120,25 +120,153 @@ language sql stable as $$
 $$;
 
 -- -----------------------------------------------
--- MESSAGES
+-- MESSAGERIE : conversations & messages
 -- -----------------------------------------------
-create table public.messages (
-  id          uuid default gen_random_uuid() primary key,
-  listing_id  uuid references public.listings(id) on delete cascade not null,
-  sender_id   uuid references public.profiles(id) on delete cascade not null,
-  receiver_id uuid references public.profiles(id) on delete cascade not null,
-  content     text not null,
-  read        boolean default false,
-  created_at  timestamptz default now()
+
+-- Conversations (1-on-1 ou groupes)
+create table public.conversations (
+  id         uuid default gen_random_uuid() primary key,
+  name       text,                          -- null = 1-on-1, texte = groupe nommé
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()      -- mis à jour à chaque nouveau message
 );
 
+-- Participants
+create table public.conversation_participants (
+  conversation_id uuid references public.conversations(id) on delete cascade,
+  user_id         uuid references public.profiles(id) on delete cascade,
+  last_read_at    timestamptz default now(),
+  joined_at       timestamptz default now(),
+  primary key (conversation_id, user_id)
+);
+
+-- Messages
+create table public.messages (
+  id              uuid default gen_random_uuid() primary key,
+  conversation_id uuid references public.conversations(id) on delete cascade not null,
+  sender_id       uuid references public.profiles(id) on delete cascade not null,
+  content         text not null,
+  created_at      timestamptz default now()
+);
+
+-- RLS
+alter table public.conversations enable row level security;
+alter table public.conversation_participants enable row level security;
 alter table public.messages enable row level security;
 
-create policy "Lecture messages propres" on public.messages
-  for select using (auth.uid() = sender_id or auth.uid() = receiver_id);
+-- Conversations : accessible si participant
+create policy "Voir ses conversations" on public.conversations
+  for select using (
+    exists (
+      select 1 from public.conversation_participants
+      where conversation_id = id and user_id = auth.uid()
+    )
+  );
+create policy "Créer conversation" on public.conversations
+  for insert with check (auth.uid() is not null);
+create policy "Mettre à jour conversation" on public.conversations
+  for update using (
+    exists (
+      select 1 from public.conversation_participants
+      where conversation_id = id and user_id = auth.uid()
+    )
+  );
 
-create policy "Envoi messages" on public.messages
-  for insert with check (auth.uid() = sender_id);
+-- Participants : visible si dans la même conversation
+create policy "Voir participants" on public.conversation_participants
+  for select using (
+    exists (
+      select 1 from public.conversation_participants cp2
+      where cp2.conversation_id = conversation_id and cp2.user_id = auth.uid()
+    )
+  );
+create policy "Ajouter participant" on public.conversation_participants
+  for insert with check (auth.uid() is not null);
+create policy "Mise à jour last_read" on public.conversation_participants
+  for update using (user_id = auth.uid());
+
+-- Messages : visible si participant
+create policy "Voir messages" on public.messages
+  for select using (
+    exists (
+      select 1 from public.conversation_participants
+      where conversation_id = messages.conversation_id and user_id = auth.uid()
+    )
+  );
+create policy "Envoyer message" on public.messages
+  for insert with check (
+    auth.uid() = sender_id and
+    exists (
+      select 1 from public.conversation_participants
+      where conversation_id = messages.conversation_id and user_id = auth.uid()
+    )
+  );
+
+-- -----------------------------------------------
+-- RPC : créer une conversation avec participants
+-- -----------------------------------------------
+create or replace function create_conversation(
+  participant_ids uuid[],
+  conv_name       text default null
+)
+returns uuid language plpgsql security definer as $$
+declare
+  conv_id uuid;
+  uid     uuid;
+begin
+  if auth.uid() is null then
+    raise exception 'Unauthorized';
+  end if;
+
+  insert into public.conversations (name)
+  values (conv_name)
+  returning id into conv_id;
+
+  -- Ajoute le créateur
+  insert into public.conversation_participants (conversation_id, user_id)
+  values (conv_id, auth.uid());
+
+  -- Ajoute les autres participants
+  foreach uid in array participant_ids loop
+    if uid <> auth.uid() then
+      insert into public.conversation_participants (conversation_id, user_id)
+      values (conv_id, uid)
+      on conflict do nothing;
+    end if;
+  end loop;
+
+  return conv_id;
+end;
+$$;
+
+-- -----------------------------------------------
+-- RPC : marquer une conversation comme lue
+-- -----------------------------------------------
+create or replace function mark_conversation_read(conv_id uuid)
+returns void language plpgsql security definer as $$
+begin
+  update public.conversation_participants
+  set last_read_at = now()
+  where conversation_id = conv_id and user_id = auth.uid();
+end;
+$$;
+
+-- -----------------------------------------------
+-- TRIGGER : updated_at sur nouvelle message
+-- -----------------------------------------------
+create or replace function update_conversation_timestamp()
+returns trigger language plpgsql as $$
+begin
+  update public.conversations
+  set updated_at = now()
+  where id = new.conversation_id;
+  return new;
+end;
+$$;
+
+create trigger messages_update_conversation
+  after insert on public.messages
+  for each row execute function update_conversation_timestamp();
 
 -- -----------------------------------------------
 -- TRIGGER : créer un profil à l'inscription

@@ -17,12 +17,14 @@ interface Props {
   listings: Listing[]
   onSelectListing: (listing: Listing) => void
   selectedId?: string
+  searchedLocation?: [number, number] | null
 }
 
-export default function LeafletMap({ center, listings, onSelectListing, selectedId }: Props) {
+export default function LeafletMap({ center, listings, onSelectListing, selectedId, searchedLocation }: Props) {
   const mapRef = useRef<L.Map | null>(null)
   const markersRef = useRef<Record<string, L.Marker>>({})
   const containerRef = useRef<HTMLDivElement>(null)
+  const searchMarkerRef = useRef<L.Marker | null>(null)
 
   // Init map
   useEffect(() => {
@@ -46,6 +48,46 @@ export default function LeafletMap({ center, listings, onSelectListing, selected
     mapRef.current = map
     return () => { map.remove(); mapRef.current = null }
   }, [])
+
+  // Recenter map when center changes
+  useEffect(() => {
+    mapRef.current?.setView(center, 14)
+  }, [center])
+
+  // Searched address marker
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+
+    // Remove previous search marker
+    if (searchMarkerRef.current) {
+      searchMarkerRef.current.remove()
+      searchMarkerRef.current = null
+    }
+
+    if (!searchedLocation) return
+
+    const searchIcon = L.divIcon({
+      html: `<div style="
+        width:32px;height:32px;
+        background:#dc2626;
+        border:3px solid white;
+        border-radius:50% 50% 50% 0;
+        transform:rotate(-45deg);
+        box-shadow:0 2px 8px rgba(0,0,0,0.3)
+      "></div>`,
+      iconSize: [32, 32],
+      iconAnchor: [16, 32],
+      className: '',
+    })
+
+    searchMarkerRef.current = L.marker(searchedLocation, { icon: searchIcon })
+      .addTo(map)
+      .bindPopup('📍 Adresse recherchée')
+      .openPopup()
+
+    map.setView(searchedLocation, 14)
+  }, [searchedLocation])
 
   // Update markers
   useEffect(() => {

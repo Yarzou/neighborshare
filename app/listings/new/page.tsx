@@ -3,8 +3,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { MapPin, Upload, Loader2, AlertCircle } from 'lucide-react'
+import { Upload, Loader2, AlertCircle } from 'lucide-react'
 import type { ListingType, Category } from '@/lib/types'
+import AddressAutocomplete, { type ResolvedAddress } from '@/components/forms/AddressAutocomplete'
 
 const LISTING_TYPES: { value: ListingType; label: string; icon: string }[] = [
   { value: 'pret', label: 'Prêt', icon: '🔄' },
@@ -28,7 +29,6 @@ export default function NewListingPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [locLoading, setLocLoading] = useState(false)
   const [authReady, setAuthReady] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
 
@@ -82,20 +82,19 @@ export default function NewListingPage() {
     setImagePreview(URL.createObjectURL(file))
   }
 
-  const detectLocation = () => {
-    setLocLoading(true)
-    navigator.geolocation?.getCurrentPosition(
-      pos => {
-        setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude })
-        setLocLoading(false)
-      },
-      () => { setError('Impossible de détecter la position.'); setLocLoading(false) }
-    )
+  const handleAddressSelect = (resolved: ResolvedAddress) => {
+    setLocation({ lat: resolved.lat, lng: resolved.lon })
+    setForm(f => ({ ...f, address: resolved.road, city: resolved.city }))
+  }
+
+  const handleAddressClear = () => {
+    setLocation(null)
+    setForm(f => ({ ...f, address: '', city: '' }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!location) return setError('Veuillez détecter votre position.')
+    if (!location) return setError('Veuillez sélectionner une adresse.')
     setLoading(true)
     setError(null)
 
@@ -226,29 +225,18 @@ export default function NewListingPage() {
         </div>
 
         {/* Adresse */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Adresse (optionnel)</label>
-            <input name="address" value={form.address} onChange={handleChange} placeholder="12 rue de la Paix"
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Ville</label>
-            <input name="city" value={form.city} onChange={handleChange} placeholder="Paris"
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm" />
-          </div>
-        </div>
-
-        {/* Géolocalisation */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Position *</label>
-          <button type="button" onClick={detectLocation} disabled={locLoading}
-            className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 text-sm font-medium transition-colors ${
-              location ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-gray-200 hover:border-brand-300'
-            }`}>
-            {locLoading ? <Loader2 size={16} className="animate-spin" /> : <MapPin size={16} />}
-            {location ? `Position détectée ✓ (${location.lat.toFixed(4)}, ${location.lng.toFixed(4)})` : 'Utiliser ma position actuelle'}
-          </button>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            Adresse <span className="text-red-500">*</span>
+          </label>
+          <p className="text-xs text-gray-400 mb-2">
+            Tapez une adresse et sélectionnez-la dans la liste, ou utilisez votre position actuelle.
+          </p>
+          <AddressAutocomplete
+            onSelect={handleAddressSelect}
+            onClear={handleAddressClear}
+            placeholder="Ex : 12 rue de la Paix, Paris"
+          />
         </div>
 
         <button type="submit" disabled={loading || !location}

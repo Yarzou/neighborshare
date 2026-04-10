@@ -31,9 +31,31 @@ export function Navbar() {
 
   const navLinks = [
     { href: '/map', label: 'Carte', icon: <MapPin size={16} /> },
-    { href: '/listings/new', label: 'Publier', icon: <Plus size={16} /> },
-    ...(user ? [{ href: '/messages', label: 'Messages', icon: <MessageCircle size={16} /> }] : []),
   ]
+
+  const handlePublish = () => {
+    if (user) {
+      router.push('/listings/new')
+    } else {
+      router.push('/auth/login?redirect=%2Flistings%2Fnew')
+    }
+  }
+
+  const handleProfile = () => {
+    if (user) {
+      router.push('/profile')
+    } else {
+      router.push('/auth/login?redirect=%2Fprofile')
+    }
+  }
+
+  const handleMessages = () => {
+    if (user) {
+      router.push('/messages')
+    } else {
+      router.push('/auth/login?redirect=%2Fmessages')
+    }
+  }
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm">
@@ -57,15 +79,39 @@ export function Navbar() {
               {link.label}
             </Link>
           ))}
+          <button onClick={handlePublish}
+            className={cn(
+              'flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-colors',
+              pathname === '/listings/new'
+                ? 'bg-brand-50 text-brand-700'
+                : 'text-gray-600 hover:bg-gray-100'
+            )}>
+            <Plus size={16} /> Publier
+          </button>
+          {user && (
+            <button onClick={handleMessages}
+              className={cn(
+                'flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-colors',
+                pathname?.startsWith('/messages')
+                  ? 'bg-brand-50 text-brand-700'
+                  : 'text-gray-600 hover:bg-gray-100'
+              )}>
+              <MessageCircle size={16} /> Messages
+            </button>
+          )}
         </div>
 
         {/* Auth */}
         <div className="hidden md:flex items-center gap-2">
           {user ? (
             <>
-              <Link href="/profile" className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors">
+              <button onClick={handleProfile}
+                className={cn(
+                  'flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-colors',
+                  pathname === '/profile' ? 'bg-brand-50 text-brand-700' : 'text-gray-600 hover:bg-gray-100'
+                )}>
                 <User size={16} /> Profil
-              </Link>
+              </button>
               <button onClick={handleLogout} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-colors">
                 <LogOut size={16} /> Déconnexion
               </button>
@@ -97,12 +143,26 @@ export function Navbar() {
               {link.icon} {link.label}
             </Link>
           ))}
+          <button onClick={() => { handlePublish(); setMenuOpen(false) }}
+            className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100">
+            <Plus size={16} /> Publier
+          </button>
+          {user && (
+            <button onClick={() => { handleMessages(); setMenuOpen(false) }}
+              className={cn(
+                'flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-100',
+                pathname?.startsWith('/messages') ? 'text-brand-700' : 'text-gray-700'
+              )}>
+              <MessageCircle size={16} /> Messages
+            </button>
+          )}
           <div className="border-t border-gray-100 mt-2 pt-2">
             {user ? (
               <>
-                <Link href="/profile" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100">
+                <button onClick={() => { handleProfile(); setMenuOpen(false) }}
+                  className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100">
                   <User size={16} /> Profil
-                </Link>
+                </button>
                 <button onClick={handleLogout} className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50">
                   <LogOut size={16} /> Déconnexion
                 </button>
