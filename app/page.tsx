@@ -17,12 +17,8 @@ export default function HomePage() {
       <section className="relative overflow-hidden bg-gradient-to-br from-brand-600 to-brand-800 text-white">
         <div className="absolute inset-0 opacity-10" style={{backgroundImage: 'radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px)', backgroundSize: '40px 40px'}} />
         <div className="relative max-w-4xl mx-auto px-4 py-24 text-center">
-          <div className="inline-flex items-center gap-2 bg-white/20 rounded-full px-4 py-1.5 text-sm font-medium mb-6">
-            <MapPin size={14} />
-            Entraide locale géolocalisée
-          </div>
           <h1 className="text-4xl md:text-6xl font-bold mb-6 leading-tight">
-            Partagez avec<br />vos voisins 🏘️
+            Partagez avec<br />vos voisins du Cèdre 🏘️
           </h1>
           <p className="text-xl text-brand-100 mb-10 max-w-2xl mx-auto">
             Outils, services, garde d&apos;enfant — trouvez ce dont vous avez besoin à deux pas de chez vous, ou proposez votre aide.
@@ -54,36 +50,14 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Features */}
-      <section className="bg-white py-16">
-        <div className="max-w-4xl mx-auto px-4">
-          <h2 className="text-2xl font-bold text-center mb-12">Comment ça marche ?</h2>
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              { icon: <MapPin className="text-brand-600" size={28} />, title: 'Géolocalisé', desc: 'Trouvez des offres dans votre quartier, configurez votre rayon de recherche.' },
-              { icon: <Shield className="text-brand-600" size={28} />, title: 'Communauté de confiance', desc: 'Système de réputation, avis après échange, profils vérifiés.' },
-              { icon: <Zap className="text-brand-600" size={28} />, title: 'Simple et rapide', desc: 'Publiez une annonce en 2 minutes, contactez directement par messagerie.' },
-            ].map((f, i) => (
-              <div key={i} className="flex flex-col items-center text-center gap-3">
-                <div className="w-14 h-14 rounded-2xl bg-brand-50 flex items-center justify-center">
-                  {f.icon}
-                </div>
-                <h3 className="font-semibold text-lg">{f.title}</h3>
-                <p className="text-gray-500 text-sm leading-relaxed">{f.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* CTA */}
       <section className="max-w-4xl mx-auto px-4 py-16 w-full text-center">
         <div className="bg-gradient-to-br from-brand-50 to-warm-50 rounded-3xl p-10 border border-brand-100">
           <Users className="mx-auto mb-4 text-brand-600" size={40} />
-          <h2 className="text-2xl font-bold mb-3">Rejoignez votre communauté</h2>
-          <p className="text-gray-500 mb-6">Créez votre compte gratuitement et commencez à partager.</p>
+          <h2 className="text-2xl font-bold mb-3">Rejoignez votre quartier du Cèdre</h2>
+          <p className="text-gray-500 mb-6">Créez votre compte et commencez à partager.</p>
           <Link href="/auth/register" className="inline-flex items-center gap-2 bg-brand-600 text-white font-semibold px-8 py-3.5 rounded-2xl hover:bg-brand-700 transition-colors">
-            S&apos;inscrire gratuitement
+            S&apos;inscrire
             <ArrowRight size={18} />
           </Link>
         </div>
