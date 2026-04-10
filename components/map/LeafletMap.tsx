@@ -12,47 +12,55 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 })
 
+const NEIGHBORHOOD_CENTER: [number, number] = [47.300837, -1.560131]
+
 interface Props {
-  center: [number, number]
+  userPosition: [number, number] | null
   listings: Listing[]
   onSelectListing: (listing: Listing) => void
   selectedId?: string
   searchedLocation?: [number, number] | null
 }
 
-export default function LeafletMap({ center, listings, onSelectListing, selectedId, searchedLocation }: Props) {
+export default function LeafletMap({ userPosition, listings, onSelectListing, selectedId, searchedLocation }: Props) {
   const mapRef = useRef<L.Map | null>(null)
   const markersRef = useRef<Record<string, L.Marker>>({})
   const containerRef = useRef<HTMLDivElement>(null)
   const searchMarkerRef = useRef<L.Marker | null>(null)
+  const userMarkerRef = useRef<L.Marker | null>(null)
 
-  // Init map
+  // Init map centered on neighborhood
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
 
-    const map = L.map(containerRef.current).setView(center, 14)
+    const map = L.map(containerRef.current).setView(NEIGHBORHOOD_CENTER, 17)
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       maxZoom: 19,
     }).addTo(map)
 
-    // Marqueur position utilisateur
+    mapRef.current = map
+    return () => { map.remove(); mapRef.current = null }
+  }, [])
+
+  // Update user position marker
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !userPosition) return
+
+    if (userMarkerRef.current) {
+      userMarkerRef.current.setLatLng(userPosition)
+      return
+    }
+
     const userIcon = L.divIcon({
       html: `<div style="width:16px;height:16px;background:#2563eb;border:3px solid white;border-radius:50%;box-shadow:0 0 0 4px rgba(37,99,235,0.2)"></div>`,
       iconSize: [16, 16],
       iconAnchor: [8, 8],
       className: '',
     })
-    L.marker(center, { icon: userIcon }).addTo(map).bindPopup('Vous êtes ici')
-
-    mapRef.current = map
-    return () => { map.remove(); mapRef.current = null }
-  }, [])
-
-  // Recenter map when center changes
-  useEffect(() => {
-    mapRef.current?.setView(center, 14)
-  }, [center])
+    userMarkerRef.current = L.marker(userPosition, { icon: userIcon }).addTo(map).bindPopup('Vous êtes ici')
+  }, [userPosition])
 
   // Searched address marker
   useEffect(() => {
@@ -82,9 +90,9 @@ export default function LeafletMap({ center, listings, onSelectListing, selected
     })
 
     searchMarkerRef.current = L.marker(searchedLocation, { icon: searchIcon })
-      .addTo(map)
-      .bindPopup('📍 Adresse recherchée')
-      .openPopup()
+        .addTo(map)
+        .bindPopup('📍 Adresse recherchée')
+        .openPopup()
 
     map.setView(searchedLocation, 14)
   }, [searchedLocation])
@@ -109,8 +117,8 @@ export default function LeafletMap({ center, listings, onSelectListing, selected
       })
 
       const marker = L.marker([listing.lat_out, listing.lng_out], { icon })
-        .addTo(map)
-        .on('click', () => onSelectListing(listing))
+          .addTo(map)
+          .on('click', () => onSelectListing(listing))
 
       markersRef.current[listing.id] = marker
     })
