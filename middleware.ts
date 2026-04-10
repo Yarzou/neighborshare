@@ -25,7 +25,7 @@ export async function middleware(request: NextRequest) {
   // than getUser() in middleware where network failures cause false logouts.
   const { data: { session } } = await supabase.auth.getSession()
 
-  const protectedPaths = ['/listings/new', '/profile', '/messages']
+  const protectedPaths: string[] = []  // Auth gérée côté client (comme /profile et /messages)
   const isProtected = protectedPaths.some(p => request.nextUrl.pathname.startsWith(p))
 
   if (isProtected && !session) {

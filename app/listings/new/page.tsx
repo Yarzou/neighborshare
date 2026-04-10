@@ -53,12 +53,6 @@ export default function NewListingPage() {
 
         if (!cancelled) setAuthReady(true)
 
-        // Redirect unauthenticated users immediately after session is resolved
-        if (!cancelled && !sessionUserId) {
-          router.replace(`/auth/login?redirect=${encodeURIComponent('/listings/new')}`)
-          return
-        }
-
         return () => subscription.unsubscribe()
       } catch {
         if (!cancelled) setAuthReady(true)
