@@ -39,15 +39,24 @@ export default function ConversationPage() {
       const uid = user.id
       setUserId(uid)
 
-      // Vérifie l'accès via la conversation (RLS non self-référentielle)
-      const { data: conv, error: convError } = await supabase
+      // Vérifie l'accès en cherchant la participation de l'utilisateur
+      // (évite la double RLS : conversations → conversation_participants auto-référentielle)
+      const { data: myPart, error: partError } = await supabase
+        .from('conversation_participants')
+        .select('conversation_id')
+        .eq('conversation_id', id)
+        .eq('user_id', uid)
+        .maybeSingle()
+
+      if (partError || !myPart) { setNotFound(true); setLoading(false); return }
+
+      // Récupère le nom de la conversation (best-effort, non bloquant si RLS)
+      const { data: conv } = await supabase
         .from('conversations')
         .select('id, name')
         .eq('id', id)
-        .single()
-
-      if (convError || !conv) { setNotFound(true); setLoading(false); return }
-      setConvName(conv.name ?? null)
+        .maybeSingle()
+      setConvName(conv?.name ?? null)
 
       // Participants avec profil
       const { data: parts } = await supabase
@@ -218,23 +227,23 @@ export default function ConversationPage() {
             <div key={msg.id} className={`flex items-end gap-2 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
               {/* Avatar (autres participants, 1 seul affiché) */}
               {!isMe && (
-                <div className={`w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold ${isSameAuthor ? 'opacity-0' : 'bg-brand-100 text-brand-700'}`}>
+                <div className={`w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold ${isSameAuthor ? 'opacity-0' : 'bg-blue-100 text-blue-700'}`}>
                   {getInitial(msg.sender_id)}
                 </div>
               )}
 
               <div className={`flex flex-col gap-0.5 max-w-[70%] ${isMe ? 'items-end' : 'items-start'}`}>
+                <span className="text-[11px] text-gray-400 px-1">{formatDateTime(msg.created_at)}</span>
                 {showSender && (
                   <span className="text-xs text-gray-400 px-1">{getParticipantName(msg.sender_id)}</span>
                 )}
                 <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
                   isMe
-                    ? 'bg-brand-600 text-white rounded-br-sm'
-                    : 'bg-white text-gray-800 border border-gray-200 rounded-bl-sm'
+                    ? 'bg-green-500 text-white rounded-br-sm'
+                    : 'bg-blue-500 text-white rounded-bl-sm'
                 } ${msg.id.startsWith('temp-') ? 'opacity-60' : ''}`}>
                   {msg.content}
                 </div>
-                <span className="text-[11px] text-gray-400 px-1">{formatDateTime(msg.created_at)}</span>
               </div>
             </div>
           )

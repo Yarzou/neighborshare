@@ -172,13 +172,23 @@ create policy "Mettre à jour conversation" on public.conversations
     )
   );
 
--- Participants : visible si dans la même conversation
+-- Participants : visible si dans la même conversation (via fonction SECURITY DEFINER pour éviter la récursion RLS)
+create or replace function is_conversation_participant(conv_id uuid)
+returns boolean
+language sql
+security definer
+stable
+as $$
+  select exists (
+    select 1 from public.conversation_participants
+    where conversation_id = conv_id
+      and user_id = auth.uid()
+  );
+$$;
+
 create policy "Voir participants" on public.conversation_participants
   for select using (
-    exists (
-      select 1 from public.conversation_participants cp2
-      where cp2.conversation_id = conversation_id and cp2.user_id = auth.uid()
-    )
+    is_conversation_participant(conversation_id)
   );
 create policy "Ajouter participant" on public.conversation_participants
   for insert with check (auth.uid() is not null);
@@ -201,6 +211,44 @@ create policy "Envoyer message" on public.messages
       where conversation_id = messages.conversation_id and user_id = auth.uid()
     )
   );
+
+-- -----------------------------------------------
+-- RPC : trouver ou créer une conversation 1-à-1
+-- -----------------------------------------------
+create or replace function find_or_create_conversation(other_user_id uuid)
+returns uuid language plpgsql security definer as $$
+declare
+  conv_id uuid;
+begin
+  if auth.uid() is null then
+    raise exception 'Unauthorized';
+  end if;
+
+  -- Cherche une conversation directe existante (exactement 2 participants)
+  select cp1.conversation_id into conv_id
+  from public.conversation_participants cp1
+  join public.conversation_participants cp2
+    on cp1.conversation_id = cp2.conversation_id
+  where cp1.user_id = auth.uid()
+    and cp2.user_id = other_user_id
+    and (
+      select count(*) from public.conversation_participants cp3
+      where cp3.conversation_id = cp1.conversation_id
+    ) = 2
+  limit 1;
+
+  if conv_id is not null then
+    return conv_id;
+  end if;
+
+  -- Crée une nouvelle conversation 1-à-1
+  insert into public.conversations (name) values (null) returning id into conv_id;
+  insert into public.conversation_participants (conversation_id, user_id) values (conv_id, auth.uid());
+  insert into public.conversation_participants (conversation_id, user_id) values (conv_id, other_user_id);
+
+  return conv_id;
+end;
+$$;
 
 -- -----------------------------------------------
 -- RPC : créer une conversation avec participants

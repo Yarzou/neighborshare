@@ -1,0 +1,12 @@
+# Template de configuration Liquibase (versionné — sans données sensibles)
+# Copiez ce fichier : cp liquibase/liquibase.properties.example liquibase/liquibase.properties
+# Puis renseignez le mot de passe (Supabase Dashboard > Project Settings > Database)
+
+url=jdbc:postgresql://db.uyrquxsmzdoywhdnamwe.supabase.co:5432/postgres
+username=postgres
+password=ie5hf7yuZq$+k,M
+
+driver=org.postgresql.Driver
+changeLogFile=liquibase/changelog/db.changelog-master.xml
+#liquibase.hub.mode=off
+outputDefaultSchema=false

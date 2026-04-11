@@ -59,14 +59,29 @@ export default function NewConversationPage() {
   const isSelected = (id: string) => selected.some(p => p.id === id)
 
   const handleCreate = async () => {
-    if (selected.length === 0) return
+    if (selected.length === 0 || !userId) return
     setCreating(true)
     setError(null)
 
     const isGroup = selected.length > 1
-    const name = isGroup
-      ? (groupName.trim() || selected.map(p => p.full_name || p.username).join(', '))
-      : null
+
+    // Pour une conversation 1-à-1, utilise la fonction SECURITY DEFINER
+    // qui trouve ou crée la conversation sans déclencher la récursion RLS
+    if (!isGroup) {
+      const { data: convId, error: rpcErr } = await supabase.rpc('find_or_create_conversation', {
+        other_user_id: selected[0].id,
+      })
+      if (rpcErr || !convId) {
+        setError('Impossible de démarrer la conversation. Réessayez.')
+        setCreating(false)
+        return
+      }
+      router.push(`/messages/${convId}`)
+      return
+    }
+
+    // Groupe : création classique
+    const name = groupName.trim() || selected.map(p => p.full_name || p.username).join(', ')
 
     const { data: convId, error: rpcErr } = await supabase.rpc('create_conversation', {
       participant_ids: selected.map(p => p.id),
