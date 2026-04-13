@@ -123,11 +123,11 @@ export function FilterBar({ radius, onRadiusChange, category, onCategoryChange, 
       </div>
 
       {/* Categories */}
-      <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+      <div className="grid grid-cols-4 gap-1.5">
         {CATEGORIES.map(cat => (
           <button key={cat.slug} onClick={() => onCategoryChange(cat.slug)}
             className={cn(
-              'flex-shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium transition-colors border',
+              'flex items-center justify-center gap-1 px-2 py-1.5 rounded-full text-xs font-medium transition-colors border w-full',
               category === cat.slug
                 ? 'bg-brand-600 text-white border-brand-600'
                 : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-brand-300'
