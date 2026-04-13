@@ -6,7 +6,8 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { ArrowLeft, Send, Loader2, Users, UserCircle2 } from 'lucide-react'
 import type { DirectMessage, ConversationParticipant, Profile } from '@/lib/types'
-import { formatDate, formatDateTime } from '@/lib/utils'
+import { formatDateTime } from '@/lib/utils'
+import { MessageBubble } from '@/components/messages/MessageBubble'
 
 export default function ConversationPage() {
   const router = useRouter()
@@ -146,6 +147,22 @@ export default function ConversationPage() {
     setSending(false)
   }
 
+  const handleDelete = async (msgId: string) => {
+    // Suppression optimiste
+    setMessages(prev => prev.filter(m => m.id !== msgId))
+    const { error } = await supabase.from('messages').delete().eq('id', msgId)
+    if (error) {
+      // Rollback : recharge les messages depuis la BDD
+      const { data: msgs } = await supabase
+        .from('messages')
+        .select('id, conversation_id, sender_id, content, created_at, profiles(id, username, full_name, avatar_url)')
+        .eq('conversation_id', id)
+        .order('created_at', { ascending: true })
+        .limit(50)
+      if (msgs) setMessages(msgs as unknown as DirectMessage[])
+    }
+  }
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
@@ -224,28 +241,17 @@ export default function ConversationPage() {
           const showSender = !isMe && isGroup && !isSameAuthor
 
           return (
-            <div key={msg.id} className={`flex items-end gap-2 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
-              {/* Avatar (autres participants, 1 seul affiché) */}
-              {!isMe && (
-                <div className={`w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold ${isSameAuthor ? 'opacity-0' : 'bg-blue-100 text-blue-700'}`}>
-                  {getInitial(msg.sender_id)}
-                </div>
-              )}
-
-              <div className={`flex flex-col gap-0.5 max-w-[70%] ${isMe ? 'items-end' : 'items-start'}`}>
-                <span className="text-[11px] text-gray-400 px-1">{formatDateTime(msg.created_at)}</span>
-                {showSender && (
-                  <span className="text-xs text-gray-400 px-1">{getParticipantName(msg.sender_id)}</span>
-                )}
-                <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
-                  isMe
-                    ? 'bg-green-500 text-white rounded-br-sm'
-                    : 'bg-blue-500 text-white rounded-bl-sm'
-                } ${msg.id.startsWith('temp-') ? 'opacity-60' : ''}`}>
-                  {msg.content}
-                </div>
-              </div>
-            </div>
+            <MessageBubble
+              key={msg.id}
+              msg={msg}
+              isMe={isMe}
+              isGroup={isGroup}
+              isSameAuthor={!!isSameAuthor}
+              showSender={showSender}
+              senderName={getParticipantName(msg.sender_id)}
+              senderInitial={getInitial(msg.sender_id)}
+              onDelete={handleDelete}
+            />
           )
         })}
         <div ref={bottomRef} />

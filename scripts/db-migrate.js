@@ -26,7 +26,7 @@ if (!dbPassword) {
 /** @type {LiquibaseConfig} */
 const config = {
   url: 'jdbc:postgresql://aws-0-eu-west-1.pooler.supabase.com:6543/postgres',
-  username: 'postgres.wxaqpwtxkpbnolakayin',
+  username: 'postgres.egltzqwwsmkbmvzppyda',
   password: dbPassword,
   changeLogFile: 'liquibase/changelog/db.changelog-master.xml',
   liquibasePropertiesFile: path.resolve(__dirname, '../liquibase/liquibase.properties'),

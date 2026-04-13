@@ -11,4 +11,7 @@
   <!-- Fonctions, triggers, RLS avancee, RPCs -->
   <include file="liquibase/changelog/002-listing-responses.sql"/>
 
+  <!-- Nouvelles fonctions : find_or_create_conversation, create_conversation, messages_delete -->
+  <include file="liquibase/changelog/003-additions.sql"/>
+
 </databaseChangeLog>
