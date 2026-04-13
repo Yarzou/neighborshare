@@ -14,4 +14,7 @@
   <!-- Nouvelles fonctions : find_or_create_conversation, create_conversation, messages_delete -->
   <include file="liquibase/changelog/003-additions.sql"/>
 
+  <!-- Bucket Storage pour les images d'annonces -->
+  <include file="liquibase/changelog/004-storage-listings-bucket.sql"/>
+
 </databaseChangeLog>
