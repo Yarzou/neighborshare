@@ -157,6 +157,7 @@ export function MapView() {
               onSelectListing={setSelected}
               selectedId={selected?.id}
               searchedLocation={searchedLocation}
+              visible={mobileView === 'map'}
           />
 
           {/* Popup détail sélectionné */}

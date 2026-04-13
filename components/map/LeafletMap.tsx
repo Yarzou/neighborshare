@@ -20,9 +20,10 @@ interface Props {
   onSelectListing: (listing: Listing) => void
   selectedId?: string
   searchedLocation?: [number, number] | null
+  visible?: boolean
 }
 
-export default function LeafletMap({ userPosition, listings, onSelectListing, selectedId, searchedLocation }: Props) {
+export default function LeafletMap({ userPosition, listings, onSelectListing, selectedId, searchedLocation, visible }: Props) {
   const mapRef = useRef<L.Map | null>(null)
   const markersRef = useRef<Record<string, L.Marker>>({})
   const containerRef = useRef<HTMLDivElement>(null)
@@ -40,8 +41,27 @@ export default function LeafletMap({ userPosition, listings, onSelectListing, se
     }).addTo(map)
 
     mapRef.current = map
-    return () => { map.remove(); mapRef.current = null }
+
+    // ResizeObserver : recalcule la taille dès que le conteneur change de dimensions
+    // (ex : passage de hidden → visible sur mobile)
+    const ro = new ResizeObserver(() => {
+      map.invalidateSize()
+    })
+    ro.observe(containerRef.current)
+
+    return () => {
+      ro.disconnect()
+      map.remove()
+      mapRef.current = null
+    }
   }, [])
+
+  // Recalcule la taille quand la vue mobile bascule sur "carte"
+  useEffect(() => {
+    if (visible && mapRef.current) {
+      setTimeout(() => mapRef.current?.invalidateSize(), 50)
+    }
+  }, [visible])
 
   // Update user position marker
   useEffect(() => {
