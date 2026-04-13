@@ -141,7 +141,7 @@ export default function NewConversationPage() {
             value={groupName}
             onChange={e => setGroupName(e.target.value)}
             placeholder="Ex : Voisins du quartier…"
-            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+            className="w-full min-w-0 px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
           />
         </div>
       )}
@@ -154,7 +154,7 @@ export default function NewConversationPage() {
           value={query}
           onChange={e => setQuery(e.target.value)}
           placeholder="Rechercher par nom ou pseudo…"
-          className="w-full pl-10 pr-9 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm"
+          className="w-full min-w-0 pl-10 pr-9 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm"
         />
         {searching && (
           <Loader2 size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 animate-spin" />
