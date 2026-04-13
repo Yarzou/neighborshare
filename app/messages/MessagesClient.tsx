@@ -4,9 +4,10 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { MessageCircle, Plus, Loader2, Users } from 'lucide-react'
+import { MessageCircle, Plus, Loader2 } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
-import type { ConversationWithDetails, ConversationParticipant, DirectMessage, Profile } from '@/lib/types'
+import type { ConversationWithDetails, ConversationParticipant, DirectMessage } from '@/lib/types'
+import { ConversationRow } from '@/components/messages/ConversationRow'
 
 export default function MessagesClient() {
   const router = useRouter()
@@ -101,6 +102,20 @@ export default function MessagesClient() {
     return () => { supabase.removeChannel(channel) }
   }, [userId, buildConversations])
 
+  const handleDeleteConversation = async (convId: string) => {
+    // Suppression optimiste
+    setConversations(prev => prev.filter(c => c.id !== convId))
+    const { error } = await supabase
+      .from('conversation_participants')
+      .delete()
+      .eq('conversation_id', convId)
+      .eq('user_id', userId!)
+    if (error) {
+      // Rollback
+      await buildConversations(userId!)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -136,56 +151,14 @@ export default function MessagesClient() {
         </div>
       ) : (
         <div className="flex flex-col gap-2">
-          {conversations.map(conv => {
-            const others = conv.participants
-              .filter(p => p.user_id !== userId)
-              .map(p => p.profiles as Profile | undefined)
-              .filter(Boolean) as Profile[]
-            const isGroup = others.length > 1
-            const displayName = conv.name
-              || (isGroup
-                ? others.map(p => p.full_name || p.username).join(', ')
-                : (others[0]?.full_name || others[0]?.username || 'Inconnu'))
-            const initials = isGroup ? '👥' : (displayName[0]?.toUpperCase() || '?')
-            const hasUnread = conv.unreadCount > 0
-
-            return (
-              <Link
-                key={conv.id}
-                href={`/messages/${conv.id}`}
-                className={`bg-white rounded-2xl border p-4 flex items-center gap-3 hover:border-brand-300 transition-colors ${hasUnread ? 'border-brand-200 bg-brand-50/40' : 'border-gray-200'}`}
-              >
-                {/* Avatar */}
-                <div className={`w-11 h-11 rounded-full flex items-center justify-center font-bold flex-shrink-0 text-lg ${isGroup ? 'bg-purple-100 text-purple-700' : 'bg-brand-100 text-brand-700'}`}>
-                  {isGroup ? <Users size={20} /> : initials}
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className={`text-sm truncate ${hasUnread ? 'font-bold text-gray-900' : 'font-semibold text-gray-800'}`}>
-                      {displayName}
-                    </span>
-                    <span className="text-xs text-gray-400 flex-shrink-0">
-                      {conv.lastMessage ? formatDate(conv.lastMessage.created_at) : formatDate(conv.updated_at)}
-                    </span>
-                  </div>
-                  {conv.lastMessage && (
-                    <p className={`text-sm truncate mt-0.5 ${hasUnread ? 'text-gray-700 font-medium' : 'text-gray-400'}`}>
-                      {conv.lastMessage.sender_id === userId ? 'Vous : ' : ''}
-                      {conv.lastMessage.content}
-                    </p>
-                  )}
-                  {isGroup && (
-                    <p className="text-xs text-gray-400 mt-0.5">{others.length + 1} participants</p>
-                  )}
-                </div>
-
-                {hasUnread && (
-                  <div className="w-2.5 h-2.5 rounded-full bg-brand-500 flex-shrink-0" />
-                )}
-              </Link>
-            )
-          })}
+          {conversations.map(conv => (
+            <ConversationRow
+              key={conv.id}
+              conv={conv}
+              userId={userId!}
+              onDelete={handleDeleteConversation}
+            />
+          ))}
         </div>
       )}
     </div>

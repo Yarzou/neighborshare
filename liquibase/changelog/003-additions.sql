@@ -92,3 +92,7 @@ grant execute on function create_conversation(uuid[], text) to authenticated;
 
 --changeset neighborshare:003-reload-schema-cache
 select pg_notify('pgrst', 'reload schema');
+
+--changeset neighborshare:003-participants-delete-policy
+create policy "participants_delete" on public.conversation_participants
+    for delete using (user_id = auth.uid());

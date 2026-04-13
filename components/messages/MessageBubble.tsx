@@ -90,12 +90,16 @@ export function MessageBubble({
 
         {/* Wrapper relatif pour superposer le bouton supprimer (mobile) */}
         <div className="relative">
-          {/* Bouton supprimer mobile (derrière la bulle, révélé par swipe) */}
+          {/* Bouton supprimer mobile : invisible jusqu'au swipe, révélé progressivement */}
           {canDelete && (
             <button
               onClick={handleDeleteClick}
               aria-label="Supprimer"
-              className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full pr-1 h-full flex items-center"
+              className="md:hidden absolute right-0 top-1/2 -translate-y-1/2 translate-x-full pr-1 h-full flex items-center"
+              style={{
+                opacity: Math.min(1, Math.max(0, (-swipeX - 20) / 40)),
+                pointerEvents: swipeX < -SWIPE_THRESHOLD * 0.7 ? 'auto' : 'none',
+              }}
             >
               <span className="flex items-center justify-center w-10 h-8 rounded-xl bg-red-500 text-white">
                 <Trash2 size={15} />
