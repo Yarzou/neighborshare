@@ -208,7 +208,7 @@ export default function ConversationPage() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)]">
+    <div className="flex flex-col h-[calc(100dvh-4rem)]">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 bg-white flex-shrink-0">
         <Link href="/messages" className="text-gray-500 hover:text-gray-700 flex-shrink-0">

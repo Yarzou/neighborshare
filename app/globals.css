@@ -15,6 +15,19 @@ body {
   background: var(--background);
 }
 
+/*
+ * Empêche le zoom automatique d'iOS Safari lors du focus sur un champ de saisie.
+ * iOS zoome quand font-size < 16px — on force 16px sur mobile, puis on laisse
+ * Tailwind reprendre la main sur desktop (md:).
+ */
+@media screen and (max-width: 767px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
