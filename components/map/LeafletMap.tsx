@@ -2,6 +2,9 @@
 
 import { useEffect, useRef } from 'react'
 import L from 'leaflet'
+import 'leaflet.markercluster'
+import 'leaflet.markercluster/dist/MarkerCluster.css'
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 import type { Listing } from '@/lib/types'
 
 // Fix icônes Leaflet avec Next.js
@@ -26,9 +29,12 @@ interface Props {
 export default function LeafletMap({ userPosition, listings, onSelectListing, selectedId, searchedLocation, visible }: Props) {
   const mapRef = useRef<L.Map | null>(null)
   const markersRef = useRef<Record<string, L.Marker>>({})
+  const clusterGroupRef = useRef<L.MarkerClusterGroup | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const searchMarkerRef = useRef<L.Marker | null>(null)
   const userMarkerRef = useRef<L.Marker | null>(null)
+  // Timer ref to delay unspiderfy so hovering child markers doesn't collapse immediately
+  const unspiderfyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Init map centered on neighborhood
   useEffect(() => {
@@ -40,6 +46,49 @@ export default function LeafletMap({ userPosition, listings, onSelectListing, se
       maxZoom: 19,
     }).addTo(map)
 
+    // Cluster group with custom cluster icon
+    const clusterGroup = L.markerClusterGroup({
+      maxClusterRadius: 40,
+      spiderfyOnMaxZoom: true,
+      showCoverageOnHover: false,
+      zoomToBoundsOnClick: false, // we handle click ourselves
+      iconCreateFunction: (cluster) => {
+        const count = cluster.getChildCount()
+        return L.divIcon({
+          html: `<div class="cluster-bubble">${count}</div>`,
+          className: '',
+          iconSize: [40, 40],
+          iconAnchor: [20, 20],
+        })
+      },
+    })
+
+    // Desktop: hover → spiderfy / mouseleave → delayed unspiderfy
+    clusterGroup.on('clustermouseover', (e: any) => {
+      if (unspiderfyTimerRef.current) {
+        clearTimeout(unspiderfyTimerRef.current)
+        unspiderfyTimerRef.current = null
+      }
+      e.layer.spiderfy()
+    })
+
+    clusterGroup.on('clustermouseout', (e: any) => {
+      unspiderfyTimerRef.current = setTimeout(() => {
+        ;(clusterGroup as any).unspiderfy()
+      }, 200)
+    })
+
+    // Mobile / fallback: click → spiderfy
+    clusterGroup.on('clusterclick', (e: any) => {
+      if (unspiderfyTimerRef.current) {
+        clearTimeout(unspiderfyTimerRef.current)
+        unspiderfyTimerRef.current = null
+      }
+      e.layer.spiderfy()
+    })
+
+    clusterGroup.addTo(map)
+    clusterGroupRef.current = clusterGroup
     mapRef.current = map
 
     // ResizeObserver : recalcule la taille dès que le conteneur change de dimensions
@@ -50,9 +99,11 @@ export default function LeafletMap({ userPosition, listings, onSelectListing, se
     ro.observe(containerRef.current)
 
     return () => {
+      if (unspiderfyTimerRef.current) clearTimeout(unspiderfyTimerRef.current)
       ro.disconnect()
       map.remove()
       mapRef.current = null
+      clusterGroupRef.current = null
     }
   }, [])
 
@@ -120,10 +171,11 @@ export default function LeafletMap({ userPosition, listings, onSelectListing, se
   // Update markers
   useEffect(() => {
     const map = mapRef.current
-    if (!map) return
+    const clusterGroup = clusterGroupRef.current
+    if (!map || !clusterGroup) return
 
-    // Supprimer anciens markers
-    Object.values(markersRef.current).forEach(m => m.remove())
+    // Remove all existing markers from cluster and clear refs
+    clusterGroup.clearLayers()
     markersRef.current = {}
 
     listings.forEach(listing => {
@@ -137,9 +189,21 @@ export default function LeafletMap({ userPosition, listings, onSelectListing, se
       })
 
       const marker = L.marker([listing.lat_out, listing.lng_out], { icon })
-          .addTo(map)
-          .on('click', () => onSelectListing(listing))
+        .on('click', () => onSelectListing(listing))
+        // Cancel unspiderfy when hovering a child marker
+        .on('mouseover', () => {
+          if (unspiderfyTimerRef.current) {
+            clearTimeout(unspiderfyTimerRef.current)
+            unspiderfyTimerRef.current = null
+          }
+        })
+        .on('mouseout', () => {
+          unspiderfyTimerRef.current = setTimeout(() => {
+            ;(clusterGroupRef.current as any)?.unspiderfy()
+          }, 200)
+        })
 
+      clusterGroup.addLayer(marker)
       markersRef.current[listing.id] = marker
     })
   }, [listings, onSelectListing])
