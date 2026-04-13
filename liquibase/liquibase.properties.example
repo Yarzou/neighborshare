@@ -2,7 +2,7 @@
 # Copiez ce fichier : cp liquibase/liquibase.properties.example liquibase/liquibase.properties
 # Puis renseignez le mot de passe (Supabase Dashboard > Project Settings > Database)
 
-url=jdbc:postgresql://db.uyrquxsmzdoywhdnamwe.supabase.co:5432/postgres
+url=jdbc:postgresql://db.wxaqpwtxkpbnolakayin.supabase.co:5432/postgres
 username=postgres
 password=ie5hf7yuZq$+k,M
 

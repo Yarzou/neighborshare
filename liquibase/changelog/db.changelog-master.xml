@@ -5,13 +5,10 @@
   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
 
-  <!-- Schéma initial complet -->
+  <!-- Schema initial : tables, types, index, RLS simples -->
   <include file="liquibase/changelog/001-schema-initial.sql"/>
 
-  <!-- Migration : système de réponse aux annonces -->
+  <!-- Fonctions, triggers, RLS avancee, RPCs -->
   <include file="liquibase/changelog/002-listing-responses.sql"/>
-
-  <!-- Fix : récursion infinie RLS conversation_participants -->
-  <include file="liquibase/changelog/003-fix-rls-messaging.sql"/>
 
 </databaseChangeLog>
