@@ -338,3 +338,6 @@ grant execute on function cancel_listing_response(uuid) to authenticated;
 grant execute on function mark_conversation_read(uuid) to authenticated;
 grant execute on function find_or_create_conversation(uuid) to authenticated;
 grant execute on function create_conversation(uuid[], text) to authenticated;
+
+--changeset neighborshare:002-reload-schema-cache runOnChange:false
+select pg_notify('pgrst', 'reload schema');
