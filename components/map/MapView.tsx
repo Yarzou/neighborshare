@@ -162,10 +162,10 @@ export function MapView() {
 
           {/* Popup détail sélectionné */}
           {selected && (
-              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-80 z-[1000]">
+              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-80 z-[1000] max-h-[calc(100dvh-5rem)] overflow-y-auto rounded-2xl shadow-xl">
                 <div className="relative">
                   <button onClick={() => setSelected(null)}
-                          className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-md border border-gray-200 z-10">
+                          className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md border border-gray-200 z-10">
                     <X size={14} />
                   </button>
                   <ListingCard listing={selected} />

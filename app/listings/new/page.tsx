@@ -208,7 +208,7 @@ export default function NewListingPage() {
           <input ref={fileRef} type="file" accept="image/*" onChange={handleImage} className="hidden" />
           {imagePreview ? (
             <div className="relative">
-              <img src={imagePreview} alt="Preview" className="w-full h-48 object-cover rounded-xl" />
+              <img src={imagePreview} alt="Preview" className="w-full max-h-72 object-contain rounded-xl bg-gray-100" />
               <button type="button" onClick={() => { setImageFile(null); setImagePreview(null) }}
                 className="absolute top-2 right-2 bg-white rounded-full px-3 py-1 text-xs font-medium shadow hover:bg-gray-50">
                 Changer

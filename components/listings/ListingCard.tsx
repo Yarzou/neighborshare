@@ -22,8 +22,8 @@ export function ListingCard({ listing, compact = false, onClick, active }: Props
 
       {/* Image */}
       {listing.image_url && (
-        <div className={cn('relative flex-shrink-0 bg-gray-100', compact ? 'w-16 h-16 rounded-xl' : 'w-full h-44')}>
-          <Image src={listing.image_url} alt={listing.title} fill className="object-cover rounded-xl" />
+        <div className={cn('relative flex-shrink-0 bg-gray-100 overflow-hidden', compact ? 'w-16 h-16 rounded-xl' : 'w-full h-44 max-h-[35vh]')}>
+          <Image src={listing.image_url} alt={listing.title} fill className={cn('rounded-xl', compact ? 'object-cover' : 'object-contain')} />
         </div>
       )}
 

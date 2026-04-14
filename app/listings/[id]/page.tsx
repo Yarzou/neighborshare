@@ -48,7 +48,7 @@ export default async function ListingPage({ params }: { params: { id: string } }
       <div className="bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden">
         {/* Image */}
         {typedListing.image_url ? (
-          <div className="relative w-full h-64">
+          <div className="relative w-full h-64 max-h-[40vh]">
             <Image src={typedListing.image_url} alt={typedListing.title} fill className="object-cover" />
           </div>
         ) : (
