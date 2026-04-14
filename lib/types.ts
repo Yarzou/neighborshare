@@ -42,6 +42,8 @@ export interface Listing {
   carpool_arrival_address: string | null
   carpool_arrival_lat: number | null
   carpool_arrival_lng: number | null
+  childcare_start_at: string | null
+  childcare_end_at: string | null
   created_at: string
   responder_id?: string | null
   conversation_id?: string | null

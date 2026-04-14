@@ -3,9 +3,9 @@ import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
-import { MapPin, Clock, ArrowLeft, Star, MessageCircle } from 'lucide-react'
+import { MapPin, Clock, ArrowLeft, Star, CalendarDays, MessageCircle } from 'lucide-react'
 import { isListingType, LISTING_TYPE_LABELS, LISTING_TYPE_COLORS, LISTING_STATUS_LABELS, LISTING_STATUS_COLORS, type Listing } from '@/lib/types'
-import { formatDate } from '@/lib/utils'
+import { formatDate, formatChildcarePeriod } from '@/lib/utils'
 import { ContactButton } from '@/components/listings/ContactButton'
 import { ListingActions } from '@/components/listings/ListingActions'
 
@@ -49,7 +49,7 @@ export default async function ListingPage({ params }: { params: { id: string } }
       </Link>
 
       <div className="bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden">
-        {/* Image ou carte covoiturage */}
+        {/* Image ou carte covoiturage ou garde d'enfant */}
         {typedListing.carpool_departure_lat && typedListing.carpool_arrival_lat ? (
           <div className="w-full">
             <CarpoolMiniMap
@@ -70,7 +70,25 @@ export default async function ListingPage({ params }: { params: { id: string } }
               </span>
             </div>
           </div>
-        ) : typedListing.image_url ? (
+        ) : typedListing.childcare_start_at && typedListing.childcare_end_at ? (() => {
+          const { startLabel, endLabel, sameDay } = formatChildcarePeriod(typedListing.childcare_start_at!, typedListing.childcare_end_at!)
+          return (
+            <div className="w-full bg-violet-50 border-b border-violet-100">
+              <div className="flex flex-col items-center justify-center gap-3 py-8 px-6">
+                <CalendarDays size={36} className="text-violet-400" />
+                <div className="text-center">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-violet-400 mb-2">Période de garde</p>
+                  <p className="text-base font-semibold text-violet-800">{startLabel}</p>
+                  {sameDay ? (
+                    <p className="text-sm text-violet-600">jusqu&apos;à {endLabel}</p>
+                  ) : (
+                    <p className="text-sm text-violet-600">→ {endLabel}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )
+        })() : typedListing.image_url ? (
           <div className="relative w-full max-h-[40vh] bg-gray-100">
             <Image src={typedListing.image_url} alt={typedListing.title} width={0} height={0} sizes="100vw" className="w-full h-auto max-h-[40vh] object-contain" />
           </div>

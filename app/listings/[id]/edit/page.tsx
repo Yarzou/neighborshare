@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
-import { Upload, Loader2, AlertCircle, ArrowLeft } from 'lucide-react'
+import { Upload, Loader2, AlertCircle, ArrowLeft, CalendarDays } from 'lucide-react'
 import type { ListingType, Category } from '@/lib/types'
 import AddressAutocomplete, { type ResolvedAddress } from '@/components/forms/AddressAutocomplete'
 
@@ -19,6 +19,14 @@ const LISTING_TYPES: { value: ListingType; label: string; icon: string }[] = [
 ]
 
 const CARPOOL_SLUG = 'covoiturage'
+const CHILDCARE_SLUG = 'garde-enfant'
+
+function toDatetimeLocal(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
 
 export default function EditListingPage() {
   const router = useRouter()
@@ -36,17 +44,14 @@ export default function EditListingPage() {
     city: '',
   })
 
-  // Location: null = keep existing, coords = update to new
   const [newLocation, setNewLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [hasExistingLocation, setHasExistingLocation] = useState(false)
-  // Address text to pre-fill in locked state (built from listing.address + listing.city)
   const [existingAddressText, setExistingAddressText] = useState<string | undefined>(undefined)
 
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null)
 
-  // Carpool fields
   const [carpoolDeparture, setCarpoolDeparture] = useState<ResolvedAddress | null>(null)
   const [carpoolArrival, setCarpoolArrival] = useState<ResolvedAddress | null>(null)
   const [existingDepartureText, setExistingDepartureText] = useState<string | undefined>(undefined)
@@ -55,15 +60,20 @@ export default function EditListingPage() {
     depLat: number; depLng: number; arrLat: number; arrLng: number
   } | null>(null)
 
+  const [childcareStart, setChildcareStart] = useState('')
+  const [childcareEnd, setChildcareEnd] = useState('')
+
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notFound, setNotFound] = useState(false)
   const [unauthorized, setUnauthorized] = useState(false)
 
-  const isCarpool = categories.find(c => String(c.id) === form.category_id)?.slug === CARPOOL_SLUG
+  const selectedCategory = categories.find(c => String(c.id) === form.category_id)
+  const isCarpool = selectedCategory?.slug === CARPOOL_SLUG
+  const isChildcare = selectedCategory?.slug === CHILDCARE_SLUG
+  const hidePhoto = isCarpool || isChildcare
 
-  // Preview coords: new selection overrides existing
   const previewDep = carpoolDeparture
     ? { lat: carpoolDeparture.lat, lng: carpoolDeparture.lon, label: carpoolDeparture.displayName }
     : existingCarpoolCoords ? { lat: existingCarpoolCoords.depLat, lng: existingCarpoolCoords.depLng, label: existingDepartureText ?? 'Départ' } : null
@@ -105,24 +115,16 @@ export default function EditListingPage() {
       setExistingImageUrl(listing.image_url || null)
       setImagePreview(listing.image_url || null)
 
-      // Reconstruit le texte d'adresse affiché dans le composant verrouillé
       const addressParts = [listing.address, listing.city].filter(Boolean)
       if (addressParts.length > 0) {
         setExistingAddressText(addressParts.join(', '))
         setHasExistingLocation(true)
       }
 
-      // Pré-remplit les champs covoiturage si présents
-      if (listing.carpool_departure_address) {
-        setExistingDepartureText(listing.carpool_departure_address)
-      }
-      if (listing.carpool_arrival_address) {
-        setExistingArrivalText(listing.carpool_arrival_address)
-      }
-      if (
-        listing.carpool_departure_lat && listing.carpool_departure_lng &&
-        listing.carpool_arrival_lat && listing.carpool_arrival_lng
-      ) {
+      if (listing.carpool_departure_address) setExistingDepartureText(listing.carpool_departure_address)
+      if (listing.carpool_arrival_address) setExistingArrivalText(listing.carpool_arrival_address)
+      if (listing.carpool_departure_lat && listing.carpool_departure_lng &&
+          listing.carpool_arrival_lat && listing.carpool_arrival_lng) {
         setExistingCarpoolCoords({
           depLat: listing.carpool_departure_lat,
           depLng: listing.carpool_departure_lng,
@@ -130,6 +132,9 @@ export default function EditListingPage() {
           arrLng: listing.carpool_arrival_lng,
         })
       }
+
+      if (listing.childcare_start_at) setChildcareStart(toDatetimeLocal(listing.childcare_start_at))
+      if (listing.childcare_end_at) setChildcareEnd(toDatetimeLocal(listing.childcare_end_at))
 
       setLoading(false)
     }
@@ -160,11 +165,17 @@ export default function EditListingPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!isCarpool && !hasExistingLocation && !newLocation) {
+    if (!isCarpool && !isChildcare && !hasExistingLocation && !newLocation) {
       return setError('Veuillez sélectionner une adresse valide.')
     }
     if (isCarpool && !existingCarpoolCoords && (!carpoolDeparture || !carpoolArrival)) {
-      return setError('Veuillez renseigner les adresses de départ et d\'arrivée.')
+      return setError("Veuillez renseigner les adresses de départ et d'arrivée.")
+    }
+    if (isChildcare && (!childcareStart || !childcareEnd)) {
+      return setError('Veuillez renseigner les dates et heures de la garde.')
+    }
+    if (isChildcare && childcareEnd <= childcareStart) {
+      return setError('La date de fin doit être après la date de début.')
     }
     setSaving(true)
     setError(null)
@@ -175,9 +186,9 @@ export default function EditListingPage() {
       return
     }
 
-    let image_url = isCarpool ? null : existingImageUrl
+    let image_url = hidePhoto ? null : existingImageUrl
 
-    if (!isCarpool && imageFile) {
+    if (!hidePhoto && imageFile) {
       const ext = imageFile.name.split('.').pop()
       const path = `${user.id}/${Date.now()}.${ext}`
       const { error: uploadErr } = await supabase.storage.from('listings').upload(path, imageFile)
@@ -196,19 +207,19 @@ export default function EditListingPage() {
       city: isCarpool ? (carpoolDeparture?.city ?? form.city) : form.city,
       image_url,
       updated_at: new Date().toISOString(),
-      // Carpool fields: update if user changed them, keep existing if not
       carpool_departure_address: carpoolDeparture?.displayName ?? (isCarpool ? existingDepartureText ?? null : null),
       carpool_departure_lat: carpoolDeparture?.lat ?? (isCarpool ? existingCarpoolCoords?.depLat ?? null : null),
       carpool_departure_lng: carpoolDeparture?.lon ?? (isCarpool ? existingCarpoolCoords?.depLng ?? null : null),
       carpool_arrival_address: carpoolArrival?.displayName ?? (isCarpool ? existingArrivalText ?? null : null),
       carpool_arrival_lat: carpoolArrival?.lat ?? (isCarpool ? existingCarpoolCoords?.arrLat ?? null : null),
       carpool_arrival_lng: carpoolArrival?.lon ?? (isCarpool ? existingCarpoolCoords?.arrLng ?? null : null),
+      childcare_start_at: isChildcare ? childcareStart || null : null,
+      childcare_end_at: isChildcare ? childcareEnd || null : null,
     }
 
-    // Pour covoiturage : utilise les coords du départ comme point de localisation si modifié
     if (isCarpool && carpoolDeparture) {
       updates.location = `POINT(${carpoolDeparture.lon} ${carpoolDeparture.lat})`
-    } else if (!isCarpool && newLocation) {
+    } else if (!isCarpool && !isChildcare && newLocation) {
       updates.location = `POINT(${newLocation.lng} ${newLocation.lat})`
     }
 
@@ -268,7 +279,6 @@ export default function EditListingPage() {
       )}
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-        {/* Type */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Type d&apos;annonce</label>
           <div className="grid grid-cols-4 gap-2">
@@ -284,7 +294,6 @@ export default function EditListingPage() {
           </div>
         </div>
 
-        {/* Titre */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">Titre *</label>
           <input name="title" value={form.title} onChange={handleChange} required
@@ -292,7 +301,6 @@ export default function EditListingPage() {
             className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm" />
         </div>
 
-        {/* Description */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
           <textarea name="description" value={form.description} onChange={handleChange} rows={3}
@@ -300,7 +308,6 @@ export default function EditListingPage() {
             className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm resize-none" />
         </div>
 
-        {/* Catégorie */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">Catégorie</label>
           <select name="category_id" value={form.category_id} onChange={handleChange}
@@ -312,8 +319,7 @@ export default function EditListingPage() {
           </select>
         </div>
 
-        {/* Photo — masquée pour les annonces covoiturage */}
-        {!isCarpool && (
+        {!hidePhoto && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Photo</label>
             <input ref={fileRef} type="file" accept="image/*" onChange={handleImage} className="hidden" />
@@ -340,11 +346,9 @@ export default function EditListingPage() {
           </div>
         )}
 
-        {/* Champs covoiturage */}
         {isCarpool && (
           <div className="flex flex-col gap-4 p-4 rounded-2xl bg-indigo-50 border border-indigo-100">
             <p className="text-sm font-semibold text-indigo-700">🚗 Trajet covoiturage</p>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 Adresse de départ <span className="text-red-500">*</span>
@@ -356,7 +360,6 @@ export default function EditListingPage() {
                 placeholder="Ex : 12 rue de la Paix, Paris"
               />
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 Adresse d&apos;arrivée <span className="text-red-500">*</span>
@@ -368,8 +371,6 @@ export default function EditListingPage() {
                 placeholder="Ex : Place Bellecour, Lyon"
               />
             </div>
-
-            {/* Aperçu carte */}
             {previewDep && previewArr && (
               <div className="rounded-xl overflow-hidden border border-indigo-200">
                 <CarpoolMiniMap
@@ -386,8 +387,33 @@ export default function EditListingPage() {
           </div>
         )}
 
-        {/* Adresse — masquée pour les annonces covoiturage (coords du départ utilisées) */}
-        {!isCarpool && (
+        {isChildcare && (
+          <div className="flex flex-col gap-4 p-4 rounded-2xl bg-violet-50 border border-violet-100">
+            <p className="text-sm font-semibold text-violet-700 flex items-center gap-2">
+              <CalendarDays size={16} /> Période de garde
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Début <span className="text-red-500">*</span>
+                </label>
+                <input type="datetime-local" value={childcareStart}
+                  onChange={e => setChildcareStart(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm bg-white" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Fin <span className="text-red-500">*</span>
+                </label>
+                <input type="datetime-local" value={childcareEnd} min={childcareStart || undefined}
+                  onChange={e => setChildcareEnd(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm bg-white" />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!isCarpool && !isChildcare && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
               Adresse <span className="text-red-500">*</span>
@@ -404,7 +430,7 @@ export default function EditListingPage() {
           </div>
         )}
 
-        <button type="submit" disabled={saving || (!isCarpool && !hasExistingLocation && !newLocation)}
+        <button type="submit" disabled={saving || (!isCarpool && !isChildcare && !hasExistingLocation && !newLocation)}
           className="w-full py-3.5 bg-brand-600 text-white font-semibold rounded-xl hover:bg-brand-700 transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
           {saving ? <><Loader2 size={18} className="animate-spin" /> Enregistrement...</> : 'Enregistrer les modifications'}
         </button>

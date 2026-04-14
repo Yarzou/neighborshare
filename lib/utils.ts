@@ -30,3 +30,20 @@ export function formatDateTime(dateStr: string): string {
   const min = String(date.getMinutes()).padStart(2, '0')
   return `${dd}/${mm}/${yyyy} ${hh}:${min}`
 }
+
+export function formatChildcarePeriod(start: string, end: string): { startLabel: string; endLabel: string; sameDay: boolean } {
+  const s = new Date(start)
+  const e = new Date(end)
+  const opts: Intl.DateTimeFormatOptions = { weekday: 'short', day: 'numeric', month: 'short' }
+  const timeOpts: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' }
+  const startDay = s.toLocaleDateString('fr-FR', opts)
+  const endDay = e.toLocaleDateString('fr-FR', opts)
+  const startTime = s.toLocaleTimeString('fr-FR', timeOpts)
+  const endTime = e.toLocaleTimeString('fr-FR', timeOpts)
+  const sameDay = startDay === endDay
+  return {
+    startLabel: `${startDay} à ${startTime}`,
+    endLabel: sameDay ? endTime : `${endDay} à ${endTime}`,
+    sameDay,
+  }
+}

@@ -1,10 +1,10 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import dynamic from 'next/dynamic'
-import { MapPin, Clock, Tag } from 'lucide-react'
+import { MapPin, Clock, CalendarDays } from 'lucide-react'
 import type { Listing } from '@/lib/types'
 import { LISTING_TYPE_LABELS, LISTING_TYPE_COLORS } from '@/lib/types'
-import { formatDistance, formatDate, cn } from '@/lib/utils'
+import { formatDistance, formatDate, formatChildcarePeriod, cn } from '@/lib/utils'
 
 const CarpoolMiniMap = dynamic(() => import('@/components/map/CarpoolMiniMap'), { ssr: false })
 
@@ -23,7 +23,7 @@ export function ListingCard({ listing, compact = false, onClick, active }: Props
       compact ? 'flex gap-3 p-3' : 'flex flex-col overflow-hidden shadow-sm'
     )} onClick={onClick}>
 
-      {/* Image / Carte covoiturage */}
+      {/* Image / Carte covoiturage / Garde d'enfant */}
       {listing.carpool_departure_lat && listing.carpool_arrival_lat ? (
         compact ? (
           <div className="w-16 h-16 rounded-xl bg-indigo-50 flex items-center justify-center text-2xl flex-shrink-0">
@@ -42,6 +42,27 @@ export function ListingCard({ listing, compact = false, onClick, active }: Props
             />
           </div>
         )
+      ) : listing.childcare_start_at && listing.childcare_end_at ? (
+        compact ? (
+          <div className="w-16 h-16 rounded-xl bg-violet-50 flex items-center justify-center text-2xl flex-shrink-0">
+            👶
+          </div>
+        ) : (() => {
+          const { startLabel, endLabel, sameDay } = formatChildcarePeriod(listing.childcare_start_at, listing.childcare_end_at)
+          return (
+            <div className="w-full h-44 max-h-[35vh] overflow-hidden rounded-t-2xl flex-shrink-0 bg-violet-50 flex flex-col items-center justify-center gap-2 px-4">
+              <CalendarDays size={28} className="text-violet-400" />
+              <div className="text-center text-sm font-medium text-violet-800">
+                <div>{startLabel}</div>
+                {sameDay ? (
+                  <div className="text-violet-500">→ {endLabel}</div>
+                ) : (
+                  <div className="text-violet-500">→ {endLabel}</div>
+                )}
+              </div>
+            </div>
+          )
+        })()
       ) : listing.image_url ? (
         <div className={cn('relative flex-shrink-0 bg-gray-100 overflow-hidden', compact ? 'w-16 h-16 rounded-xl' : 'w-full h-44 max-h-[35vh]')}>
           <Image src={listing.image_url} alt={listing.title} fill className={cn('rounded-xl', compact ? 'object-cover' : 'object-contain')} />

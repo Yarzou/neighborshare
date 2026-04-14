@@ -20,4 +20,13 @@
   <!-- Champs covoiturage sur la table listings -->
   <include file="liquibase/changelog/005-carpool-fields.sql"/>
 
+  <!-- Mise à jour RPC listings_within_radius avec champs covoiturage -->
+  <include file="liquibase/changelog/006-carpool-rpc-update.sql"/>
+
+  <!-- Champs garde d'enfant sur la table listings -->
+  <include file="liquibase/changelog/007-childcare-fields.sql"/>
+
+  <!-- Mise à jour RPC listings_within_radius avec champs garde d'enfant -->
+  <include file="liquibase/changelog/008-childcare-rpc-update.sql"/>
+
 </databaseChangeLog>

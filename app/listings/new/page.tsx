@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
-import { Upload, Loader2, AlertCircle } from 'lucide-react'
+import { Upload, Loader2, AlertCircle, CalendarDays } from 'lucide-react'
 import type { ListingType, Category } from '@/lib/types'
 import AddressAutocomplete, { type ResolvedAddress } from '@/components/forms/AddressAutocomplete'
 
@@ -18,6 +18,7 @@ const LISTING_TYPES: { value: ListingType; label: string; icon: string }[] = [
 ]
 
 const CARPOOL_SLUG = 'covoiturage'
+const CHILDCARE_SLUG = 'garde-enfant'
 
 export default function NewListingPage() {
   const router = useRouter()
@@ -37,12 +38,19 @@ export default function NewListingPage() {
   const [carpoolDeparture, setCarpoolDeparture] = useState<ResolvedAddress | null>(null)
   const [carpoolArrival, setCarpoolArrival] = useState<ResolvedAddress | null>(null)
 
+  // Childcare fields
+  const [childcareStart, setChildcareStart] = useState('')
+  const [childcareEnd, setChildcareEnd] = useState('')
+
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [authReady, setAuthReady] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
 
-  const isCarpool = categories.find(c => String(c.id) === form.category_id)?.slug === CARPOOL_SLUG
+  const selectedCategory = categories.find(c => String(c.id) === form.category_id)
+  const isCarpool = selectedCategory?.slug === CARPOOL_SLUG
+  const isChildcare = selectedCategory?.slug === CHILDCARE_SLUG
+  const hidePhoto = isCarpool || isChildcare
 
   // S'assure que la session est bien chargée côté client avant d'autoriser la publication.
   // Sans ça, supabase.auth.getUser() peut rendre null juste après un login/redirect.
@@ -109,7 +117,13 @@ export default function NewListingPage() {
     if (isCarpool && (!carpoolDeparture || !carpoolArrival)) {
       return setError('Veuillez renseigner les adresses de départ et d\'arrivée.')
     }
-    if (!isCarpool && !location) return setError('Veuillez sélectionner une adresse.')
+    if (isChildcare && (!childcareStart || !childcareEnd)) {
+      return setError('Veuillez renseigner les dates et heures de la garde.')
+    }
+    if (isChildcare && childcareEnd <= childcareStart) {
+      return setError('La date de fin doit être après la date de début.')
+    }
+    if (!isCarpool && !isChildcare && !location) return setError('Veuillez sélectionner une adresse.')
     setLoading(true)
     setError(null)
 
@@ -129,8 +143,8 @@ export default function NewListingPage() {
 
     let image_url = null
 
-    // Upload image (seulement si non-covoiturage)
-    if (!isCarpool && imageFile) {
+    // Upload image (seulement si ni covoiturage ni garde d'enfant)
+    if (!hidePhoto && imageFile) {
       const ext = imageFile.name.split('.').pop()
       const path = `${user.id}/${Date.now()}.${ext}`
       const { error: uploadErr } = await supabase.storage.from('listings').upload(path, imageFile)
@@ -138,6 +152,14 @@ export default function NewListingPage() {
         const { data } = supabase.storage.from('listings').getPublicUrl(path)
         image_url = data.publicUrl
       }
+    }
+
+    // Détermine le point de localisation
+    let locationPoint: string
+    if (isCarpool) {
+      locationPoint = `POINT(${carpoolDeparture!.lon} ${carpoolDeparture!.lat})`
+    } else {
+      locationPoint = `POINT(${location!.lng} ${location!.lat})`
     }
 
     // Insert listing
@@ -150,15 +172,15 @@ export default function NewListingPage() {
       address: isCarpool ? carpoolDeparture?.road ?? '' : form.address,
       city: isCarpool ? carpoolDeparture?.city ?? '' : form.city,
       image_url,
-      location: isCarpool
-        ? `POINT(${carpoolDeparture!.lon} ${carpoolDeparture!.lat})`
-        : `POINT(${location!.lng} ${location!.lat})`,
+      location: locationPoint,
       carpool_departure_address: isCarpool ? carpoolDeparture?.displayName ?? null : null,
       carpool_departure_lat: isCarpool ? carpoolDeparture?.lat ?? null : null,
       carpool_departure_lng: isCarpool ? carpoolDeparture?.lon ?? null : null,
       carpool_arrival_address: isCarpool ? carpoolArrival?.displayName ?? null : null,
       carpool_arrival_lat: isCarpool ? carpoolArrival?.lat ?? null : null,
       carpool_arrival_lng: isCarpool ? carpoolArrival?.lon ?? null : null,
+      childcare_start_at: isChildcare ? childcareStart || null : null,
+      childcare_end_at: isChildcare ? childcareEnd || null : null,
     }).select().single()
 
     if (insertErr) {
@@ -225,8 +247,8 @@ export default function NewListingPage() {
           </select>
         </div>
 
-        {/* Photo — masquée pour les annonces covoiturage */}
-        {!isCarpool && (
+        {/* Photo — masquée pour covoiturage et garde d'enfant */}
+        {!hidePhoto && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Photo</label>
             <input ref={fileRef} type="file" accept="image/*" onChange={handleImage} className="hidden" />
@@ -248,7 +270,7 @@ export default function NewListingPage() {
           </div>
         )}
 
-        {/* Champs covoiturage — visibles uniquement si catégorie Covoiturage */}
+        {/* Champs covoiturage */}
         {isCarpool && (
           <div className="flex flex-col gap-4 p-4 rounded-2xl bg-indigo-50 border border-indigo-100">
             <p className="text-sm font-semibold text-indigo-700">🚗 Trajet covoiturage</p>
@@ -275,7 +297,6 @@ export default function NewListingPage() {
               />
             </div>
 
-            {/* Aperçu carte si les deux adresses sont saisies */}
             {carpoolDeparture && carpoolArrival && (
               <div className="rounded-xl overflow-hidden border border-indigo-200">
                 <CarpoolMiniMap
@@ -292,8 +313,45 @@ export default function NewListingPage() {
           </div>
         )}
 
-        {/* Adresse — masquée pour les annonces covoiturage (coords du départ utilisées) */}
-        {!isCarpool && (
+        {/* Champs garde d'enfant */}
+        {isChildcare && (
+          <div className="flex flex-col gap-4 p-4 rounded-2xl bg-violet-50 border border-violet-100">
+            <p className="text-sm font-semibold text-violet-700 flex items-center gap-2">
+              <CalendarDays size={16} /> Période de garde
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Début <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="datetime-local"
+                  value={childcareStart}
+                  onChange={e => setChildcareStart(e.target.value)}
+                  required={isChildcare}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm bg-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Fin <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="datetime-local"
+                  value={childcareEnd}
+                  min={childcareStart || undefined}
+                  onChange={e => setChildcareEnd(e.target.value)}
+                  required={isChildcare}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm bg-white"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Adresse — masquée pour covoiturage (coords départ) et garde d'enfant */}
+        {!isCarpool && !isChildcare && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
               Adresse <span className="text-red-500">*</span>
@@ -309,7 +367,7 @@ export default function NewListingPage() {
           </div>
         )}
 
-        <button type="submit" disabled={loading || (!isCarpool && !location)}
+        <button type="submit" disabled={loading || (!isCarpool && !isChildcare && !location)}
           className="w-full py-3.5 bg-brand-600 text-white font-semibold rounded-xl hover:bg-brand-700 transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
           {loading ? <><Loader2 size={18} className="animate-spin" /> Publication...</> : 'Publier l\'annonce'}
         </button>
@@ -317,3 +375,4 @@ export default function NewListingPage() {
     </div>
   )
 }
+
