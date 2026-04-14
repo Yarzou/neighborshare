@@ -48,8 +48,8 @@ export default async function ListingPage({ params }: { params: { id: string } }
       <div className="bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden">
         {/* Image */}
         {typedListing.image_url ? (
-          <div className="relative w-full h-64 max-h-[40vh]">
-            <Image src={typedListing.image_url} alt={typedListing.title} fill className="object-cover" />
+          <div className="relative w-full max-h-[40vh] bg-gray-100">
+            <Image src={typedListing.image_url} alt={typedListing.title} width={0} height={0} sizes="100vw" className="w-full h-auto max-h-[40vh] object-contain" />
           </div>
         ) : (
           <div className="w-full h-40 bg-gradient-to-br from-brand-50 to-brand-100 flex items-center justify-center text-6xl">
