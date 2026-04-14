@@ -165,7 +165,7 @@ export default function EditListingPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!isCarpool && !isChildcare && !hasExistingLocation && !newLocation) {
+    if (!isCarpool && !hasExistingLocation && !newLocation) {
       return setError('Veuillez sélectionner une adresse valide.')
     }
     if (isCarpool && !existingCarpoolCoords && (!carpoolDeparture || !carpoolArrival)) {
@@ -219,7 +219,7 @@ export default function EditListingPage() {
 
     if (isCarpool && carpoolDeparture) {
       updates.location = `POINT(${carpoolDeparture.lon} ${carpoolDeparture.lat})`
-    } else if (!isCarpool && !isChildcare && newLocation) {
+    } else if (!isCarpool && newLocation) {
       updates.location = `POINT(${newLocation.lng} ${newLocation.lat})`
     }
 
@@ -413,7 +413,8 @@ export default function EditListingPage() {
           </div>
         )}
 
-        {!isCarpool && !isChildcare && (
+        {/* Adresse — masquée uniquement pour covoiturage (coords du départ utilisées à la place) */}
+        {!isCarpool && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
               Adresse <span className="text-red-500">*</span>
@@ -430,7 +431,7 @@ export default function EditListingPage() {
           </div>
         )}
 
-        <button type="submit" disabled={saving || (!isCarpool && !isChildcare && !hasExistingLocation && !newLocation)}
+        <button type="submit" disabled={saving || (!isCarpool && !hasExistingLocation && !newLocation)}
           className="w-full py-3.5 bg-brand-600 text-white font-semibold rounded-xl hover:bg-brand-700 transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
           {saving ? <><Loader2 size={18} className="animate-spin" /> Enregistrement...</> : 'Enregistrer les modifications'}
         </button>

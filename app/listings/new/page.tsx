@@ -123,7 +123,7 @@ export default function NewListingPage() {
     if (isChildcare && childcareEnd <= childcareStart) {
       return setError('La date de fin doit être après la date de début.')
     }
-    if (!isCarpool && !isChildcare && !location) return setError('Veuillez sélectionner une adresse.')
+    if (!isCarpool && !location) return setError('Veuillez sélectionner une adresse.')
     setLoading(true)
     setError(null)
 
@@ -155,11 +155,11 @@ export default function NewListingPage() {
     }
 
     // Détermine le point de localisation
-    let locationPoint: string
+    let locationPoint: string | null = null
     if (isCarpool) {
       locationPoint = `POINT(${carpoolDeparture!.lon} ${carpoolDeparture!.lat})`
-    } else {
-      locationPoint = `POINT(${location!.lng} ${location!.lat})`
+    } else if (location) {
+      locationPoint = `POINT(${location.lng} ${location.lat})`
     }
 
     // Insert listing
@@ -350,8 +350,8 @@ export default function NewListingPage() {
           </div>
         )}
 
-        {/* Adresse — masquée pour covoiturage (coords départ) et garde d'enfant */}
-        {!isCarpool && !isChildcare && (
+        {/* Adresse — masquée uniquement pour covoiturage (coords du départ utilisées à la place) */}
+        {!isCarpool && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
               Adresse <span className="text-red-500">*</span>
@@ -367,7 +367,7 @@ export default function NewListingPage() {
           </div>
         )}
 
-        <button type="submit" disabled={loading || (!isCarpool && !isChildcare && !location)}
+        <button type="submit" disabled={loading || (!isCarpool && !location)}
           className="w-full py-3.5 bg-brand-600 text-white font-semibold rounded-xl hover:bg-brand-700 transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
           {loading ? <><Loader2 size={18} className="animate-spin" /> Publication...</> : 'Publier l\'annonce'}
         </button>
