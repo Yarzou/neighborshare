@@ -64,6 +64,12 @@ create table public.listings (
   location    geography(Point, 4326) not null,
   address     text,
   city        text,
+  carpool_departure_address text,
+  carpool_departure_lat     double precision,
+  carpool_departure_lng     double precision,
+  carpool_arrival_address   text,
+  carpool_arrival_lat       double precision,
+  carpool_arrival_lng       double precision,
   created_at  timestamptz default now(),
   updated_at  timestamptz default now()
 );

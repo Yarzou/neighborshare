@@ -17,4 +17,7 @@
   <!-- Bucket Storage pour les images d'annonces -->
   <include file="liquibase/changelog/004-storage-listings-bucket.sql"/>
 
+  <!-- Champs covoiturage sur la table listings -->
+  <include file="liquibase/changelog/005-carpool-fields.sql"/>
+
 </databaseChangeLog>

@@ -36,6 +36,12 @@ export interface Listing {
   image_url: string | null
   address: string | null
   city: string | null
+  carpool_departure_address: string | null
+  carpool_departure_lat: number | null
+  carpool_departure_lng: number | null
+  carpool_arrival_address: string | null
+  carpool_arrival_lat: number | null
+  carpool_arrival_lng: number | null
   created_at: string
   responder_id?: string | null
   conversation_id?: string | null

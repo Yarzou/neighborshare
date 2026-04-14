@@ -3,10 +3,13 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
 import { Upload, Loader2, AlertCircle, ArrowLeft } from 'lucide-react'
 import type { ListingType, Category } from '@/lib/types'
 import AddressAutocomplete, { type ResolvedAddress } from '@/components/forms/AddressAutocomplete'
+
+const CarpoolMiniMap = dynamic(() => import('@/components/map/CarpoolMiniMap'), { ssr: false })
 
 const LISTING_TYPES: { value: ListingType; label: string; icon: string }[] = [
   { value: 'pret', label: 'Prêt', icon: '🔄' },
@@ -14,6 +17,8 @@ const LISTING_TYPES: { value: ListingType; label: string; icon: string }[] = [
   { value: 'echange', label: 'Échange', icon: '🤝' },
   { value: 'service', label: 'Service', icon: '⚡' },
 ]
+
+const CARPOOL_SLUG = 'covoiturage'
 
 export default function EditListingPage() {
   const router = useRouter()
@@ -41,11 +46,30 @@ export default function EditListingPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null)
 
+  // Carpool fields
+  const [carpoolDeparture, setCarpoolDeparture] = useState<ResolvedAddress | null>(null)
+  const [carpoolArrival, setCarpoolArrival] = useState<ResolvedAddress | null>(null)
+  const [existingDepartureText, setExistingDepartureText] = useState<string | undefined>(undefined)
+  const [existingArrivalText, setExistingArrivalText] = useState<string | undefined>(undefined)
+  const [existingCarpoolCoords, setExistingCarpoolCoords] = useState<{
+    depLat: number; depLng: number; arrLat: number; arrLng: number
+  } | null>(null)
+
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notFound, setNotFound] = useState(false)
   const [unauthorized, setUnauthorized] = useState(false)
+
+  const isCarpool = categories.find(c => String(c.id) === form.category_id)?.slug === CARPOOL_SLUG
+
+  // Preview coords: new selection overrides existing
+  const previewDep = carpoolDeparture
+    ? { lat: carpoolDeparture.lat, lng: carpoolDeparture.lon, label: carpoolDeparture.displayName }
+    : existingCarpoolCoords ? { lat: existingCarpoolCoords.depLat, lng: existingCarpoolCoords.depLng, label: existingDepartureText ?? 'Départ' } : null
+  const previewArr = carpoolArrival
+    ? { lat: carpoolArrival.lat, lng: carpoolArrival.lon, label: carpoolArrival.displayName }
+    : existingCarpoolCoords ? { lat: existingCarpoolCoords.arrLat, lng: existingCarpoolCoords.arrLng, label: existingArrivalText ?? 'Arrivée' } : null
 
   useEffect(() => {
     supabase.from('categories').select('*').then(({ data }) => {
@@ -87,6 +111,26 @@ export default function EditListingPage() {
         setExistingAddressText(addressParts.join(', '))
         setHasExistingLocation(true)
       }
+
+      // Pré-remplit les champs covoiturage si présents
+      if (listing.carpool_departure_address) {
+        setExistingDepartureText(listing.carpool_departure_address)
+      }
+      if (listing.carpool_arrival_address) {
+        setExistingArrivalText(listing.carpool_arrival_address)
+      }
+      if (
+        listing.carpool_departure_lat && listing.carpool_departure_lng &&
+        listing.carpool_arrival_lat && listing.carpool_arrival_lng
+      ) {
+        setExistingCarpoolCoords({
+          depLat: listing.carpool_departure_lat,
+          depLng: listing.carpool_departure_lng,
+          arrLat: listing.carpool_arrival_lat,
+          arrLng: listing.carpool_arrival_lng,
+        })
+      }
+
       setLoading(false)
     }
     init()
@@ -116,8 +160,11 @@ export default function EditListingPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!hasExistingLocation && !newLocation) {
+    if (!isCarpool && !hasExistingLocation && !newLocation) {
       return setError('Veuillez sélectionner une adresse valide.')
+    }
+    if (isCarpool && !existingCarpoolCoords && (!carpoolDeparture || !carpoolArrival)) {
+      return setError('Veuillez renseigner les adresses de départ et d\'arrivée.')
     }
     setSaving(true)
     setError(null)
@@ -128,9 +175,9 @@ export default function EditListingPage() {
       return
     }
 
-    let image_url = existingImageUrl
+    let image_url = isCarpool ? null : existingImageUrl
 
-    if (imageFile) {
+    if (!isCarpool && imageFile) {
       const ext = imageFile.name.split('.').pop()
       const path = `${user.id}/${Date.now()}.${ext}`
       const { error: uploadErr } = await supabase.storage.from('listings').upload(path, imageFile)
@@ -145,14 +192,23 @@ export default function EditListingPage() {
       description: form.description,
       type: form.type,
       category_id: form.category_id ? parseInt(form.category_id) : null,
-      address: form.address,
-      city: form.city,
+      address: isCarpool ? (carpoolDeparture?.road ?? form.address) : form.address,
+      city: isCarpool ? (carpoolDeparture?.city ?? form.city) : form.city,
       image_url,
       updated_at: new Date().toISOString(),
+      // Carpool fields: update if user changed them, keep existing if not
+      carpool_departure_address: carpoolDeparture?.displayName ?? (isCarpool ? existingDepartureText ?? null : null),
+      carpool_departure_lat: carpoolDeparture?.lat ?? (isCarpool ? existingCarpoolCoords?.depLat ?? null : null),
+      carpool_departure_lng: carpoolDeparture?.lon ?? (isCarpool ? existingCarpoolCoords?.depLng ?? null : null),
+      carpool_arrival_address: carpoolArrival?.displayName ?? (isCarpool ? existingArrivalText ?? null : null),
+      carpool_arrival_lat: carpoolArrival?.lat ?? (isCarpool ? existingCarpoolCoords?.arrLat ?? null : null),
+      carpool_arrival_lng: carpoolArrival?.lon ?? (isCarpool ? existingCarpoolCoords?.arrLng ?? null : null),
     }
 
-    // Only update location if user explicitly re-detected
-    if (newLocation) {
+    // Pour covoiturage : utilise les coords du départ comme point de localisation si modifié
+    if (isCarpool && carpoolDeparture) {
+      updates.location = `POINT(${carpoolDeparture.lon} ${carpoolDeparture.lat})`
+    } else if (!isCarpool && newLocation) {
       updates.location = `POINT(${newLocation.lng} ${newLocation.lat})`
     }
 
@@ -256,49 +312,99 @@ export default function EditListingPage() {
           </select>
         </div>
 
-        {/* Photo */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Photo</label>
-          <input ref={fileRef} type="file" accept="image/*" onChange={handleImage} className="hidden" />
-          {imagePreview ? (
-            <div className="relative">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={imagePreview} alt="Preview" className="w-full max-h-72 object-contain rounded-xl bg-gray-100" />
-              <button type="button" onClick={() => { setImageFile(null); setImagePreview(null); setExistingImageUrl(null) }}
-                className="absolute top-2 right-2 bg-white rounded-full px-3 py-1 text-xs font-medium shadow hover:bg-gray-50">
-                Supprimer
-              </button>
+        {/* Photo — masquée pour les annonces covoiturage */}
+        {!isCarpool && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Photo</label>
+            <input ref={fileRef} type="file" accept="image/*" onChange={handleImage} className="hidden" />
+            {imagePreview ? (
+              <div className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={imagePreview} alt="Preview" className="w-full max-h-72 object-contain rounded-xl bg-gray-100" />
+                <button type="button" onClick={() => { setImageFile(null); setImagePreview(null); setExistingImageUrl(null) }}
+                  className="absolute top-2 right-2 bg-white rounded-full px-3 py-1 text-xs font-medium shadow hover:bg-gray-50">
+                  Supprimer
+                </button>
+                <button type="button" onClick={() => fileRef.current?.click()}
+                  className="absolute bottom-2 right-2 bg-white rounded-full px-3 py-1 text-xs font-medium shadow hover:bg-gray-50">
+                  Changer
+                </button>
+              </div>
+            ) : (
               <button type="button" onClick={() => fileRef.current?.click()}
-                className="absolute bottom-2 right-2 bg-white rounded-full px-3 py-1 text-xs font-medium shadow hover:bg-gray-50">
-                Changer
+                className="w-full h-32 border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center gap-2 text-gray-400 hover:border-brand-300 hover:text-brand-500 transition-colors">
+                <Upload size={24} />
+                <span className="text-sm">Cliquez pour ajouter une photo</span>
               </button>
+            )}
+          </div>
+        )}
+
+        {/* Champs covoiturage */}
+        {isCarpool && (
+          <div className="flex flex-col gap-4 p-4 rounded-2xl bg-indigo-50 border border-indigo-100">
+            <p className="text-sm font-semibold text-indigo-700">🚗 Trajet covoiturage</p>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Adresse de départ <span className="text-red-500">*</span>
+              </label>
+              <AddressAutocomplete
+                lockedValue={existingDepartureText}
+                onSelect={r => { setCarpoolDeparture(r); setExistingCarpoolCoords(null) }}
+                onClear={() => { setCarpoolDeparture(null); setExistingDepartureText(undefined); setExistingCarpoolCoords(null) }}
+                placeholder="Ex : 12 rue de la Paix, Paris"
+              />
             </div>
-          ) : (
-            <button type="button" onClick={() => fileRef.current?.click()}
-              className="w-full h-32 border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center gap-2 text-gray-400 hover:border-brand-300 hover:text-brand-500 transition-colors">
-              <Upload size={24} />
-              <span className="text-sm">Cliquez pour ajouter une photo</span>
-            </button>
-          )}
-        </div>
 
-        {/* Adresse */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            Adresse <span className="text-red-500">*</span>
-          </label>
-          <p className="text-xs text-gray-400 mb-2">
-            Tapez une adresse et sélectionnez-la dans la liste, ou utilisez votre position actuelle.
-          </p>
-          <AddressAutocomplete
-            lockedValue={existingAddressText}
-            onSelect={handleAddressSelect}
-            onClear={handleAddressClear}
-            placeholder="Ex : 12 rue de la Paix, Paris"
-          />
-        </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Adresse d&apos;arrivée <span className="text-red-500">*</span>
+              </label>
+              <AddressAutocomplete
+                lockedValue={existingArrivalText}
+                onSelect={r => { setCarpoolArrival(r); setExistingCarpoolCoords(null) }}
+                onClear={() => { setCarpoolArrival(null); setExistingArrivalText(undefined); setExistingCarpoolCoords(null) }}
+                placeholder="Ex : Place Bellecour, Lyon"
+              />
+            </div>
 
-        <button type="submit" disabled={saving || (!hasExistingLocation && !newLocation)}
+            {/* Aperçu carte */}
+            {previewDep && previewArr && (
+              <div className="rounded-xl overflow-hidden border border-indigo-200">
+                <CarpoolMiniMap
+                  departureLat={previewDep.lat}
+                  departureLng={previewDep.lng}
+                  departureLabel={previewDep.label}
+                  arrivalLat={previewArr.lat}
+                  arrivalLng={previewArr.lng}
+                  arrivalLabel={previewArr.label}
+                  className="w-full h-48"
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Adresse — masquée pour les annonces covoiturage (coords du départ utilisées) */}
+        {!isCarpool && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Adresse <span className="text-red-500">*</span>
+            </label>
+            <p className="text-xs text-gray-400 mb-2">
+              Tapez une adresse et sélectionnez-la dans la liste, ou utilisez votre position actuelle.
+            </p>
+            <AddressAutocomplete
+              lockedValue={existingAddressText}
+              onSelect={handleAddressSelect}
+              onClear={handleAddressClear}
+              placeholder="Ex : 12 rue de la Paix, Paris"
+            />
+          </div>
+        )}
+
+        <button type="submit" disabled={saving || (!isCarpool && !hasExistingLocation && !newLocation)}
           className="w-full py-3.5 bg-brand-600 text-white font-semibold rounded-xl hover:bg-brand-700 transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
           {saving ? <><Loader2 size={18} className="animate-spin" /> Enregistrement...</> : 'Enregistrer les modifications'}
         </button>

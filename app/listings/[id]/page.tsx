@@ -2,11 +2,14 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import { MapPin, Clock, ArrowLeft, Star, MessageCircle } from 'lucide-react'
 import { isListingType, LISTING_TYPE_LABELS, LISTING_TYPE_COLORS, LISTING_STATUS_LABELS, LISTING_STATUS_COLORS, type Listing } from '@/lib/types'
 import { formatDate } from '@/lib/utils'
 import { ContactButton } from '@/components/listings/ContactButton'
 import { ListingActions } from '@/components/listings/ListingActions'
+
+const CarpoolMiniMap = dynamic(() => import('@/components/map/CarpoolMiniMap'), { ssr: false })
 
 type ListingWithJoins = Listing
 
@@ -46,8 +49,28 @@ export default async function ListingPage({ params }: { params: { id: string } }
       </Link>
 
       <div className="bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden">
-        {/* Image */}
-        {typedListing.image_url ? (
+        {/* Image ou carte covoiturage */}
+        {typedListing.carpool_departure_lat && typedListing.carpool_arrival_lat ? (
+          <div className="w-full">
+            <CarpoolMiniMap
+              departureLat={typedListing.carpool_departure_lat}
+              departureLng={typedListing.carpool_departure_lng!}
+              departureLabel={typedListing.carpool_departure_address ?? 'Départ'}
+              arrivalLat={typedListing.carpool_arrival_lat}
+              arrivalLng={typedListing.carpool_arrival_lng!}
+              arrivalLabel={typedListing.carpool_arrival_address ?? 'Arrivée'}
+              className="w-full h-56"
+            />
+            <div className="flex flex-col gap-1 px-4 py-3 bg-indigo-50 border-b border-indigo-100 text-sm">
+              <span className="flex items-center gap-2 text-green-700 font-medium">
+                <span className="text-base">🟢</span> {typedListing.carpool_departure_address}
+              </span>
+              <span className="flex items-center gap-2 text-red-700 font-medium">
+                <span className="text-base">🔴</span> {typedListing.carpool_arrival_address}
+              </span>
+            </div>
+          </div>
+        ) : typedListing.image_url ? (
           <div className="relative w-full max-h-[40vh] bg-gray-100">
             <Image src={typedListing.image_url} alt={typedListing.title} width={0} height={0} sizes="100vw" className="w-full h-auto max-h-[40vh] object-contain" />
           </div>
