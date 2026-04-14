@@ -36,6 +36,7 @@ export function MapView() {
   const [searchedLocation, setSearchedLocation] = useState<[number, number] | null>(null)
   const [slugToId, setSlugToId] = useState<Record<string, number>>({})
   const [mobileView, setMobileView] = useState<'list' | 'map'>('list')
+  const [isMobile, setIsMobile] = useState(false)
   const supabase = createClient()
 
   // Charge le mapping slug → id une seule fois
@@ -54,6 +55,14 @@ export function MapView() {
     navigator.geolocation?.getCurrentPosition(
       pos => setUserGeoLocation([pos.coords.latitude, pos.coords.longitude]),
     )
+  }, [])
+
+  // Détection mobile
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
   }, [])
 
   // Fetch annonces
@@ -141,7 +150,7 @@ export function MapView() {
                         key={listing.id}
                         listing={listing}
                         compact
-                        onClick={() => setSelected(listing)}
+                        onClick={isMobile && mobileView === 'list' ? undefined : () => setSelected(listing)}
                         active={selected?.id === listing.id}
                     />
                 ))
