@@ -59,23 +59,23 @@ export function formatChildcareSlots(slots: ChildcareSlot[]): string {
   // Group recurring slots by identical time range
   const recurring = slots.filter(s => s.type === 'recurring') as Extract<ChildcareSlot, { type: 'recurring' }>[]
   const grouped = new Map<string, number[]>()
-  for (const s of recurring) {
+  recurring.forEach(s => {
     const key = `${s.start_time}-${s.end_time}`
-    grouped.set(key, [...(grouped.get(key) ?? []), s.day])
-  }
-  for (const [range, days] of grouped) {
+    grouped.set(key, (grouped.get(key) ?? []).concat(s.day))
+  })
+  grouped.forEach((days, range) => {
     const [start, end] = range.split('-')
     const dayStr = days.sort((a, b) => a - b).map(d => DAY_LABELS_SHORT[d]).join(', ')
     parts.push(`${dayStr} ${start.replace(':', 'h')}–${end.replace(':', 'h')}`)
-  }
+  })
 
   // Ponctual slots
   const once = slots.filter(s => s.type === 'once') as Extract<ChildcareSlot, { type: 'once' }>[]
-  for (const s of once) {
+  once.forEach(s => {
     const date = new Date(s.date)
     const label = date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
     parts.push(`${label} ${s.start_time.replace(':', 'h')}–${s.end_time.replace(':', 'h')}`)
-  }
+  })
 
   return parts.join(' · ')
 }

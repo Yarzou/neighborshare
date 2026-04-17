@@ -135,7 +135,7 @@ export default function NewListingPage() {
 
   const addRecurringSlots = () => {
     if (recurringDays.size === 0 || !recurringStart || !recurringEnd) return
-    const newSlots: ChildcareSlot[] = [...recurringDays].map(day => ({
+    const newSlots: ChildcareSlot[] = Array.from(recurringDays).map(day => ({
       type: 'recurring', day: day as 0|1|2|3|4|5|6, start_time: recurringStart, end_time: recurringEnd,
     }))
     setChildcareSlots(prev => [...prev, ...newSlots])
