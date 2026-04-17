@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic'
 import { MapPin, Clock, CalendarDays } from 'lucide-react'
 import type { Listing } from '@/lib/types'
 import { LISTING_TYPE_LABELS, LISTING_TYPE_COLORS } from '@/lib/types'
-import { formatDistance, formatDate, formatChildcarePeriod, cn } from '@/lib/utils'
+import { formatDistance, formatDate, formatChildcarePeriod, formatChildcareSlots, cn } from '@/lib/utils'
 
 const CarpoolMiniMap = dynamic(() => import('@/components/map/CarpoolMiniMap'), { ssr: false })
 
@@ -40,6 +40,20 @@ export function ListingCard({ listing, compact = false, onClick, active }: Props
               arrivalLabel={listing.carpool_arrival_address ?? 'Arrivée'}
               className="w-full h-full"
             />
+          </div>
+        )
+      ) : listing.childcare_slots && listing.childcare_slots.length > 0 ? (
+        compact ? (
+          <div className="w-16 h-16 rounded-xl bg-violet-50 flex items-center justify-center text-2xl flex-shrink-0">
+            👶
+          </div>
+        ) : (
+          <div className="w-full h-44 max-h-[35vh] overflow-hidden rounded-t-2xl flex-shrink-0 bg-violet-50 flex flex-col items-center justify-center gap-2 px-4">
+            <CalendarDays size={28} className="text-violet-400" />
+            <div className="text-center text-sm font-medium text-violet-800">
+              <div className="text-xs text-violet-500 uppercase tracking-wide mb-1">Disponibilités</div>
+              <div>{formatChildcareSlots(listing.childcare_slots)}</div>
+            </div>
           </div>
         )
       ) : listing.childcare_start_at && listing.childcare_end_at ? (

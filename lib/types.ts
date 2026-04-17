@@ -1,5 +1,12 @@
 export type ListingType = 'pret' | 'don' | 'echange' | 'service'
 export type ListingStatus = 'disponible' | 'reserve' | 'termine' | 'en_cours' | 'validee'
+export type ChildcareMode = 'demande' | 'offre'
+
+export type ChildcareSlot =
+  | { type: 'recurring'; day: 0 | 1 | 2 | 3 | 4 | 5 | 6; start_time: string; end_time: string }
+  | { type: 'once'; date: string; start_time: string; end_time: string }
+// recurring.day: 0=Dimanche, 1=Lundi, ..., 6=Samedi (convention JS)
+// times: format "HH:mm"
 
 export const LISTING_TYPES = ['pret', 'don', 'echange', 'service'] as const
 
@@ -44,6 +51,8 @@ export interface Listing {
   carpool_arrival_lng: number | null
   childcare_start_at: string | null
   childcare_end_at: string | null
+  childcare_mode: ChildcareMode | null
+  childcare_slots: ChildcareSlot[] | null
   created_at: string
   responder_id?: string | null
   conversation_id?: string | null

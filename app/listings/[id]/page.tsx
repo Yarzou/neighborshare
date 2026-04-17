@@ -3,9 +3,9 @@ import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
-import { MapPin, Clock, ArrowLeft, Star, CalendarDays, MessageCircle } from 'lucide-react'
+import { MapPin, Clock, ArrowLeft, Star, CalendarDays, MessageCircle, RefreshCw } from 'lucide-react'
 import { isListingType, LISTING_TYPE_LABELS, LISTING_TYPE_COLORS, LISTING_STATUS_LABELS, LISTING_STATUS_COLORS, type Listing } from '@/lib/types'
-import { formatDate, formatChildcarePeriod } from '@/lib/utils'
+import { formatDate, formatChildcarePeriod, formatChildcareSlots } from '@/lib/utils'
 import { ContactButton } from '@/components/listings/ContactButton'
 import { ListingActions } from '@/components/listings/ListingActions'
 
@@ -68,6 +68,53 @@ export default async function ListingPage({ params }: { params: { id: string } }
               <span className="flex items-center gap-2 text-red-700 font-medium">
                 <span className="text-base">🔴</span> {typedListing.carpool_arrival_address}
               </span>
+            </div>
+          </div>
+        ) : typedListing.childcare_slots && typedListing.childcare_slots.length > 0 ? (
+          <div className="w-full bg-violet-50 border-b border-violet-100">
+            <div className="flex flex-col items-center justify-center gap-3 py-8 px-6">
+              <CalendarDays size={36} className="text-violet-400" />
+              <div className="text-center w-full">
+                <p className="text-xs font-semibold uppercase tracking-wide text-violet-400 mb-3">Disponibilités proposées</p>
+                {/* Recurring slots */}
+                {typedListing.childcare_slots.filter(s => s.type === 'recurring').length > 0 && (
+                  <div className="mb-2">
+                    <p className="text-xs text-violet-400 uppercase tracking-wide mb-1.5 flex items-center justify-center gap-1">
+                      <RefreshCw size={11} /> Récurrents
+                    </p>
+                    <div className="flex flex-wrap justify-center gap-1.5">
+                      {typedListing.childcare_slots.filter(s => s.type === 'recurring').map((s, i) => {
+                        const slot = s as Extract<typeof s, { type: 'recurring' }>
+                        const days = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam']
+                        return (
+                          <span key={i} className="bg-violet-100 text-violet-800 text-xs font-medium px-2.5 py-1 rounded-full">
+                            {days[slot.day]} {slot.start_time.replace(':', 'h')}–{slot.end_time.replace(':', 'h')}
+                          </span>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+                {/* Once slots */}
+                {typedListing.childcare_slots.filter(s => s.type === 'once').length > 0 && (
+                  <div>
+                    <p className="text-xs text-violet-400 uppercase tracking-wide mb-1.5 mt-2 flex items-center justify-center gap-1">
+                      <CalendarDays size={11} /> Ponctuels
+                    </p>
+                    <div className="flex flex-wrap justify-center gap-1.5">
+                      {typedListing.childcare_slots.filter(s => s.type === 'once').map((s, i) => {
+                        const slot = s as Extract<typeof s, { type: 'once' }>
+                        const label = new Date(slot.date).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })
+                        return (
+                          <span key={i} className="bg-violet-100 text-violet-800 text-xs font-medium px-2.5 py-1 rounded-full">
+                            {label} {slot.start_time.replace(':', 'h')}–{slot.end_time.replace(':', 'h')}
+                          </span>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         ) : typedListing.childcare_start_at && typedListing.childcare_end_at ? (() => {

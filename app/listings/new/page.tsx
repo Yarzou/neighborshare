@@ -4,8 +4,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
-import { Upload, Loader2, AlertCircle, CalendarDays } from 'lucide-react'
-import type { ListingType, Category } from '@/lib/types'
+import { Upload, Loader2, AlertCircle, CalendarDays, Plus, X } from 'lucide-react'
+import type { ListingType, Category, ChildcareMode, ChildcareSlot } from '@/lib/types'
 import AddressAutocomplete, { type ResolvedAddress } from '@/components/forms/AddressAutocomplete'
 
 const CarpoolMiniMap = dynamic(() => import('@/components/map/CarpoolMiniMap'), { ssr: false })
@@ -41,6 +41,19 @@ export default function NewListingPage() {
   // Childcare fields
   const [childcareStart, setChildcareStart] = useState('')
   const [childcareEnd, setChildcareEnd] = useState('')
+  const [childcareMode, setChildcareMode] = useState<ChildcareMode>('demande')
+  const [childcareSlots, setChildcareSlots] = useState<ChildcareSlot[]>([])
+
+  // Recurring slot builder state
+  const DAYS = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'] as const
+  const [recurringDays, setRecurringDays] = useState<Set<number>>(new Set())
+  const [recurringStart, setRecurringStart] = useState('09:00')
+  const [recurringEnd, setRecurringEnd] = useState('17:00')
+
+  // Once slot builder state
+  const [onceDate, setOnceDate] = useState('')
+  const [onceStart, setOnceStart] = useState('09:00')
+  const [onceEnd, setOnceEnd] = useState('17:00')
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -112,16 +125,46 @@ export default function NewListingPage() {
     setForm(f => ({ ...f, address: '', city: '' }))
   }
 
+  const toggleRecurringDay = (day: number) => {
+    setRecurringDays(prev => {
+      const next = new Set(prev)
+      next.has(day) ? next.delete(day) : next.add(day)
+      return next
+    })
+  }
+
+  const addRecurringSlots = () => {
+    if (recurringDays.size === 0 || !recurringStart || !recurringEnd) return
+    const newSlots: ChildcareSlot[] = [...recurringDays].map(day => ({
+      type: 'recurring', day: day as 0|1|2|3|4|5|6, start_time: recurringStart, end_time: recurringEnd,
+    }))
+    setChildcareSlots(prev => [...prev, ...newSlots])
+    setRecurringDays(new Set())
+  }
+
+  const addOnceSlot = () => {
+    if (!onceDate || !onceStart || !onceEnd) return
+    setChildcareSlots(prev => [...prev, { type: 'once', date: onceDate, start_time: onceStart, end_time: onceEnd }])
+    setOnceDate('')
+  }
+
+  const removeSlot = (index: number) => {
+    setChildcareSlots(prev => prev.filter((_, i) => i !== index))
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (isCarpool && (!carpoolDeparture || !carpoolArrival)) {
       return setError('Veuillez renseigner les adresses de départ et d\'arrivée.')
     }
-    if (isChildcare && (!childcareStart || !childcareEnd)) {
+    if (isChildcare && childcareMode === 'demande' && (!childcareStart || !childcareEnd)) {
       return setError('Veuillez renseigner les dates et heures de la garde.')
     }
-    if (isChildcare && childcareEnd <= childcareStart) {
+    if (isChildcare && childcareMode === 'demande' && childcareEnd <= childcareStart) {
       return setError('La date de fin doit être après la date de début.')
+    }
+    if (isChildcare && childcareMode === 'offre' && childcareSlots.length === 0) {
+      return setError('Veuillez ajouter au moins un créneau de disponibilité.')
     }
     if (!isCarpool && !location) return setError('Veuillez sélectionner une adresse.')
     setLoading(true)
@@ -179,8 +222,10 @@ export default function NewListingPage() {
       carpool_arrival_address: isCarpool ? carpoolArrival?.displayName ?? null : null,
       carpool_arrival_lat: isCarpool ? carpoolArrival?.lat ?? null : null,
       carpool_arrival_lng: isCarpool ? carpoolArrival?.lon ?? null : null,
-      childcare_start_at: isChildcare ? childcareStart || null : null,
-      childcare_end_at: isChildcare ? childcareEnd || null : null,
+      childcare_start_at: isChildcare && childcareMode === 'demande' ? childcareStart || null : null,
+      childcare_end_at: isChildcare && childcareMode === 'demande' ? childcareEnd || null : null,
+      childcare_mode: isChildcare ? childcareMode : null,
+      childcare_slots: isChildcare && childcareMode === 'offre' ? childcareSlots : null,
     }).select().single()
 
     if (insertErr) {
@@ -317,36 +362,113 @@ export default function NewListingPage() {
         {isChildcare && (
           <div className="flex flex-col gap-4 p-4 rounded-2xl bg-violet-50 border border-violet-100">
             <p className="text-sm font-semibold text-violet-700 flex items-center gap-2">
-              <CalendarDays size={16} /> Période de garde
+              <CalendarDays size={16} /> Garde d&apos;enfant
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Début <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="datetime-local"
-                  value={childcareStart}
-                  onChange={e => setChildcareStart(e.target.value)}
-                  required={isChildcare}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm bg-white"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Fin <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="datetime-local"
-                  value={childcareEnd}
-                  min={childcareStart || undefined}
-                  onChange={e => setChildcareEnd(e.target.value)}
-                  required={isChildcare}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm bg-white"
-                />
-              </div>
+            {/* Toggle demande / offre */}
+            <div className="flex rounded-xl overflow-hidden border border-violet-200 bg-white">
+              <button type="button" onClick={() => setChildcareMode('demande')}
+                className={`flex-1 py-2 text-sm font-medium transition-colors ${childcareMode === 'demande' ? 'bg-violet-600 text-white' : 'text-gray-500 hover:bg-violet-50'}`}>
+                🙋 Je cherche une garde
+              </button>
+              <button type="button" onClick={() => setChildcareMode('offre')}
+                className={`flex-1 py-2 text-sm font-medium transition-colors ${childcareMode === 'offre' ? 'bg-violet-600 text-white' : 'text-gray-500 hover:bg-violet-50'}`}>
+                📅 Je propose des disponibilités
+              </button>
             </div>
+
+            {/* Mode demande : champs début / fin */}
+            {childcareMode === 'demande' && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Début <span className="text-red-500">*</span>
+                  </label>
+                  <input type="datetime-local" value={childcareStart}
+                    onChange={e => setChildcareStart(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm bg-white" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Fin <span className="text-red-500">*</span>
+                  </label>
+                  <input type="datetime-local" value={childcareEnd} min={childcareStart || undefined}
+                    onChange={e => setChildcareEnd(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm bg-white" />
+                </div>
+              </div>
+            )}
+
+            {/* Mode offre : builder de créneaux */}
+            {childcareMode === 'offre' && (
+              <div className="flex flex-col gap-4">
+
+                {/* Récurrents */}
+                <div className="bg-white rounded-xl border border-violet-100 p-3 flex flex-col gap-3">
+                  <p className="text-xs font-semibold text-violet-600 uppercase tracking-wide">Créneaux récurrents</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {DAYS.map((label, day) => (
+                      <button key={day} type="button" onClick={() => toggleRecurringDay(day)}
+                        className={`px-3 py-1 rounded-full text-sm font-medium border transition-colors ${
+                          recurringDays.has(day) ? 'bg-violet-600 text-white border-violet-600' : 'border-gray-200 text-gray-600 hover:border-violet-300'
+                        }`}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input type="time" value={recurringStart} onChange={e => setRecurringStart(e.target.value)}
+                      className="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white" />
+                    <span className="text-gray-400 text-sm">→</span>
+                    <input type="time" value={recurringEnd} onChange={e => setRecurringEnd(e.target.value)}
+                      className="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white" />
+                    <button type="button" onClick={addRecurringSlots} disabled={recurringDays.size === 0}
+                      className="flex items-center gap-1 px-3 py-2 bg-violet-600 text-white rounded-xl text-sm font-medium hover:bg-violet-700 disabled:opacity-40 transition-colors">
+                      <Plus size={14} /> Ajouter
+                    </button>
+                  </div>
+                </div>
+
+                {/* Ponctuels */}
+                <div className="bg-white rounded-xl border border-violet-100 p-3 flex flex-col gap-3">
+                  <p className="text-xs font-semibold text-violet-600 uppercase tracking-wide">Créneau ponctuel</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <input type="date" value={onceDate} onChange={e => setOnceDate(e.target.value)}
+                      className="flex-1 min-w-[130px] px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white" />
+                    <input type="time" value={onceStart} onChange={e => setOnceStart(e.target.value)}
+                      className="w-24 px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white" />
+                    <span className="text-gray-400 text-sm">→</span>
+                    <input type="time" value={onceEnd} onChange={e => setOnceEnd(e.target.value)}
+                      className="w-24 px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white" />
+                    <button type="button" onClick={addOnceSlot} disabled={!onceDate}
+                      className="flex items-center gap-1 px-3 py-2 bg-violet-600 text-white rounded-xl text-sm font-medium hover:bg-violet-700 disabled:opacity-40 transition-colors">
+                      <Plus size={14} /> Ajouter
+                    </button>
+                  </div>
+                </div>
+
+                {/* Liste des créneaux ajoutés */}
+                {childcareSlots.length > 0 && (
+                  <div className="flex flex-col gap-1.5">
+                    <p className="text-xs font-semibold text-violet-600 uppercase tracking-wide">Créneaux ajoutés</p>
+                    {childcareSlots.map((slot, i) => (
+                      <div key={i} className="flex items-center justify-between bg-violet-100 rounded-xl px-3 py-2 text-sm text-violet-800">
+                        <span>
+                          {slot.type === 'recurring'
+                            ? `🔁 ${DAYS[slot.day]} — ${slot.start_time.replace(':', 'h')} → ${slot.end_time.replace(':', 'h')}`
+                            : `📅 ${new Date(slot.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} — ${slot.start_time.replace(':', 'h')} → ${slot.end_time.replace(':', 'h')}`
+                          }
+                        </span>
+                        <button type="button" onClick={() => removeSlot(i)}
+                          className="ml-2 text-violet-400 hover:text-red-500 transition-colors">
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 

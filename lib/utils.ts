@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import type { ChildcareSlot } from '@/lib/types'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -46,4 +47,35 @@ export function formatChildcarePeriod(start: string, end: string): { startLabel:
     endLabel: sameDay ? endTime : `${endDay} à ${endTime}`,
     sameDay,
   }
+}
+
+const DAY_LABELS_SHORT = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam']
+
+export function formatChildcareSlots(slots: ChildcareSlot[]): string {
+  if (!slots || slots.length === 0) return 'Disponibilités à préciser'
+
+  const parts: string[] = []
+
+  // Group recurring slots by identical time range
+  const recurring = slots.filter(s => s.type === 'recurring') as Extract<ChildcareSlot, { type: 'recurring' }>[]
+  const grouped = new Map<string, number[]>()
+  for (const s of recurring) {
+    const key = `${s.start_time}-${s.end_time}`
+    grouped.set(key, [...(grouped.get(key) ?? []), s.day])
+  }
+  for (const [range, days] of grouped) {
+    const [start, end] = range.split('-')
+    const dayStr = days.sort((a, b) => a - b).map(d => DAY_LABELS_SHORT[d]).join(', ')
+    parts.push(`${dayStr} ${start.replace(':', 'h')}–${end.replace(':', 'h')}`)
+  }
+
+  // Ponctual slots
+  const once = slots.filter(s => s.type === 'once') as Extract<ChildcareSlot, { type: 'once' }>[]
+  for (const s of once) {
+    const date = new Date(s.date)
+    const label = date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+    parts.push(`${label} ${s.start_time.replace(':', 'h')}–${s.end_time.replace(':', 'h')}`)
+  }
+
+  return parts.join(' · ')
 }
