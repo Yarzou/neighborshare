@@ -55,6 +55,11 @@ body {
   z-index: 1000 !important;
 }
 
+.custom-marker--demande {
+  border-color: #f97316;
+  background: #fff7ed;
+}
+
 /* Cluster bubble */
 .cluster-bubble {
   width: 40px;

@@ -182,19 +182,19 @@ export default async function ListingPage({ params }: { params: { id: string } }
           <div className="border-t border-gray-100" />
 
           {/* Profil du propriétaire */}
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-bold">
+          <Link href={`/profil/${listing.user_id}`} className="flex items-center gap-3 group">
+            <div className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-bold group-hover:bg-brand-200 transition-colors">
               {listing.profiles?.full_name?.[0] || listing.profiles?.username?.[0] || '?'}
             </div>
             <div>
-              <div className="font-medium text-sm">{listing.profiles?.full_name || listing.profiles?.username}</div>
+              <div className="font-medium text-sm group-hover:text-brand-600 transition-colors">{listing.profiles?.full_name || listing.profiles?.username}</div>
               <div className="flex items-center gap-1 text-xs text-gray-400">
                 <Star size={11} className="text-yellow-400 fill-yellow-400" />
                 {listing.profiles?.rating?.toFixed(1) || '—'}
                 <span>({listing.profiles?.rating_count || 0} avis)</span>
               </div>
             </div>
-          </div>
+          </Link>
 
           {/* Bloc répondant (visible owner) */}
           {isOwner && responderProfile && (typedListing.status === 'en_cours' || typedListing.status === 'validee') && (

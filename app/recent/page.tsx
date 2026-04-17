@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { ListingCard } from '@/components/listings/ListingCard'
 import type { Listing } from '@/lib/types'
@@ -10,18 +10,16 @@ import { Loader2, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react'
 const PAGE_SIZE = 12
 
 export default function RecentPage() {
-  const router = useRouter()
   const supabase = createClient()
 
   const [listings, setListings] = useState<Listing[]>([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(0)
   const [total, setTotal] = useState(0)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) router.push('/auth/login?redirect=%2Frecent')
-    })
+    supabase.auth.getUser().then(({ data: { user } }) => setIsLoggedIn(!!user))
   }, [])
 
   const fetchListings = useCallback(async (p: number) => {
@@ -47,13 +45,37 @@ export default function RecentPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
-      <div className="flex items-center gap-3 mb-2">
-        <Sparkles size={22} className="text-brand-600" />
-        <h1 className="text-2xl font-bold text-gray-900">Derniers ajouts</h1>
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-3">
+          <Sparkles size={22} className="text-brand-600" />
+          <h1 className="text-2xl font-bold text-gray-900">Derniers ajouts</h1>
+        </div>
+        {!isLoggedIn && (
+          <Link href="/auth/register"
+            className="px-4 py-2 rounded-xl text-sm font-medium bg-brand-600 text-white hover:bg-brand-700 transition-colors">
+            Rejoindre le quartier
+          </Link>
+        )}
       </div>
       <p className="text-gray-500 text-sm mb-8">
         Les annonces les plus récentes du quartier du Cèdre.
       </p>
+
+      {!isLoggedIn && (
+        <div className="bg-brand-50 border border-brand-100 rounded-2xl px-5 py-4 mb-8 flex items-center justify-between gap-4 flex-wrap">
+          <p className="text-sm text-brand-800">
+            🏘️ <span className="font-medium">Vous êtes voisin·e ?</span> Inscrivez-vous pour publier une annonce et contacter vos voisins.
+          </p>
+          <div className="flex gap-2 flex-shrink-0">
+            <Link href="/auth/login" className="px-3 py-1.5 rounded-lg text-sm font-medium text-brand-700 hover:bg-brand-100 transition-colors">
+              Connexion
+            </Link>
+            <Link href="/auth/register" className="px-3 py-1.5 rounded-lg text-sm font-medium bg-brand-600 text-white hover:bg-brand-700 transition-colors">
+              S&apos;inscrire
+            </Link>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center py-24">

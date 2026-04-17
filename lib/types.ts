@@ -1,6 +1,7 @@
 export type ListingType = 'pret' | 'don' | 'echange' | 'service'
 export type ListingStatus = 'disponible' | 'reserve' | 'termine' | 'en_cours' | 'validee'
 export type ChildcareMode = 'demande' | 'offre'
+export type ListingIntent = 'offre' | 'demande'
 
 export type ChildcareSlot =
   | { type: 'recurring'; day: 0 | 1 | 2 | 3 | 4 | 5 | 6; start_time: string; end_time: string }
@@ -53,6 +54,8 @@ export interface Listing {
   childcare_end_at: string | null
   childcare_mode: ChildcareMode | null
   childcare_slots: ChildcareSlot[] | null
+  listing_intent: ListingIntent
+  expires_at: string | null
   created_at: string
   responder_id?: string | null
   conversation_id?: string | null

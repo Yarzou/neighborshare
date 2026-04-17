@@ -97,9 +97,16 @@ export function ListingCard({ listing, compact = false, onClick, active }: Props
           <h3 className={cn('font-semibold text-gray-900 truncate', compact ? 'text-sm' : 'text-base')}>
             {listing.title}
           </h3>
-          <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0', LISTING_TYPE_COLORS[listing.type])}>
-            {LISTING_TYPE_LABELS[listing.type]}
-          </span>
+          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+            {listing.listing_intent === 'demande' && (
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                Recherche
+              </span>
+            )}
+            <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full', LISTING_TYPE_COLORS[listing.type])}>
+              {LISTING_TYPE_LABELS[listing.type]}
+            </span>
+          </div>
         </div>
 
         {!compact && listing.description && (

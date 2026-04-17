@@ -181,8 +181,9 @@ export default function LeafletMap({ userPosition, listings, onSelectListing, se
     listings.forEach(listing => {
       if (!listing.lat_out || !listing.lng_out) return
 
+      const isDemande = listing.listing_intent === 'demande'
       const icon = L.divIcon({
-        html: `<div class="custom-marker" title="${listing.title}">${getCategoryIcon(listing.category_id)}</div>`,
+        html: `<div class="custom-marker${isDemande ? ' custom-marker--demande' : ''}" title="${listing.title}">${getCategoryIcon(listing.category_id)}</div>`,
         iconSize: [36, 36],
         iconAnchor: [18, 18],
         className: '',

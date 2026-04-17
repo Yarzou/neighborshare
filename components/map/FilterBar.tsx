@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { SlidersHorizontal, Loader2, Search, MapPin } from 'lucide-react'
+import { SlidersHorizontal, Loader2, Search, MapPin, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const CATEGORIES = [
@@ -30,9 +30,11 @@ interface Props {
   count: number
   loading: boolean
   onLocationSelect: (lat: number, lon: number) => void
+  search: string
+  onSearchChange: (s: string) => void
 }
 
-export function FilterBar({ radius, onRadiusChange, category, onCategoryChange, count, loading, onLocationSelect }: Props) {
+export function FilterBar({ radius, onRadiusChange, category, onCategoryChange, count, loading, onLocationSelect, search, onSearchChange }: Props) {
   const [query, setQuery] = useState('')
   const [suggestions, setSuggestions] = useState<NominatimResult[]>([])
   const [showDropdown, setShowDropdown] = useState(false)
@@ -120,6 +122,24 @@ export function FilterBar({ radius, onRadiusChange, category, onCategoryChange, 
           {loading ? <Loader2 size={12} className="animate-spin" /> : null}
           {loading ? 'Chargement...' : `${count} annonce${count > 1 ? 's' : ''}`}
         </span>
+      </div>
+
+      {/* Keyword search */}
+      <div className="relative flex items-center">
+        <Search size={14} className="absolute left-3 text-gray-400 pointer-events-none" />
+        <input
+          type="text"
+          value={search}
+          onChange={e => onSearchChange(e.target.value)}
+          placeholder="Rechercher une annonce…"
+          className="w-full pl-8 pr-3 py-1.5 rounded-full text-xs border border-gray-200 focus:outline-none focus:border-brand-400 placeholder:text-gray-400 bg-gray-50"
+        />
+        {search && (
+          <button onClick={() => onSearchChange('')}
+            className="absolute right-2.5 text-gray-400 hover:text-gray-600">
+            <X size={12} />
+          </button>
+        )}
       </div>
 
       {/* Categories */}

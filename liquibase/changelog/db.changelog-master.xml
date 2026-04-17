@@ -32,4 +32,7 @@
   <!-- Mode demande/offre + créneaux multiples (jsonb) pour la garde d'enfant -->
   <include file="liquibase/changelog/009-childcare-slots.sql"/>
 
+  <!-- listing_intent (offre/demande global) + expires_at (expiration optionnelle) -->
+  <include file="liquibase/changelog/010-intent-expiry.sql"/>
+
 </databaseChangeLog>

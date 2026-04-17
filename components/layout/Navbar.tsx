@@ -13,6 +13,7 @@ export function Navbar() {
   const router = useRouter()
   const [user, setUser] = useState<SupabaseUser | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
   const supabase = createClient()
 
   useEffect(() => {
@@ -22,6 +23,34 @@ export function Navbar() {
     })
     return () => subscription.unsubscribe()
   }, [])
+
+  // Fetch unread count whenever user changes or path changes (messages page marks as read)
+  useEffect(() => {
+    if (!user) { setUnreadCount(0); return }
+
+    const fetchUnread = async () => {
+      const { data: parts } = await supabase
+        .from('conversation_participants')
+        .select('conversation_id, last_read_at')
+        .eq('user_id', user.id)
+
+      if (!parts || parts.length === 0) { setUnreadCount(0); return }
+
+      let total = 0
+      await Promise.all(parts.map(async (p) => {
+        const { count } = await supabase
+          .from('messages')
+          .select('id', { count: 'exact', head: true })
+          .eq('conversation_id', p.conversation_id)
+          .neq('sender_id', user.id)
+          .gt('created_at', p.last_read_at)
+        total += count ?? 0
+      }))
+      setUnreadCount(total)
+    }
+
+    fetchUnread()
+  }, [user, pathname])
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -91,12 +120,17 @@ export function Navbar() {
           {user && (
             <button onClick={handleMessages}
               className={cn(
-                'flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-colors',
+                'relative flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-colors',
                 pathname?.startsWith('/messages')
                   ? 'bg-brand-50 text-brand-700'
                   : 'text-gray-600 hover:bg-gray-100'
               )}>
               <MessageCircle size={16} /> Messages
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
             </button>
           )}
           {user && (
@@ -161,10 +195,15 @@ export function Navbar() {
           {user && (
             <button onClick={() => { handleMessages(); setMenuOpen(false) }}
               className={cn(
-                'flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-100',
+                'relative flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-100',
                 pathname?.startsWith('/messages') ? 'text-brand-700' : 'text-gray-700'
               )}>
               <MessageCircle size={16} /> Messages
+              {unreadCount > 0 && (
+                <span className="ml-auto min-w-[20px] h-5 px-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
             </button>
           )}
           {user && (

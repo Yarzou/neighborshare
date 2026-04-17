@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
 import { Upload, Loader2, AlertCircle, CalendarDays, Plus, X } from 'lucide-react'
-import type { ListingType, Category, ChildcareMode, ChildcareSlot } from '@/lib/types'
+import type { ListingType, Category, ChildcareMode, ChildcareSlot, ListingIntent } from '@/lib/types'
 import AddressAutocomplete, { type ResolvedAddress } from '@/components/forms/AddressAutocomplete'
 
 const CarpoolMiniMap = dynamic(() => import('@/components/map/CarpoolMiniMap'), { ssr: false })
@@ -54,6 +54,10 @@ export default function NewListingPage() {
   const [onceDate, setOnceDate] = useState('')
   const [onceStart, setOnceStart] = useState('09:00')
   const [onceEnd, setOnceEnd] = useState('17:00')
+
+  // Global intent + expiry
+  const [listingIntent, setListingIntent] = useState<ListingIntent>('offre')
+  const [expiresAt, setExpiresAt] = useState('')
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -226,6 +230,8 @@ export default function NewListingPage() {
       childcare_end_at: isChildcare && childcareMode === 'demande' ? childcareEnd || null : null,
       childcare_mode: isChildcare ? childcareMode : null,
       childcare_slots: isChildcare && childcareMode === 'offre' ? childcareSlots : null,
+      listing_intent: listingIntent,
+      expires_at: expiresAt || null,
     }).select().single()
 
     if (insertErr) {
@@ -248,6 +254,21 @@ export default function NewListingPage() {
       )}
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+        {/* Intent : offre / demande */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Je souhaite…</label>
+          <div className="flex rounded-xl overflow-hidden border border-gray-200">
+            <button type="button" onClick={() => setListingIntent('offre')}
+              className={`flex-1 py-2.5 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${listingIntent === 'offre' ? 'bg-brand-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>
+              🎁 Proposer quelque chose
+            </button>
+            <button type="button" onClick={() => setListingIntent('demande')}
+              className={`flex-1 py-2.5 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${listingIntent === 'demande' ? 'bg-amber-500 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>
+              🔍 Chercher quelque chose
+            </button>
+          </div>
+        </div>
+
         {/* Type */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Type d&apos;annonce</label>
@@ -488,6 +509,17 @@ export default function NewListingPage() {
             />
           </div>
         )}
+
+        {/* Expiration optionnelle */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            Date d&apos;expiration <span className="text-gray-400 font-normal">(optionnel)</span>
+          </label>
+          <p className="text-xs text-gray-400 mb-2">L&apos;annonce disparaîtra automatiquement de la carte après cette date.</p>
+          <input type="date" value={expiresAt} onChange={e => setExpiresAt(e.target.value)}
+            min={new Date().toISOString().split('T')[0]}
+            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm bg-white" />
+        </div>
 
         <button type="submit" disabled={loading || (!isCarpool && !location)}
           className="w-full py-3.5 bg-brand-600 text-white font-semibold rounded-xl hover:bg-brand-700 transition-colors disabled:opacity-60 flex items-center justify-center gap-2">

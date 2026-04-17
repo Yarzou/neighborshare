@@ -32,6 +32,7 @@ export function MapView() {
   const [userGeoLocation, setUserGeoLocation] = useState<[number, number] | null>(null)
   const [radius, setRadius] = useState(5)
   const [category, setCategory] = useState(searchParams.get('category') || '')
+  const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [searchedLocation, setSearchedLocation] = useState<[number, number] | null>(null)
   const [slugToId, setSlugToId] = useState<Record<string, number>>({})
@@ -82,10 +83,17 @@ export function MapView() {
           filtered = filtered.filter(l => l.category_id === catId)
         }
       }
+      if (search.trim()) {
+        const term = search.trim().toLowerCase()
+        filtered = filtered.filter(l =>
+          l.title.toLowerCase().includes(term) ||
+          (l.description ?? '').toLowerCase().includes(term)
+        )
+      }
       setListings(filtered)
     }
     setLoading(false)
-  }, [searchCenter, radius, category, slugToId])
+  }, [searchCenter, radius, category, search, slugToId])
 
   useEffect(() => { fetchListings() }, [fetchListings])
 
@@ -131,6 +139,8 @@ export function MapView() {
               count={listings.length}
               loading={loading}
               onLocationSelect={handleLocationSelect}
+              search={search}
+              onSearchChange={setSearch}
           />
 
           <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
