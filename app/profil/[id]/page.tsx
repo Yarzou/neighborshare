@@ -5,13 +5,14 @@ import { ArrowLeft, Star } from 'lucide-react'
 import { LISTING_TYPE_LABELS, LISTING_TYPE_COLORS } from '@/lib/types'
 import { formatDate, cn } from '@/lib/utils'
 
-export default async function PublicProfilePage({ params }: { params: { id: string } }) {
-  const supabase = createClient()
+export default async function PublicProfilePage({ params }: { params: Promise<{ id: string }> }) {
+  const supabase = await createClient()
+  const { id } = await params
 
   const { data: profile } = await supabase
     .from('profiles')
     .select('id, full_name, username, bio, rating, rating_count, avatar_url')
-    .eq('id', params.id)
+    .eq('id', id)
     .single()
 
   if (!profile) notFound()
@@ -19,7 +20,7 @@ export default async function PublicProfilePage({ params }: { params: { id: stri
   const { data: listings } = await supabase
     .from('listings')
     .select('id, title, description, type, category_id, listing_intent, created_at, image_url')
-    .eq('user_id', params.id)
+    .eq('user_id', id)
     .eq('status', 'disponible')
     .order('created_at', { ascending: false })
 

@@ -2,27 +2,24 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
-import dynamic from 'next/dynamic'
 import { MapPin, Clock, ArrowLeft, Star, CalendarDays, MessageCircle, RefreshCw } from 'lucide-react'
 import { isListingType, LISTING_TYPE_LABELS, LISTING_TYPE_COLORS, LISTING_STATUS_LABELS, LISTING_STATUS_COLORS, type Listing } from '@/lib/types'
 import { formatDate, formatChildcarePeriod, formatChildcareSlots } from '@/lib/utils'
 import { ContactButton } from '@/components/listings/ContactButton'
 import { ListingActions } from '@/components/listings/ListingActions'
-
-const CarpoolMiniMap = dynamic(() => import('@/components/map/CarpoolMiniMap'), { ssr: false })
+import CarpoolMiniMap from '@/components/map/CarpoolMiniMapDynamic'
 
 type ListingWithJoins = Listing
 
-export default async function ListingPage({ params }: { params: { id: string } }) {
-  const supabase = createClient()
+export default async function ListingPage({ params }: { params: Promise<{ id: string }> }) {
+  const supabase = await createClient()
+  const { id } = await params
 
   const { data: listing, error: listingError } = await supabase
     .from('listings')
     .select('*, profiles!user_id(*), categories(*)')
-    .eq('id', params.id)
+    .eq('id', id)
     .single()
-
-  if (listingError || !listing) notFound()
 
   const typedListing = listing as unknown as ListingWithJoins
   const listingType = isListingType(typedListing.type) ? typedListing.type : 'pret'
