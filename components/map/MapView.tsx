@@ -8,7 +8,7 @@ import type { Listing } from '@/lib/types'
 import { ListingCard } from '@/components/listings/ListingCard'
 import { FilterBar } from '@/components/map/FilterBar'
 import { MapPin, Loader2, X, Map, List } from 'lucide-react'
-import { formatDistance } from '@/lib/utils'
+import { normalizeSearch } from '@/lib/utils'
 
 // Dynamic import pour éviter SSR avec Leaflet
 const LeafletMap = dynamic(() => import('@/components/map/LeafletMap'), {
@@ -84,10 +84,10 @@ export function MapView() {
         }
       }
       if (search.trim()) {
-        const term = search.trim().toLowerCase()
+        const term = normalizeSearch(search.trim())
         filtered = filtered.filter(l =>
-          l.title.toLowerCase().includes(term) ||
-          (l.description ?? '').toLowerCase().includes(term)
+          normalizeSearch(l.title).includes(term) ||
+          normalizeSearch(l.description ?? '').includes(term)
         )
       }
       setListings(filtered)
