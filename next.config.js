@@ -24,6 +24,7 @@ const nextConfig = {
               "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https://*.supabase.co https://*.tile.openstreetmap.org https://unpkg.com",
+              "media-src 'self'",
               "font-src 'self'",
               "connect-src 'self' https://*.supabase.co https://nominatim.openstreetmap.org wss://*.supabase.co",
               "frame-ancestors 'none'",

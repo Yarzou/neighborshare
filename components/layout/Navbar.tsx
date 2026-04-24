@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { MapPin, Plus, MessageCircle, User, LogOut, Menu, X, Sparkles } from 'lucide-react'
 import { useState, useEffect } from 'react'
@@ -91,7 +92,8 @@ export function Navbar() {
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 font-bold text-brand-700 text-lg">
-          🏘️ <span>Les voisins du Cèdre</span>
+          <Image src="/logo_cedre.png" alt="Logo" width={50} height={50} className="rounded-lg" />
+          <span>Les voisins du Cèdre</span>
         </Link>
 
         {/* Desktop nav */}
