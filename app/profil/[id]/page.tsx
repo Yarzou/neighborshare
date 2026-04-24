@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Star } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { LISTING_TYPE_LABELS, LISTING_TYPE_COLORS } from '@/lib/types'
 import { formatDate, cn } from '@/lib/utils'
 
@@ -11,7 +11,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, full_name, username, bio, rating, rating_count, avatar_url')
+    .select('id, full_name, username, bio, avatar_url')
     .eq('id', id)
     .single()
 
@@ -26,8 +26,6 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
 
   const displayName = profile.full_name || profile.username || 'Voisin'
   const initial = displayName.charAt(0).toUpperCase()
-  const rating = profile.rating ?? 0
-  const ratingCount = profile.rating_count ?? 0
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
@@ -43,15 +41,6 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
         <div>
           <h1 className="text-xl font-bold text-gray-900">{displayName}</h1>
           {profile.bio && <p className="text-sm text-gray-500 mt-0.5">{profile.bio}</p>}
-          {ratingCount > 0 ? (
-            <div className="flex items-center gap-1 mt-1">
-              <Star size={14} className="text-amber-400 fill-amber-400" />
-              <span className="text-sm font-medium">{rating.toFixed(1)}</span>
-              <span className="text-xs text-gray-400">({ratingCount} avis)</span>
-            </div>
-          ) : (
-            <p className="text-xs text-gray-400 mt-1">Pas encore d&apos;avis</p>
-          )}
         </div>
       </div>
 

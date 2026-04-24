@@ -9,7 +9,7 @@ import type { Profile, Listing } from '@/lib/types'
 import { LISTING_TYPE_LABELS, LISTING_TYPE_COLORS } from '@/lib/types'
 import { formatDate } from '@/lib/utils'
 import {
-  Star, Package, Pencil, Trash2, Edit2,
+  Package, Pencil, Trash2, Edit2,
   Check, X, Loader2, AlertCircle, Plus,
 } from 'lucide-react'
 
@@ -147,11 +147,6 @@ export default function ProfileClient() {
                   <p className="text-gray-500 text-sm mt-1.5 leading-snug">{profile.bio}</p>
                 )}
                 <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
-                  <span className="flex items-center gap-1">
-                    <Star size={14} className="text-yellow-400 fill-yellow-400" />
-                    {profile.rating?.toFixed(1) || '—'}
-                    <span className="text-gray-400">({profile.rating_count || 0} avis)</span>
-                  </span>
                   <span className="flex items-center gap-1">
                     <Package size={14} />
                     {listings.length} annonce{listings.length > 1 ? 's' : ''}

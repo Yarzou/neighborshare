@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
-import { MapPin, Clock, ArrowLeft, Star, CalendarDays, MessageCircle, RefreshCw } from 'lucide-react'
+import { MapPin, Clock, ArrowLeft, CalendarDays, MessageCircle, RefreshCw } from 'lucide-react'
 import { isListingType, LISTING_TYPE_LABELS, LISTING_TYPE_COLORS, LISTING_STATUS_LABELS, LISTING_STATUS_COLORS, type Listing } from '@/lib/types'
 import { formatDate, formatChildcarePeriod, formatChildcareSlots } from '@/lib/utils'
 import { ContactButton } from '@/components/listings/ContactButton'
@@ -185,11 +185,6 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
             </div>
             <div>
               <div className="font-medium text-sm group-hover:text-brand-600 transition-colors">{listing.profiles?.full_name || listing.profiles?.username}</div>
-              <div className="flex items-center gap-1 text-xs text-gray-400">
-                <Star size={11} className="text-yellow-400 fill-yellow-400" />
-                {listing.profiles?.rating?.toFixed(1) || '—'}
-                <span>({listing.profiles?.rating_count || 0} avis)</span>
-              </div>
             </div>
           </Link>
 
@@ -207,11 +202,6 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
                   </div>
                   <div>
                     <div className="font-medium text-sm text-gray-900">{responderProfile.full_name || responderProfile.username}</div>
-                    <div className="flex items-center gap-1 text-xs text-gray-400">
-                      <Star size={11} className="text-yellow-400 fill-yellow-400" />
-                      {responderProfile.rating?.toFixed(1) || '—'}
-                      <span>({responderProfile.rating_count || 0} avis)</span>
-                    </div>
                   </div>
                 </div>
               </div>
