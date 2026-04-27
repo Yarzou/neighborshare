@@ -150,6 +150,13 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
               <span className={`text-sm font-medium px-3 py-1 rounded-full ${LISTING_TYPE_COLORS[listingType]}`}>
                 {LISTING_TYPE_LABELS[listingType]}
               </span>
+              {listingType === 'vente' && typedListing.price != null && (
+                <span className="text-base font-bold px-3 py-1 rounded-full bg-red-50 text-red-700">
+                  {typedListing.price % 1 === 0
+                    ? `${typedListing.price} €`
+                    : `${Number(typedListing.price).toFixed(2).replace('.', ',')} €`}
+                </span>
+              )}
               <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${LISTING_STATUS_COLORS[typedListing.status]}`}>
                 {LISTING_STATUS_LABELS[typedListing.status]}
               </span>

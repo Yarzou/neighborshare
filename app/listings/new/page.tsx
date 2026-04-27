@@ -15,6 +15,7 @@ const LISTING_TYPES: { value: ListingType; label: string; icon: string }[] = [
   { value: 'don', label: 'Don', icon: '🎁' },
   { value: 'echange', label: 'Échange', icon: '🤝' },
   { value: 'service', label: 'Service', icon: '⚡' },
+  { value: 'vente', label: 'Vendre', icon: '💰' },
 ]
 
 const CARPOOL_SLUG = 'covoiturage'
@@ -28,7 +29,7 @@ export default function NewListingPage() {
   const [categories, setCategories] = useState<Category[]>([])
   const [form, setForm] = useState({
     title: '', description: '', type: 'pret' as ListingType,
-    category_id: '', address: '', city: '',
+    category_id: '', address: '', city: '', price: '',
   })
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [imageFile, setImageFile] = useState<File | null>(null)
@@ -68,6 +69,19 @@ export default function NewListingPage() {
   const isCarpool = selectedCategory?.slug === CARPOOL_SLUG
   const isChildcare = selectedCategory?.slug === CHILDCARE_SLUG
   const hidePhoto = isCarpool || isChildcare
+
+  // Quand le type est "vente", covoiturage et garde d'enfant ne sont pas pertinents
+  const EXCLUDED_FOR_VENTE = [CARPOOL_SLUG, CHILDCARE_SLUG]
+  const filteredCategories = form.type === 'vente'
+    ? categories.filter(c => !EXCLUDED_FOR_VENTE.includes(c.slug))
+    : categories
+
+  // Réinitialise la catégorie si elle est incompatible avec le type sélectionné
+  useEffect(() => {
+    if (form.type === 'vente' && selectedCategory && EXCLUDED_FOR_VENTE.includes(selectedCategory.slug)) {
+      setForm(f => ({ ...f, category_id: '' }))
+    }
+  }, [form.type])
 
   // S'assure que la session est bien chargée côté client avant d'autoriser la publication.
   // Sans ça, supabase.auth.getUser() peut rendre null juste après un login/redirect.
@@ -232,6 +246,7 @@ export default function NewListingPage() {
       childcare_slots: isChildcare && childcareMode === 'offre' ? childcareSlots : null,
       listing_intent: listingIntent,
       expires_at: expiresAt || null,
+      price: form.type === 'vente' && form.price ? parseFloat(form.price) : null,
     }).select().single()
 
     if (insertErr) {
@@ -272,7 +287,7 @@ export default function NewListingPage() {
         {/* Type */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Type d&apos;annonce</label>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-5 gap-2">
             {LISTING_TYPES.map(t => (
               <button key={t.value} type="button" onClick={() => setForm(f => ({ ...f, type: t.value }))}
                 className={`flex flex-col items-center gap-1 p-3 rounded-xl border-2 text-sm font-medium transition-colors ${
@@ -284,6 +299,27 @@ export default function NewListingPage() {
             ))}
           </div>
         </div>
+
+        {/* Prix — affiché uniquement pour les ventes */}
+        {form.type === 'vente' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Prix (€) *</label>
+            <div className="relative">
+              <input
+                name="price"
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.price}
+                onChange={handleChange}
+                required
+                placeholder="Ex: 25.00"
+                className="w-full px-4 py-3 pr-10 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm"
+              />
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">€</span>
+            </div>
+          </div>
+        )}
 
         {/* Titre */}
         <div>
@@ -307,7 +343,7 @@ export default function NewListingPage() {
           <select name="category_id" value={form.category_id} onChange={handleChange}
             className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm bg-white">
             <option value="">Choisir une catégorie...</option>
-            {categories.map(c => (
+            {filteredCategories.map(c => (
               <option key={c.id} value={c.id}>{c.icon} {c.label}</option>
             ))}
           </select>

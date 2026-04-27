@@ -12,6 +12,7 @@ const CATEGORIES = [
   { slug: 'covoiturage', label: 'Trajet', icon: '🚗' },
   { slug: 'dons', label: 'Dons', icon: '📦' },
   { slug: 'jardinage', label: 'Jardin', icon: '🌿' },
+  { slug: 'cuisine', label: 'Cuisine', icon: '🍳' },
 ]
 
 const RADII = [1, 2, 5, 10, 20]

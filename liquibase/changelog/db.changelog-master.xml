@@ -44,4 +44,7 @@
   <!-- Nouvelle catégorie Cuisine -->
   <include file="liquibase/changelog/013-add-cuisine-category.sql"/>
 
+  <!-- Type "vente" dans listing_type + colonne price sur listings -->
+  <include file="liquibase/changelog/014-add-vente-type.sql"/>
+
 </databaseChangeLog>

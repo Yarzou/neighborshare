@@ -1,4 +1,4 @@
-export type ListingType = 'pret' | 'don' | 'echange' | 'service'
+export type ListingType = 'pret' | 'don' | 'echange' | 'service' | 'vente'
 export type ListingStatus = 'disponible' | 'reserve' | 'termine' | 'en_cours' | 'validee'
 export type ChildcareMode = 'demande' | 'offre'
 export type ListingIntent = 'offre' | 'demande'
@@ -9,7 +9,7 @@ export type ChildcareSlot =
 // recurring.day: 0=Dimanche, 1=Lundi, ..., 6=Samedi (convention JS)
 // times: format "HH:mm"
 
-export const LISTING_TYPES = ['pret', 'don', 'echange', 'service'] as const
+export const LISTING_TYPES = ['pret', 'don', 'echange', 'service', 'vente'] as const
 
 export function isListingType(value: unknown): value is ListingType {
   return typeof value === 'string' && (LISTING_TYPES as readonly string[]).includes(value)
@@ -58,6 +58,7 @@ export interface Listing {
   childcare_slots: ChildcareSlot[] | null
   listing_intent: ListingIntent
   expires_at: string | null
+  price: number | null
   created_at: string
   responder_id?: string | null
   conversation_id?: string | null
@@ -117,6 +118,7 @@ export const LISTING_TYPE_LABELS: Record<ListingType, string> = {
   don: 'Don',
   echange: 'Échange',
   service: 'Service',
+  vente: 'Vente',
 }
 
 export const LISTING_STATUS_LABELS: Record<ListingStatus, string> = {
@@ -140,4 +142,5 @@ export const LISTING_TYPE_COLORS: Record<ListingType, string> = {
   don: 'bg-green-100 text-green-700',
   echange: 'bg-purple-100 text-purple-700',
   service: 'bg-orange-100 text-orange-700',
+  vente: 'bg-red-100 text-red-700',
 }

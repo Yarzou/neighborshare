@@ -16,6 +16,7 @@ const LISTING_TYPES: { value: ListingType; label: string; icon: string }[] = [
   { value: 'don', label: 'Don', icon: '🎁' },
   { value: 'echange', label: 'Échange', icon: '🤝' },
   { value: 'service', label: 'Service', icon: '⚡' },
+  { value: 'vente', label: 'Vendre', icon: '💰' },
 ]
 
 const CARPOOL_SLUG = 'covoiturage'
@@ -42,6 +43,7 @@ export default function EditListingPage() {
     category_id: '',
     address: '',
     city: '',
+    price: '',
   })
 
   const [newLocation, setNewLocation] = useState<{ lat: number; lng: number } | null>(null)
@@ -73,6 +75,17 @@ export default function EditListingPage() {
   const isCarpool = selectedCategory?.slug === CARPOOL_SLUG
   const isChildcare = selectedCategory?.slug === CHILDCARE_SLUG
   const hidePhoto = isCarpool || isChildcare
+
+  const EXCLUDED_FOR_VENTE = [CARPOOL_SLUG, CHILDCARE_SLUG]
+  const filteredCategories = form.type === 'vente'
+    ? categories.filter(c => !EXCLUDED_FOR_VENTE.includes(c.slug))
+    : categories
+
+  useEffect(() => {
+    if (form.type === 'vente' && selectedCategory && EXCLUDED_FOR_VENTE.includes(selectedCategory.slug)) {
+      setForm(f => ({ ...f, category_id: '' }))
+    }
+  }, [form.type])
 
   const previewDep = carpoolDeparture
     ? { lat: carpoolDeparture.lat, lng: carpoolDeparture.lon, label: carpoolDeparture.displayName }
@@ -111,6 +124,7 @@ export default function EditListingPage() {
         category_id: listing.category_id ? String(listing.category_id) : '',
         address: listing.address || '',
         city: listing.city || '',
+        price: listing.price != null ? String(listing.price) : '',
       })
       setExistingImageUrl(listing.image_url || null)
       setImagePreview(listing.image_url || null)
@@ -215,6 +229,7 @@ export default function EditListingPage() {
       carpool_arrival_lng: carpoolArrival?.lon ?? (isCarpool ? existingCarpoolCoords?.arrLng ?? null : null),
       childcare_start_at: isChildcare ? childcareStart || null : null,
       childcare_end_at: isChildcare ? childcareEnd || null : null,
+      price: form.type === 'vente' && form.price ? parseFloat(form.price) : null,
     }
 
     if (isCarpool && carpoolDeparture) {
@@ -281,7 +296,7 @@ export default function EditListingPage() {
       <form onSubmit={handleSubmit} className="flex flex-col gap-6">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Type d&apos;annonce</label>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-5 gap-2">
             {LISTING_TYPES.map(t => (
               <button key={t.value} type="button" onClick={() => setForm(f => ({ ...f, type: t.value }))}
                 className={`flex flex-col items-center gap-1 p-3 rounded-xl border-2 text-sm font-medium transition-colors ${
@@ -293,6 +308,27 @@ export default function EditListingPage() {
             ))}
           </div>
         </div>
+
+        {/* Prix — affiché uniquement pour les ventes */}
+        {form.type === 'vente' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Prix (€) *</label>
+            <div className="relative">
+              <input
+                name="price"
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.price}
+                onChange={handleChange}
+                required
+                placeholder="Ex: 25.00"
+                className="w-full px-4 py-3 pr-10 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm"
+              />
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">€</span>
+            </div>
+          </div>
+        )}
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">Titre *</label>
@@ -313,7 +349,7 @@ export default function EditListingPage() {
           <select name="category_id" value={form.category_id} onChange={handleChange}
             className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm bg-white">
             <option value="">Choisir une catégorie...</option>
-            {categories.map(c => (
+            {filteredCategories.map(c => (
               <option key={c.id} value={c.id}>{c.icon} {c.label}</option>
             ))}
           </select>

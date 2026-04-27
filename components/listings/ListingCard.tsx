@@ -106,6 +106,13 @@ export function ListingCard({ listing, compact = false, onClick, active }: Props
             <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full', LISTING_TYPE_COLORS[listing.type])}>
               {LISTING_TYPE_LABELS[listing.type]}
             </span>
+            {listing.type === 'vente' && listing.price != null && (
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-700">
+                {listing.price % 1 === 0
+                  ? `${listing.price} €`
+                  : `${Number(listing.price).toFixed(2).replace('.', ',')} €`}
+              </span>
+            )}
           </div>
         </div>
 
@@ -132,6 +139,6 @@ export function ListingCard({ listing, compact = false, onClick, active }: Props
 }
 
 function getCategoryEmoji(id: number | null) {
-  const map: Record<number, string> = { 1: '🔧', 2: '🤝', 3: '👶', 4: '🚗', 5: '📦', 6: '🌿' }
+  const map: Record<number, string> = { 1: '🔧', 2: '🤝', 3: '👶', 4: '🚗', 5: '📦', 6: '🌿', 7: '🍳' }
   return id ? (map[id] || '📍') : '📍'
 }
