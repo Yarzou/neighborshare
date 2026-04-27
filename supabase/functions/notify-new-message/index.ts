@@ -8,11 +8,59 @@
 //     si push_notifications_enabled=true et token FCM présent
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { getFCMCredentials, sendFCMPush } from '../_shared/fcm.ts'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const RESEND_FROM    = Deno.env.get('RESEND_FROM_EMAIL') ?? 'NeighborShare <notifications@neighborshare.fr>'
 const APP_URL        = Deno.env.get('APP_URL') ?? 'https://neighborshare.fr'
+
+// ── FCM utilities (inlined) ────────────────────────────────────────────────────
+
+interface ServiceAccount { client_email: string; private_key: string; project_id: string }
+
+async function getGoogleAccessToken(sa: ServiceAccount): Promise<string> {
+  const now = Math.floor(Date.now() / 1000)
+  const toB64u = (s: string) => btoa(s).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
+  const header  = toB64u(JSON.stringify({ alg: 'RS256', typ: 'JWT' }))
+  const payload = toB64u(JSON.stringify({
+    iss: sa.client_email, scope: 'https://www.googleapis.com/auth/firebase.messaging',
+    aud: 'https://oauth2.googleapis.com/token', exp: now + 3600, iat: now,
+  }))
+  const sigInput  = `${header}.${payload}`
+  const pemBody   = sa.private_key.replace(/-----[^-]+-----/g, '').replace(/\s/g, '')
+  const keyData   = Uint8Array.from(atob(pemBody), c => c.charCodeAt(0))
+  const cryptoKey = await crypto.subtle.importKey('pkcs8', keyData.buffer, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign'])
+  const sigBytes  = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', cryptoKey, new TextEncoder().encode(sigInput))
+  const sig       = toB64u(String.fromCharCode(...new Uint8Array(sigBytes)))
+  const tokenRes  = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: `${sigInput}.${sig}` }),
+  })
+  const data = await tokenRes.json()
+  if (!data.access_token) throw new Error(`[FCM] OAuth2 error: ${JSON.stringify(data)}`)
+  return data.access_token
+}
+
+async function sendFCMPush(token: string, notification: { title: string; body: string; url?: string }, accessToken: string, projectId: string): Promise<boolean> {
+  const res = await fetch(`https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: {
+      token, notification: { title: notification.title, body: notification.body },
+      webpush: { notification: { icon: '/logo_cedre.png' }, fcm_options: { link: notification.url ?? '/' } },
+    }}),
+  })
+  if (!res.ok) console.error(`[FCM] Push failed: ${await res.text()}`)
+  return res.ok
+}
+
+async function getFCMCredentials(): Promise<{ accessToken: string; projectId: string } | null> {
+  const saJson = Deno.env.get('FCM_SERVICE_ACCOUNT_JSON')
+  if (!saJson) { console.warn('[FCM] FCM_SERVICE_ACCOUNT_JSON not set'); return null }
+  const sa: ServiceAccount = JSON.parse(saJson)
+  return { accessToken: await getGoogleAccessToken(sa), projectId: sa.project_id }
+}
+
+// ── Handler ────────────────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
   try {
