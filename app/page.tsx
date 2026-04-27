@@ -17,15 +17,15 @@ export default function HomePage() {
       <section className="relative overflow-hidden bg-gradient-to-br from-brand-600 to-brand-800 text-white">
         <div className="absolute inset-0 opacity-10" style={{backgroundImage: 'radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px)', backgroundSize: '40px 40px'}} />
         <div className="relative max-w-4xl mx-auto px-4 py-24 text-center">
-          <video
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="inline-block rounded-2xl mb-4 w-48 h-48 object-cover"
-          >
-            <source src="/logo_cedre_anim.mp4" type="video/mp4" />
-          </video>
+          {/*<video*/}
+          {/*  autoPlay*/}
+          {/*  loop*/}
+          {/*  muted*/}
+          {/*  playsInline*/}
+          {/*  className="inline-block rounded-2xl mb-4 w-48 h-48 object-cover"*/}
+          {/*>*/}
+          {/*  <source src="/logo_cedre_anim.mp4" type="video/mp4" />*/}
+          {/*</video>*/}
           <h1 className="text-4xl md:text-6xl font-bold mb-6 leading-tight">
             Partagez avec<br />vos voisins du Cèdre
           </h1>
