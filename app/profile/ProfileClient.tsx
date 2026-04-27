@@ -12,6 +12,7 @@ import {
   Package, Pencil, Trash2, Edit2,
   Check, X, Loader2, AlertCircle, Plus,
 } from 'lucide-react'
+import NotificationSettings from '@/components/profile/NotificationSettings'
 
 export default function ProfileClient() {
   const router = useRouter()
@@ -218,6 +219,15 @@ export default function ProfileClient() {
             </>
           )}
         </div>
+      </div>
+
+      {/* ── Notifications ── */}
+      <div className="mb-8">
+        <NotificationSettings
+          userId={userId!}
+          initialEmailEnabled={profile.email_notifications_enabled ?? true}
+          initialPushEnabled={profile.push_notifications_enabled ?? false}
+        />
       </div>
 
       {/* ── Mes annonces ── */}

@@ -20,6 +20,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
     "dotenv": "^17.4.1",
+    "firebase": "^12.12.1",
     "geist": "^1.7.0",
     "leaflet": "^1.9.4",
     "leaflet.markercluster": "^1.5.3",

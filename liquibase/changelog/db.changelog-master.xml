@@ -35,4 +35,10 @@
   <!-- listing_intent (offre/demande global) + expires_at (expiration optionnelle) -->
   <include file="liquibase/changelog/010-intent-expiry.sql"/>
 
+  <!-- Préférences de notifications (email + push) dans profiles -->
+  <include file="liquibase/changelog/011-notification-preferences.sql"/>
+
+  <!-- Table fcm_tokens pour les notifications push Firebase -->
+  <include file="liquibase/changelog/012-fcm-tokens.sql"/>
+
 </databaseChangeLog>

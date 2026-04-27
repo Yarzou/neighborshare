@@ -31,6 +31,8 @@ export interface Profile {
   rating: number
   rating_count: number
   created_at: string
+  email_notifications_enabled?: boolean
+  push_notifications_enabled?: boolean
 }
 
 export interface Listing {
