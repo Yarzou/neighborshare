@@ -18,6 +18,7 @@ const CATEGORIES = [
   { slug: 'covoiturage', label: 'Trajet', icon: '🚗' },
   { slug: 'dons', label: 'Dons', icon: '📦' },
   { slug: 'jardinage', label: 'Jardin', icon: '🌿' },
+  { slug: 'cuisine', label: 'Cuisine', icon: '🍳' },
 ]
 
 export default function RecentPage() {

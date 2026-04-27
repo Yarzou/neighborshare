@@ -9,6 +9,7 @@ export default function HomePage() {
     { icon: '🚗', label: 'Covoiturage', slug: 'covoiturage', color: 'bg-yellow-50 border-yellow-200' },
     { icon: '📦', label: 'Dons / Objets', slug: 'dons', color: 'bg-purple-50 border-purple-200' },
     { icon: '🌿', label: 'Jardinage', slug: 'jardinage', color: 'bg-emerald-50 border-emerald-200' },
+    { icon: '🍳', label: 'Cuisine', slug: 'cuisine', color: 'bg-orange-50 border-orange-200' },
   ]
 
   return (

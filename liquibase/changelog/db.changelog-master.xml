@@ -41,4 +41,7 @@
   <!-- Table fcm_tokens pour les notifications push Firebase -->
   <include file="liquibase/changelog/012-fcm-tokens.sql"/>
 
+  <!-- Nouvelle catégorie Cuisine -->
+  <include file="liquibase/changelog/013-add-cuisine-category.sql"/>
+
 </databaseChangeLog>
