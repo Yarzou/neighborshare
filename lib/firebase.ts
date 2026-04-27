@@ -2,11 +2,13 @@ import { initializeApp, getApps, getApp } from 'firebase/app'
 import { getMessaging, getToken, onMessage, type Messaging } from 'firebase/messaging'
 
 const firebaseConfig = {
-  apiKey:            process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
-  authDomain:        process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN!,
-  projectId:         process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID!,
-  appId:             process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
+  apiKey: "AIzaSyCpJc-m6KaruwvjT-9Z_i39RyOYEZuzptQ",
+  authDomain: "voisins-du-cedre.firebaseapp.com",
+  projectId: "voisins-du-cedre",
+  storageBucket: "voisins-du-cedre.firebasestorage.app",
+  messagingSenderId: "264337720822",
+  appId: "1:264337720822:web:5c3454a0e410c2f757f3d7",
+  measurementId: "G-ERRN6Q0F9V"
 }
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp()
@@ -68,12 +70,17 @@ export async function requestFCMToken(): Promise<string> {
 
   const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY
   if (!vapidKey) {
-    throw new Error('Configuration Firebase incomplète (VAPID key manquante).')
+    throw new Error('Configuration Firebase incomplète : NEXT_PUBLIC_FIREBASE_VAPID_KEY manquante.')
+  }
+
+  // Vérifie que les valeurs Firebase essentielles sont renseignées
+  if (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY || !process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) {
+    throw new Error('Configuration Firebase incomplète : renseignez les variables NEXT_PUBLIC_FIREBASE_* dans .env.local.')
   }
 
   const permission = await Notification.requestPermission()
   if (permission === 'denied') {
-    throw new Error('Permission refusée. Veuillez l\'autoriser dans les réglages de votre navigateur.')
+    throw new Error('Permission refusée. Autorisez les notifications dans les réglages de votre navigateur.')
   }
   if (permission !== 'granted') {
     throw new Error('Permission non accordée.')
@@ -90,11 +97,17 @@ export async function requestFCMToken(): Promise<string> {
     throw new Error('Le service worker n\'a pas pu être enregistré.')
   }
 
-  const token = await getToken(m, { vapidKey, serviceWorkerRegistration: swReg })
-  if (!token) {
-    throw new Error('Impossible d\'obtenir le token FCM. Vérifiez que les notifications sont autorisées.')
+  try {
+    const token = await getToken(m, { vapidKey, serviceWorkerRegistration: swReg })
+    if (!token) {
+      throw new Error('Impossible d\'obtenir le token FCM. Vérifiez la configuration Firebase.')
+    }
+    return token
+  } catch (err) {
+    // Retransmet l'erreur Firebase avec son message original pour faciliter le diagnostic
+    const msg = err instanceof Error ? err.message : String(err)
+    throw new Error(`Erreur FCM : ${msg}`)
   }
-  return token
 }
 
 export { onMessage, getToken }
