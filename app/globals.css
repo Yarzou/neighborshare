@@ -14,14 +14,14 @@ body {
 
 /*
  * Empêche le zoom automatique d'iOS Safari lors du focus sur un champ de saisie.
- * iOS zoome quand font-size < 1rem — on force 1rem sur mobile, puis on laisse
- * Tailwind reprendre la main sur desktop (md:).
+ * iOS zoome quand font-size < 16px — on force 16px, le !important est nécessaire
+ * pour surcharger les classes Tailwind (text-sm = 14px, text-xs = 12px).
  */
 @media screen and (max-width: 47.9375rem) {
   input,
   textarea,
   select {
-    font-size: 1rem;
+    font-size: 16px !important;
   }
 }
 
