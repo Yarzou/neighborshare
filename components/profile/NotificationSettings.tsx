@@ -40,9 +40,11 @@ export default function NotificationSettings({ userId, initialEmailEnabled, init
     setPushSaving(true)
 
     if (enabled) {
-      const token = await requestFCMToken()
-      if (!token) {
-        setPushError('Permission refusée ou notifications non supportées sur cet appareil.')
+      let token: string
+      try {
+        token = await requestFCMToken()
+      } catch (err) {
+        setPushError(err instanceof Error ? err.message : 'Erreur lors de l\'activation des notifications push.')
         setPushSaving(false)
         return
       }
@@ -58,15 +60,16 @@ export default function NotificationSettings({ userId, initialEmailEnabled, init
     } else {
       // Récupère le token actuel de l'appareil et le supprime
       try {
-        const { getFirebaseMessaging } = await import('@/lib/firebase')
-        const { getToken } = await import('@/lib/firebase')
+        const { getFirebaseMessaging, registerFirebaseSW, getToken: fcmGetToken } = await import('@/lib/firebase')
         const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY
         const m = getFirebaseMessaging()
         if (m && vapidKey) {
-          const swReg = await navigator.serviceWorker.getRegistration('/')
-          const token = await getToken(m, { vapidKey, serviceWorkerRegistration: swReg })
-          if (token) {
-            await supabase.from('fcm_tokens').delete().eq('token', token).eq('user_id', userId)
+          const swReg = await registerFirebaseSW()
+          if (swReg) {
+            const token = await fcmGetToken(m, { vapidKey, serviceWorkerRegistration: swReg })
+            if (token) {
+              await supabase.from('fcm_tokens').delete().eq('token', token).eq('user_id', userId)
+            }
           }
         }
       } catch {
