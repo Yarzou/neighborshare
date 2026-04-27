@@ -1,11 +1,11 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import dynamic from 'next/dynamic'
-import { MapPin, Clock, CalendarDays } from 'lucide-react'
+import { Clock, CalendarDays } from 'lucide-react'
 import type { Listing } from '@/lib/types'
 import { LISTING_TYPE_LABELS, LISTING_TYPE_COLORS } from '@/lib/types'
 import { getCategoryEmoji } from '@/lib/categories'
-import { formatDistance, formatDate, formatChildcarePeriod, formatChildcareSlots, cn } from '@/lib/utils'
+import { formatDate, formatChildcarePeriod, formatChildcareSlots, cn } from '@/lib/utils'
 
 const CarpoolMiniMap = dynamic(() => import('@/components/map/CarpoolMiniMap'), { ssr: false })
 
@@ -122,11 +122,6 @@ export function ListingCard({ listing, compact = false, onClick, active }: Props
         )}
 
         <div className="flex items-center gap-3 mt-auto pt-1">
-          {listing.distance_m !== undefined && (
-            <span className="flex items-center gap-1 text-xs text-gray-400">
-              <MapPin size={11} /> {formatDistance(listing.distance_m)}
-            </span>
-          )}
           <span className="flex items-center gap-1 text-xs text-gray-400">
             <Clock size={11} /> {formatDate(listing.created_at)}
           </span>

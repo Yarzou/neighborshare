@@ -30,7 +30,6 @@ export function MapView() {
   const [searchCenter, setSearchCenter] = useState<[number, number]>(NEIGHBORHOOD)
   // userGeoLocation: position GPS réelle (uniquement pour le marqueur bleu)
   const [userGeoLocation, setUserGeoLocation] = useState<[number, number] | null>(null)
-  const [radius, setRadius] = useState(5)
   const [category, setCategory] = useState(searchParams.get('category') || '')
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
@@ -72,7 +71,7 @@ export function MapView() {
     const [lat, lng] = searchCenter
 
     const { data, error } = await supabase.rpc('listings_within_radius', {
-      lat, lng, radius_km: radius,
+      lat, lng, radius_km: 50,
     })
 
     if (!error && data) {
@@ -93,15 +92,9 @@ export function MapView() {
       setListings(filtered)
     }
     setLoading(false)
-  }, [searchCenter, radius, category, search, slugToId])
+  }, [searchCenter, category, search, slugToId])
 
   useEffect(() => { fetchListings() }, [fetchListings])
-
-  const handleLocationSelect = (lat: number, lon: number) => {
-    const coords: [number, number] = [lat, lon]
-    setSearchCenter(coords)
-    setSearchedLocation(coords)
-  }
 
   return (
       <div className="flex flex-col h-full md:flex-row">
@@ -132,13 +125,10 @@ export function MapView() {
         {/* Sidebar */}
         <div className={`w-full md:w-96 flex flex-col bg-white border-r border-gray-200 overflow-hidden z-10 ${mobileView === 'map' ? 'hidden md:flex' : 'flex'}`}>
           <FilterBar
-              radius={radius}
-              onRadiusChange={setRadius}
               category={category}
               onCategoryChange={setCategory}
               count={listings.length}
               loading={loading}
-              onLocationSelect={handleLocationSelect}
               search={search}
               onSearchChange={setSearch}
           />
@@ -151,8 +141,8 @@ export function MapView() {
             ) : listings.length === 0 ? (
                 <div className="text-center py-12 text-gray-400">
                   <MapPin size={40} className="mx-auto mb-3 opacity-30" />
-                  <p className="font-medium">Aucune annonce dans ce rayon</p>
-                  <p className="text-sm mt-1">Essayez d&apos;augmenter le rayon de recherche</p>
+                  <p className="font-medium">Aucune annonce disponible</p>
+                  <p className="text-sm mt-1">Essayez de modifier vos filtres</p>
                 </div>
             ) : (
                 listings.map(listing => (
