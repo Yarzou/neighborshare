@@ -6,8 +6,23 @@ import { Navbar } from '@/components/layout/Navbar'
 import FirebaseSWRegister from '@/components/layout/FirebaseSWRegister'
 
 export const metadata: Metadata = {
-  title: 'NeighborShare — Partagez avec vos voisins',
+  title: 'Les voisins du Cèdre',
   description: 'Plateforme d\'entraide locale géolocalisée : outils, services, garde d\'enfant et plus encore.',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    title: 'Les voisins du Cèdre',
+    statusBarStyle: 'default',
+  },
+  icons: {
+    icon: [
+      { url: '/favicon-32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+  },
 }
 
 export const viewport: Viewport = {

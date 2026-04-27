@@ -26,7 +26,7 @@ const messaging = firebase.messaging()
 
 messaging.onBackgroundMessage((payload) => {
   const { title, body, icon } = payload.notification ?? {}
-  self.registration.showNotification(title ?? 'NeighborShare', {
+  self.registration.showNotification(title ?? 'Les voisins du Cèdre', {
     body: body ?? '',
     icon: icon ?? '/logo_cedre.png',
     badge: '/logo_cedre.png',

@@ -10,8 +10,8 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
-const RESEND_FROM    = Deno.env.get('RESEND_FROM_EMAIL') ?? 'NeighborShare <notifications@neighborshare.fr>'
-const APP_URL        = Deno.env.get('APP_URL') ?? 'https://neighborshare.fr'
+const RESEND_FROM    = Deno.env.get('RESEND_FROM_EMAIL') ?? 'Les voisins du Cèdre <notifications@voisinsducedre.fr>'
+const APP_URL        = Deno.env.get('APP_URL') ?? 'https://voisinsducedre.fr'
 
 // ── FCM utilities (inlined) ────────────────────────────────────────────────────
 
@@ -181,7 +181,7 @@ function buildMessageEmailHtml(senderName: string, preview: string, url: string)
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
 <body style="font-family:sans-serif;background:#f9fafb;padding:32px;">
   <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:16px;border:1px solid #e5e7eb;padding:32px;">
-    <h1 style="color:#16a34a;font-size:20px;margin-bottom:8px;">🌿 NeighborShare</h1>
+    <h1 style="color:#16a34a;font-size:20px;margin-bottom:8px;">🌿 Les voisins du Cèdre</h1>
     <h2 style="font-size:17px;color:#111827;margin-bottom:12px;">Vous avez un nouveau message</h2>
     <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:16px;margin-bottom:20px;">
       <p style="font-weight:600;color:#111827;margin:0 0 8px;">${senderName}</p>
@@ -189,7 +189,7 @@ function buildMessageEmailHtml(senderName: string, preview: string, url: string)
     </div>
     <a href="${url}" style="display:inline-block;background:#16a34a;color:#fff;padding:12px 24px;border-radius:10px;text-decoration:none;font-weight:600;font-size:14px;">Répondre →</a>
     <p style="color:#9ca3af;font-size:12px;margin-top:24px;">
-      Vous recevez cet email car vous êtes inscrit sur NeighborShare.<br>
+      Vous recevez cet email car vous êtes inscrit sur Les voisins du Cèdre.<br>
       Vous pouvez désactiver ces notifications dans votre <a href="${APP_URL}/profile" style="color:#16a34a;">profil</a>.
     </p>
   </div>
