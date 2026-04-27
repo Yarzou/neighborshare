@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile, Listing } from '@/lib/types'
 import { LISTING_TYPE_LABELS, LISTING_TYPE_COLORS } from '@/lib/types'
+import { getCategoryEmoji } from '@/lib/categories'
 import { formatDate } from '@/lib/utils'
 import {
   Package, Pencil, Trash2, Edit2,
@@ -315,9 +316,4 @@ export default function ProfileClient() {
       )}
     </div>
   )
-}
-
-function getCategoryEmoji(id: number | null) {
-  const map: Record<number, string> = { 1: '🔧', 2: '🤝', 3: '👶', 4: '🚗', 5: '📦', 6: '🌿' }
-  return id ? (map[id] || '📍') : '📍'
 }

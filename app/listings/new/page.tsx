@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
 import { Upload, Loader2, AlertCircle, CalendarDays, Plus, X } from 'lucide-react'
 import type { ListingType, Category, ChildcareMode, ChildcareSlot, ListingIntent } from '@/lib/types'
+import { VENTE_EXCLUDED_SLUGS } from '@/lib/categories'
 import AddressAutocomplete, { type ResolvedAddress } from '@/components/forms/AddressAutocomplete'
 
 const CarpoolMiniMap = dynamic(() => import('@/components/map/CarpoolMiniMap'), { ssr: false })
@@ -71,14 +72,13 @@ export default function NewListingPage() {
   const hidePhoto = isCarpool || isChildcare
 
   // Quand le type est "vente", covoiturage et garde d'enfant ne sont pas pertinents
-  const EXCLUDED_FOR_VENTE = [CARPOOL_SLUG, CHILDCARE_SLUG]
   const filteredCategories = form.type === 'vente'
-    ? categories.filter(c => !EXCLUDED_FOR_VENTE.includes(c.slug))
+    ? categories.filter(c => !VENTE_EXCLUDED_SLUGS.includes(c.slug as typeof VENTE_EXCLUDED_SLUGS[number]))
     : categories
 
   // Réinitialise la catégorie si elle est incompatible avec le type sélectionné
   useEffect(() => {
-    if (form.type === 'vente' && selectedCategory && EXCLUDED_FOR_VENTE.includes(selectedCategory.slug)) {
+    if (form.type === 'vente' && selectedCategory && VENTE_EXCLUDED_SLUGS.includes(selectedCategory.slug as typeof VENTE_EXCLUDED_SLUGS[number])) {
       setForm(f => ({ ...f, category_id: '' }))
     }
   }, [form.type])

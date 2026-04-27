@@ -1,16 +1,8 @@
 import Link from 'next/link'
 import { MapPin, Wrench, Baby, Car, Package, Leaf, ArrowRight, Users, Shield, Zap } from 'lucide-react'
+import { CATEGORY_LIST } from '@/lib/categories'
 
 export default function HomePage() {
-  const categories = [
-    { icon: '🔧', label: 'Outils', slug: 'outils', color: 'bg-blue-50 border-blue-200' },
-    { icon: '🤝', label: 'Services', slug: 'services', color: 'bg-green-50 border-green-200' },
-    { icon: '👶', label: 'Garde d\'enfant', slug: 'garde-enfant', color: 'bg-pink-50 border-pink-200' },
-    { icon: '🚗', label: 'Covoiturage', slug: 'covoiturage', color: 'bg-yellow-50 border-yellow-200' },
-    { icon: '📦', label: 'Dons / Objets', slug: 'dons', color: 'bg-purple-50 border-purple-200' },
-    { icon: '🌿', label: 'Jardinage', slug: 'jardinage', color: 'bg-emerald-50 border-emerald-200' },
-    { icon: '🍳', label: 'Cuisine', slug: 'cuisine', color: 'bg-orange-50 border-orange-200' },
-  ]
 
   return (
     <div className="flex flex-col">
@@ -50,7 +42,7 @@ export default function HomePage() {
       <section className="max-w-4xl mx-auto px-4 py-16 w-full">
         <h2 className="text-2xl font-bold text-center mb-8">Que cherchez-vous ?</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          {categories.map((cat) => (
+          {CATEGORY_LIST.map((cat) => (
             <Link key={cat.slug} href={`/map?category=${cat.slug}`}
               className={`flex flex-col items-center gap-3 p-5 rounded-2xl border-2 ${cat.color} hover:scale-105 transition-transform cursor-pointer`}>
               <span className="text-3xl">{cat.icon}</span>

@@ -3,17 +3,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { SlidersHorizontal, Loader2, Search, MapPin, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { FILTER_CATEGORIES } from '@/lib/categories'
 
-const CATEGORIES = [
-  { slug: '', label: 'Tout', icon: '🗺️' },
-  { slug: 'outils', label: 'Outils', icon: '🔧' },
-  { slug: 'services', label: 'Services', icon: '🤝' },
-  { slug: 'garde-enfant', label: 'Enfants', icon: '👶' },
-  { slug: 'covoiturage', label: 'Trajet', icon: '🚗' },
-  { slug: 'dons', label: 'Dons', icon: '📦' },
-  { slug: 'jardinage', label: 'Jardin', icon: '🌿' },
-  { slug: 'cuisine', label: 'Cuisine', icon: '🍳' },
-]
 
 const RADII = [1, 2, 5, 10, 20]
 
@@ -145,7 +136,7 @@ export function FilterBar({ radius, onRadiusChange, category, onCategoryChange, 
 
       {/* Categories */}
       <div className="grid grid-cols-4 gap-1.5">
-        {CATEGORIES.map(cat => (
+        {FILTER_CATEGORIES.map(cat => (
           <button key={cat.slug} onClick={() => onCategoryChange(cat.slug)}
             className={cn(
               'flex items-center justify-center gap-1 px-2 py-1.5 rounded-full text-xs font-medium transition-colors border w-full',

@@ -7,6 +7,7 @@ import 'leaflet.markercluster'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 import type { Listing } from '@/lib/types'
+import { getCategoryEmoji } from '@/lib/categories'
 
 // Fix icônes Leaflet avec Next.js
 delete (L.Icon.Default.prototype as any)._getIconUrl
@@ -184,7 +185,7 @@ export default function LeafletMap({ userPosition, listings, onSelectListing, se
 
       const isDemande = listing.listing_intent === 'demande'
       const icon = L.divIcon({
-        html: `<div class="custom-marker${isDemande ? ' custom-marker--demande' : ''}" title="${listing.title}">${getCategoryIcon(listing.category_id)}</div>`,
+        html: `<div class="custom-marker${isDemande ? ' custom-marker--demande' : ''}" title="${listing.title}">${getCategoryEmoji(listing.category_id)}</div>`,
         iconSize: [36, 36],
         iconAnchor: [18, 18],
         className: '',
@@ -223,11 +224,4 @@ export default function LeafletMap({ userPosition, listings, onSelectListing, se
   }, [selectedId])
 
   return <div ref={containerRef} className="w-full h-full" />
-}
-
-function getCategoryIcon(categoryId: number | null): string {
-  const icons: Record<number, string> = {
-    1: '🔧', 2: '🤝', 3: '👶', 4: '🚗', 5: '📦', 6: '🌿',
-  }
-  return categoryId ? (icons[categoryId] || '📍') : '📍'
 }

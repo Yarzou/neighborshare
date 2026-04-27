@@ -7,19 +7,9 @@ import { ListingCard } from '@/components/listings/ListingCard'
 import type { Listing } from '@/lib/types'
 import { Loader2, Sparkles, ChevronLeft, ChevronRight, Search, X } from 'lucide-react'
 import { cn, normalizeSearch } from '@/lib/utils'
+import { FILTER_CATEGORIES } from '@/lib/categories'
 
 const PAGE_SIZE = 12
-
-const CATEGORIES = [
-  { slug: '', label: 'Tout', icon: '🗺️' },
-  { slug: 'outils', label: 'Outils', icon: '🔧' },
-  { slug: 'services', label: 'Services', icon: '🤝' },
-  { slug: 'garde-enfant', label: 'Enfants', icon: '👶' },
-  { slug: 'covoiturage', label: 'Trajet', icon: '🚗' },
-  { slug: 'dons', label: 'Dons', icon: '📦' },
-  { slug: 'jardinage', label: 'Jardin', icon: '🌿' },
-  { slug: 'cuisine', label: 'Cuisine', icon: '🍳' },
-]
 
 export default function RecentPage() {
   const supabase = createClient()
@@ -155,7 +145,7 @@ export default function RecentPage() {
 
         {/* Filtres catégories */}
         <div className="flex flex-wrap gap-1.5">
-          {CATEGORIES.map(cat => (
+          {FILTER_CATEGORIES.map(cat => (
             <button key={cat.slug} onClick={() => setCategory(cat.slug)}
               className={cn(
                 'flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-colors border',

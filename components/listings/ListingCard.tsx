@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic'
 import { MapPin, Clock, CalendarDays } from 'lucide-react'
 import type { Listing } from '@/lib/types'
 import { LISTING_TYPE_LABELS, LISTING_TYPE_COLORS } from '@/lib/types'
+import { getCategoryEmoji } from '@/lib/categories'
 import { formatDistance, formatDate, formatChildcarePeriod, formatChildcareSlots, cn } from '@/lib/utils'
 
 const CarpoolMiniMap = dynamic(() => import('@/components/map/CarpoolMiniMap'), { ssr: false })
@@ -136,9 +137,4 @@ export function ListingCard({ listing, compact = false, onClick, active }: Props
 
   if (onClick) return content
   return <Link href={`/listings/${listing.id}`}>{content}</Link>
-}
-
-function getCategoryEmoji(id: number | null) {
-  const map: Record<number, string> = { 1: '🔧', 2: '🤝', 3: '👶', 4: '🚗', 5: '📦', 6: '🌿', 7: '🍳' }
-  return id ? (map[id] || '📍') : '📍'
 }

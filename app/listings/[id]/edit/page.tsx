@@ -7,6 +7,7 @@ import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
 import { Upload, Loader2, AlertCircle, ArrowLeft, CalendarDays } from 'lucide-react'
 import type { ListingType, Category } from '@/lib/types'
+import { VENTE_EXCLUDED_SLUGS } from '@/lib/categories'
 import AddressAutocomplete, { type ResolvedAddress } from '@/components/forms/AddressAutocomplete'
 
 const CarpoolMiniMap = dynamic(() => import('@/components/map/CarpoolMiniMap'), { ssr: false })
@@ -76,13 +77,13 @@ export default function EditListingPage() {
   const isChildcare = selectedCategory?.slug === CHILDCARE_SLUG
   const hidePhoto = isCarpool || isChildcare
 
-  const EXCLUDED_FOR_VENTE = [CARPOOL_SLUG, CHILDCARE_SLUG]
+  const EXCLUDED_FOR_VENTE = VENTE_EXCLUDED_SLUGS
   const filteredCategories = form.type === 'vente'
-    ? categories.filter(c => !EXCLUDED_FOR_VENTE.includes(c.slug))
+    ? categories.filter(c => !EXCLUDED_FOR_VENTE.includes(c.slug as typeof VENTE_EXCLUDED_SLUGS[number]))
     : categories
 
   useEffect(() => {
-    if (form.type === 'vente' && selectedCategory && EXCLUDED_FOR_VENTE.includes(selectedCategory.slug)) {
+    if (form.type === 'vente' && selectedCategory && EXCLUDED_FOR_VENTE.includes(selectedCategory.slug as typeof VENTE_EXCLUDED_SLUGS[number])) {
       setForm(f => ({ ...f, category_id: '' }))
     }
   }, [form.type])
