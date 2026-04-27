@@ -26,8 +26,8 @@ export function getFirebaseMessaging(): Messaging | null {
 export async function registerFirebaseSW(): Promise<ServiceWorkerRegistration | null> {
   if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return null
   try {
-    const configParam = btoa(JSON.stringify(firebaseConfig))
-    const swUrl = `/firebase-messaging-sw.js?firebaseConfig=${configParam}`
+    // SW servi par l'API route Next.js (config Firebase injectée côté serveur, pas de query string)
+    const swUrl = '/api/firebase-messaging-sw'
 
     // Vérifie si un SW est déjà actif sur ce scope
     const existing = await navigator.serviceWorker.getRegistration('/')
