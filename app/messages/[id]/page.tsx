@@ -204,7 +204,7 @@ export default function ConversationPage() {
 
   if (notFound) {
     return (
-      <div className="max-w-lg mx-auto px-4 py-16 text-center text-gray-400">
+      <div className="max-w-5xl mx-auto px-4 py-16 text-center text-gray-400">
         <p className="text-lg font-medium mb-4">Conversation introuvable</p>
         <Link href="/messages" className="text-brand-600 hover:underline text-sm">← Retour aux messages</Link>
       </div>
@@ -212,7 +212,7 @@ export default function ConversationPage() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-4rem)]">
+    <div className="flex flex-col h-[calc(100dvh-4rem)] max-w-5xl mx-auto w-full">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 bg-white flex-shrink-0">
         <Link href="/messages" className="text-gray-500 hover:text-gray-700 flex-shrink-0">
