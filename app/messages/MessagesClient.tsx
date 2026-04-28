@@ -7,6 +7,8 @@ import { createClient } from '@/lib/supabase/client'
 import { MessageCircle, Plus, Loader2 } from 'lucide-react'
 import type { ConversationWithDetails, ConversationParticipant, DirectMessage } from '@/lib/types'
 import { ConversationRow } from '@/components/messages/ConversationRow'
+import { usePullToRefresh } from '@/hooks/usePullToRefresh'
+import { PullToRefreshIndicator } from '@/components/ui/PullToRefreshIndicator'
 
 export default function MessagesClient() {
   const router = useRouter()
@@ -83,6 +85,12 @@ export default function MessagesClient() {
     setConversations(result)
   }, [supabase])
 
+  const handleRefresh = useCallback(async () => {
+    if (userId) await buildConversations(userId)
+  }, [userId, buildConversations])
+
+  const { pullDistance, isRefreshing } = usePullToRefresh(handleRefresh)
+
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
@@ -133,6 +141,7 @@ export default function MessagesClient() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
+      <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <MessageCircle className="text-brand-600" size={26} />

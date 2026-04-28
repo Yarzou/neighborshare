@@ -8,6 +8,8 @@ import { ArrowLeft, Send, Loader2, Users, UserCircle2 } from 'lucide-react'
 import type { DirectMessage, ConversationParticipant, Profile } from '@/lib/types'
 import { formatDateTime } from '@/lib/utils'
 import { MessageBubble } from '@/components/messages/MessageBubble'
+import { usePullToRefresh } from '@/hooks/usePullToRefresh'
+import { PullToRefreshIndicator } from '@/components/ui/PullToRefreshIndicator'
 
 export default function ConversationPage() {
   const router = useRouter()
@@ -25,6 +27,7 @@ export default function ConversationPage() {
 
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
@@ -174,6 +177,19 @@ export default function ConversationPage() {
     }
   }
 
+  const handleRefresh = useCallback(async () => {
+    if (!userId) return
+    const { data: msgs } = await supabase
+      .from('messages')
+      .select('id, conversation_id, sender_id, content, created_at, profiles(id, username, full_name, avatar_url)')
+      .eq('conversation_id', id)
+      .order('created_at', { ascending: true })
+      .limit(50)
+    if (msgs) setMessages(msgs as unknown as DirectMessage[])
+  }, [userId, id, supabase])
+
+  const { pullDistance, isRefreshing } = usePullToRefresh(handleRefresh, messagesContainerRef)
+
   // Helpers affichage
   const others = participants.filter(p => p.user_id !== userId)
   const isGroup = others.length > 1
@@ -230,7 +246,8 @@ export default function ConversationPage() {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3 bg-gray-50">
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3 bg-gray-50">
+        <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
         {messages.length === 0 && (
           <div className="text-center py-12 text-gray-400">
             <UserCircle2 size={40} className="mx-auto mb-2 opacity-20" />
