@@ -288,7 +288,7 @@ export default function ProfileClient() {
         <NotificationSettings
           userId={userId!}
           initialEmailEnabled={profile.email_notifications_enabled ?? true}
-          initialPushEnabled={profile.push_notifications_enabled ?? false}
+          initialPushEnabled={profile.push_notifications_enabled ?? true}
         />
       </div>
 

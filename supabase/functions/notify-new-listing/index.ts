@@ -114,11 +114,14 @@ Deno.serve(async (req) => {
     if (fcm) {
       const { data: pushProfiles } = await supabase
         .from('profiles')
-        .select('id')
-        .eq('push_notifications_enabled', true)
+        .select('id, push_notifications_enabled')
         .neq('id', authorId)
 
-      const enabledIds = new Set((pushProfiles ?? []).map(p => p.id))
+      const enabledIds = new Set(
+        (pushProfiles ?? [])
+          .filter(p => p.push_notifications_enabled !== false)
+          .map(p => p.id)
+      )
 
       const { data: rows } = await supabase
         .from('fcm_tokens')

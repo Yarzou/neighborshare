@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { requestFCMToken } from '@/lib/firebase'
+import { isPushSupported, activatePushNotifications, deactivatePushNotifications } from '@/lib/pushNotifications'
 import { Bell, Mail, Loader2, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -23,9 +23,7 @@ export default function NotificationSettings({ userId, initialEmailEnabled, init
   const [pushSupported, setPushSupported] = useState(true)
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && !('Notification' in window)) {
-      setPushSupported(false)
-    }
+    setPushSupported(isPushSupported())
   }, [])
 
   const handleEmailToggle = async (enabled: boolean) => {
@@ -40,42 +38,20 @@ export default function NotificationSettings({ userId, initialEmailEnabled, init
     setPushSaving(true)
 
     if (enabled) {
-      let token: string
       try {
-        token = await requestFCMToken()
+        await activatePushNotifications(userId, supabase)
+        setPushEnabled(true)
       } catch (err) {
         setPushError(err instanceof Error ? err.message : 'Erreur lors de l\'activation des notifications push.')
         setPushSaving(false)
         return
       }
-      // Upsert du token FCM pour cet utilisateur
-      const { error } = await supabase.from('fcm_tokens').upsert({ user_id: userId, token }, { onConflict: 'token' })
-      if (error) {
-        setPushError('Erreur lors de l\'activation des notifications push.')
-        setPushSaving(false)
-        return
-      }
-      await supabase.from('profiles').update({ push_notifications_enabled: true }).eq('id', userId)
-      setPushEnabled(true)
     } else {
-      // Récupère le token actuel de l'appareil et le supprime
       try {
-        const { getFirebaseMessaging, registerFirebaseSW, getToken: fcmGetToken } = await import('@/lib/firebase')
-        const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY
-        const m = getFirebaseMessaging()
-        if (m && vapidKey) {
-          const swReg = await registerFirebaseSW()
-          if (swReg) {
-            const token = await fcmGetToken(m, { vapidKey, serviceWorkerRegistration: swReg })
-            if (token) {
-              await supabase.from('fcm_tokens').delete().eq('token', token).eq('user_id', userId)
-            }
-          }
-        }
+        await deactivatePushNotifications(userId, supabase)
       } catch {
-        // On continue même si on ne peut pas récupérer le token
+        // Continue même en cas d'erreur
       }
-      await supabase.from('profiles').update({ push_notifications_enabled: false }).eq('id', userId)
       setPushEnabled(false)
     }
 

@@ -5,6 +5,7 @@ import './globals.css'
 import { Navbar } from '@/components/layout/Navbar'
 import FirebaseSWRegister from '@/components/layout/FirebaseSWRegister'
 import PWAInstallBanner from '@/components/layout/PWAInstallBanner'
+import PushNotificationBanner from '@/components/layout/PushNotificationBanner'
 
 export const metadata: Metadata = {
   title: 'Les voisins du Cèdre',
@@ -40,6 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Navbar />
         <FirebaseSWRegister />
         <PWAInstallBanner />
+        <PushNotificationBanner />
         <main className="min-h-screen pt-16">
           {children}
         </main>
