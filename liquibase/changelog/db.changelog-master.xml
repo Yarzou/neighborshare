@@ -53,4 +53,7 @@
   <!-- Historique masqué après suppression (visible_from) -->
   <include file="liquibase/changelog/016-conversation-visible-from.sql"/>
 
+  <!-- Activation du realtime Supabase pour messages et conversation_participants -->
+  <include file="liquibase/changelog/017-enable-realtime.sql"/>
+
 </databaseChangeLog>

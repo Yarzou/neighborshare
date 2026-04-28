@@ -51,6 +51,21 @@ export function Navbar() {
     }
 
     fetchUnread()
+
+    // Realtime: met à jour le badge dès qu'un nouveau message arrive
+    const channel = supabase
+      .channel('navbar_unread')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => {
+        fetchUnread()
+      })
+      // Quand l'utilisateur lit une conversation, last_read_at est mis à jour
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'conversation_participants',
+        filter: `user_id=eq.${user.id}` }, () => {
+        fetchUnread()
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
   }, [user, pathname])
 
   const handleLogout = async () => {
