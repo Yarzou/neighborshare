@@ -47,4 +47,10 @@
   <!-- Type "vente" dans listing_type + colonne price sur listings -->
   <include file="liquibase/changelog/014-add-vente-type.sql"/>
 
+  <!-- Soft delete de conversation par utilisateur (deleted_at) -->
+  <include file="liquibase/changelog/015-conversation-soft-delete.sql"/>
+
+  <!-- Historique masqué après suppression (visible_from) -->
+  <include file="liquibase/changelog/016-conversation-visible-from.sql"/>
+
 </databaseChangeLog>

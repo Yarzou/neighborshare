@@ -17,11 +17,12 @@ export default function MessagesClient() {
   const [conversations, setConversations] = useState<ConversationWithDetails[]>([])
 
   const buildConversations = useCallback(async (uid: string) => {
-    // 1. Participations de l'utilisateur courant
+    // 1. Participations de l'utilisateur courant (exclut les conversations supprimées)
     const { data: myParts } = await supabase
       .from('conversation_participants')
-      .select('conversation_id, last_read_at')
+      .select('conversation_id, last_read_at, visible_from')
       .eq('user_id', uid)
+      .is('deleted_at', null)
 
     const convIds = (myParts ?? []).map(p => p.conversation_id)
     if (convIds.length === 0) { setConversations([]); return }
@@ -53,9 +54,16 @@ export default function MessagesClient() {
       partsMap[p.conversation_id].push(p as unknown as ConversationParticipant)
     }
 
+    // Indexer le dernier message visible par conversation (respecte visible_from)
+    const visibleFromMap: Record<string, string | null> = {}
+    for (const p of myParts ?? []) visibleFromMap[p.conversation_id] = p.visible_from ?? null
+
     const lastMsgMap: Record<string, DirectMessage> = {}
     for (const m of allMsgs ?? []) {
-      if (!lastMsgMap[m.conversation_id]) lastMsgMap[m.conversation_id] = m as DirectMessage
+      if (lastMsgMap[m.conversation_id]) continue
+      const visibleFrom = visibleFromMap[m.conversation_id]
+      if (visibleFrom && new Date(m.created_at) < new Date(visibleFrom)) continue
+      lastMsgMap[m.conversation_id] = m as DirectMessage
     }
 
     // Unread: messages après last_read_at du current user
@@ -102,15 +110,15 @@ export default function MessagesClient() {
   }, [userId, buildConversations])
 
   const handleDeleteConversation = async (convId: string) => {
-    // Suppression optimiste
+    // Soft delete : masque la conversation + mémorise la coupure d'historique
+    const now = new Date().toISOString()
     setConversations(prev => prev.filter(c => c.id !== convId))
     const { error } = await supabase
       .from('conversation_participants')
-      .delete()
+      .update({ deleted_at: now, visible_from: now })
       .eq('conversation_id', convId)
       .eq('user_id', userId!)
     if (error) {
-      // Rollback
       await buildConversations(userId!)
     }
   }

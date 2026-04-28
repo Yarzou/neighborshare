@@ -44,7 +44,7 @@ export default function ConversationPage() {
       // (évite la double RLS : conversations → conversation_participants auto-référentielle)
       const { data: myPart, error: partError } = await supabase
         .from('conversation_participants')
-        .select('conversation_id')
+        .select('conversation_id, visible_from')
         .eq('conversation_id', id)
         .eq('user_id', uid)
         .maybeSingle()
@@ -66,13 +66,17 @@ export default function ConversationPage() {
         .eq('conversation_id', id)
       setParticipants((parts ?? []) as unknown as ConversationParticipant[])
 
-      // Messages (50 derniers)
-      const { data: msgs } = await supabase
+      // Messages (50 derniers) — filtrés par visible_from si défini
+      let msgsQuery = supabase
         .from('messages')
         .select('id, conversation_id, sender_id, content, created_at, profiles(id, username, full_name, avatar_url)')
         .eq('conversation_id', id)
         .order('created_at', { ascending: true })
         .limit(50)
+      if (myPart.visible_from) {
+        msgsQuery = msgsQuery.gte('created_at', myPart.visible_from)
+      }
+      const { data: msgs } = await msgsQuery
       setMessages((msgs ?? []) as unknown as DirectMessage[])
 
       setLoading(false)
