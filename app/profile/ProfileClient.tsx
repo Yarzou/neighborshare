@@ -17,6 +17,29 @@ import {
 } from 'lucide-react'
 import { isPushSupported, activatePushNotifications, deactivatePushNotifications } from '@/lib/pushNotifications'
 
+const AVATAR_COLORS = [
+  '#dcfce7', // vert (défaut)
+  '#dbeafe', // bleu
+  '#f3e8ff', // violet
+  '#fce7f3', // rose
+  '#fef2f2', // rouge clair
+  '#ffedd5', // orange
+  '#fef9c3', // jaune
+  '#e0f2fe', // cyan
+  '#f1f5f9', // gris
+]
+
+const DEFAULT_AVATAR_COLOR = '#dcfce7'
+
+/** Retourne la couleur de texte (noir ou blanc) selon la luminosité du fond hex */
+function getTextColor(hex: string): string {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+  return luminance > 0.6 ? '#1a3c2a' : '#ffffff'
+}
+
 export default function ProfileClient() {
   const router = useRouter()
   const supabase = createClient()
@@ -27,7 +50,7 @@ export default function ProfileClient() {
   const [pageLoading, setPageLoading] = useState(true)
 
   const [editMode, setEditMode] = useState(false)
-  const [form, setForm] = useState({ full_name: '', username: '', bio: '' })
+  const [form, setForm] = useState({ full_name: '', username: '', bio: '', avatar_color: DEFAULT_AVATAR_COLOR })
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
 
@@ -79,7 +102,7 @@ export default function ProfileClient() {
 
       if (prof) {
         setProfile(prof as Profile)
-        setForm({ full_name: prof.full_name || '', username: prof.username || '', bio: prof.bio || '' })
+        setForm({ full_name: prof.full_name || '', username: prof.username || '', bio: prof.bio || '', avatar_color: prof.avatar_color || DEFAULT_AVATAR_COLOR })
         setEmailEnabled(prof.email_notifications_enabled ?? true)
         setPushEnabled(prof.push_notifications_enabled ?? true)
       }
@@ -100,6 +123,7 @@ export default function ProfileClient() {
         full_name: form.full_name.trim() || null,
         username: form.username.trim(),
         bio: form.bio.trim() || null,
+        avatar_color: form.avatar_color,
       })
       .eq('id', userId)
 
@@ -111,6 +135,7 @@ export default function ProfileClient() {
         full_name: form.full_name.trim() || null,
         username: form.username.trim(),
         bio: form.bio.trim() || null,
+        avatar_color: form.avatar_color,
       }) : p)
       setEditMode(false)
     }
@@ -214,6 +239,7 @@ export default function ProfileClient() {
       full_name: profile?.full_name || '',
       username: profile?.username || '',
       bio: profile?.bio || '',
+      avatar_color: profile?.avatar_color || DEFAULT_AVATAR_COLOR,
     })
   }
 
@@ -229,6 +255,8 @@ export default function ProfileClient() {
 
   const displayName = profile.full_name || profile.username
   const initials = displayName?.[0]?.toUpperCase() || '?'
+  const avatarBg = profile.avatar_color || DEFAULT_AVATAR_COLOR
+  const avatarTextColor = getTextColor(avatarBg)
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 flex flex-col gap-6">
@@ -237,7 +265,10 @@ export default function ProfileClient() {
       <div className="bg-white rounded-3xl border border-gray-200 shadow-sm p-6">
         {!editMode ? (
           <div className="flex flex-col items-center text-center gap-3">
-            <div className="w-20 h-20 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-bold text-3xl select-none">
+            <div
+              className="w-20 h-20 rounded-full flex items-center justify-center font-bold text-3xl select-none"
+              style={{ backgroundColor: avatarBg, color: avatarTextColor }}
+            >
               {initials}
             </div>
             <div>
@@ -268,6 +299,35 @@ export default function ProfileClient() {
                 <AlertCircle size={13} /> {saveError}
               </div>
             )}
+
+            {/* Aperçu avatar + palette */}
+            <div className="flex flex-col items-center gap-3">
+              <div
+                className="w-20 h-20 rounded-full flex items-center justify-center font-bold text-3xl select-none"
+                style={{ backgroundColor: form.avatar_color, color: getTextColor(form.avatar_color) }}
+              >
+                {initials}
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 text-center mb-2">Couleur de fond</p>
+                <div className="flex flex-wrap justify-center gap-2">
+                  {AVATAR_COLORS.map(color => (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, avatar_color: color }))}
+                      className="w-8 h-8 rounded-full flex items-center justify-center transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                      style={{ backgroundColor: color, outline: form.avatar_color === color ? `2px solid #16a34a` : undefined, outlineOffset: '2px' }}
+                      title={color}
+                    >
+                      {form.avatar_color === color && (
+                        <Check size={14} style={{ color: getTextColor(color) }} />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Nom complet</label>
               <input

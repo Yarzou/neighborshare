@@ -56,4 +56,7 @@
   <!-- Activation du realtime Supabase pour messages et conversation_participants -->
   <include file="liquibase/changelog/017-enable-realtime.sql"/>
 
+  <!-- Couleur de fond personnalisable de l'avatar -->
+  <include file="liquibase/changelog/018-avatar-color.sql"/>
+
 </databaseChangeLog>

@@ -33,6 +33,7 @@ export interface Profile {
   created_at: string
   email_notifications_enabled?: boolean
   push_notifications_enabled?: boolean
+  avatar_color?: string | null
 }
 
 export interface Listing {
