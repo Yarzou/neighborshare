@@ -11,7 +11,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const RESEND_FROM    = Deno.env.get('RESEND_FROM_EMAIL') ?? 'Les voisins du Cèdre <notifications@voisinsducedre.fr>'
-const APP_URL        = Deno.env.get('APP_URL') ?? 'https://voisinsducedre.fr'
+const APP_URL        = Deno.env.get('APP_URL') ?? 'https://neighborshare-liard.vercel.app/'
 
 // ── FCM utilities (inlined) ────────────────────────────────────────────────────
 
@@ -45,8 +45,9 @@ async function sendFCMPush(token: string, notification: { title: string; body: s
     method: 'POST',
     headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ message: {
-      token, notification: { title: notification.title, body: notification.body },
-      webpush: { notification: { icon: '/logo_cedre.png' }, fcm_options: { link: notification.url ?? '/' } },
+      token,
+      data: { title: notification.title, body: notification.body, icon: '/logo_cedre.png', url: notification.url ?? '/' },
+      webpush: { fcm_options: { link: notification.url ?? '/' } },
     }}),
   })
   if (!res.ok) console.error(`[FCM] Push failed: ${await res.text()}`)

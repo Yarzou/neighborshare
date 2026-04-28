@@ -16,12 +16,12 @@ if (configParam && !firebase.apps.length) {
     const messaging = firebase.messaging()
 
     messaging.onBackgroundMessage((payload) => {
-      const { title, body, icon } = payload.notification ?? {}
+      const { title, body, icon, url } = (payload.data ?? {}) as Record<string, string>
       self.registration.showNotification(title ?? 'Les voisins du Cèdre', {
         body: body ?? '',
         icon: icon ?? '/logo_cedre.png',
         badge: '/logo_cedre.png',
-        data: payload.data,
+        data: { url: url ?? '/' },
       })
     })
   } catch (err) {

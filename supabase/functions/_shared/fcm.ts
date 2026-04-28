@@ -76,6 +76,8 @@ export async function sendFCMPush(
   accessToken: string,
   projectId: string,
 ): Promise<boolean> {
+  // Payload data-only : pas de champ "notification" pour éviter le double affichage
+  // (le SW onBackgroundMessage est seul responsable d'appeler showNotification).
   const res = await fetch(
     `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`,
     {
@@ -87,9 +89,13 @@ export async function sendFCMPush(
       body: JSON.stringify({
         message: {
           token: deviceToken,
-          notification: { title: notification.title, body: notification.body },
+          data: {
+            title: notification.title,
+            body: notification.body,
+            icon: '/logo_cedre.png',
+            url: notification.url ?? '/',
+          },
           webpush: {
-            notification: { icon: '/logo_cedre.png' },
             fcm_options: { link: notification.url ?? '/' },
           },
         },

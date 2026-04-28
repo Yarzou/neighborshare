@@ -25,12 +25,16 @@ if (!firebase.apps.length) {
 const messaging = firebase.messaging()
 
 messaging.onBackgroundMessage((payload) => {
-  const { title, body, icon } = payload.notification ?? {}
-  self.registration.showNotification(title ?? 'Les voisins du Cèdre', {
-    body: body ?? '',
-    icon: icon ?? '/logo_cedre.png',
+  const data = payload.data ?? {}
+  const title = data.title ?? 'Les voisins du Cèdre'
+  const body  = data.body  ?? ''
+  const icon  = data.icon  ?? '/logo_cedre.png'
+  const url   = data.url   ?? '/'
+  self.registration.showNotification(title, {
+    body,
+    icon,
     badge: '/logo_cedre.png',
-    data: payload.data,
+    data: { url },
   })
 })
 
