@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { LISTING_TYPE_LABELS, LISTING_TYPE_COLORS } from '@/lib/types'
-import { formatDate, cn } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 
 export default async function PublicProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const supabase = await createClient()

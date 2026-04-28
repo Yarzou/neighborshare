@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { MessageCircle, Plus, Loader2 } from 'lucide-react'
-import { formatDate } from '@/lib/utils'
 import type { ConversationWithDetails, ConversationParticipant, DirectMessage } from '@/lib/types'
 import { ConversationRow } from '@/components/messages/ConversationRow'
 

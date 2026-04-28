@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { MapPin, Wrench, Baby, Car, Package, Leaf, ArrowRight, Users, Shield, Zap } from 'lucide-react'
+import { MapPin, ArrowRight, Users } from 'lucide-react'
 import { CATEGORY_LIST } from '@/lib/categories'
 import { createClient } from '@/lib/supabase/server'
 
