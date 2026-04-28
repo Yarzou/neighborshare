@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Trash2, Users } from 'lucide-react'
-import { formatDate } from '@/lib/utils'
+import { formatDate, getAvatarStyle } from '@/lib/utils'
 import type { ConversationWithDetails, Profile } from '@/lib/types'
 
 interface Props {
@@ -101,9 +101,8 @@ export function ConversationRow({ conv, userId, onDelete }: Props) {
       >
         {/* Avatar */}
         <div
-          className={`w-11 h-11 rounded-full flex items-center justify-center font-bold flex-shrink-0 text-lg ${
-            isGroup ? 'bg-purple-100 text-purple-700' : 'bg-brand-100 text-brand-700'
-          }`}
+          className="w-11 h-11 rounded-full flex items-center justify-center font-bold flex-shrink-0 text-lg"
+          style={isGroup ? { backgroundColor: '#f3e8ff', color: '#6b21a8' } : getAvatarStyle(others[0]?.avatar_color)}
         >
           {isGroup ? <Users size={20} /> : initials}
         </div>

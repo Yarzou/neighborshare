@@ -37,7 +37,7 @@ export default function MessagesClient() {
     // 3. Tous les participants avec leur profil
     const { data: allParts } = await supabase
       .from('conversation_participants')
-      .select('conversation_id, user_id, last_read_at, joined_at, profiles(id, username, full_name, avatar_url)')
+      .select('conversation_id, user_id, last_read_at, joined_at, profiles(id, username, full_name, avatar_url, avatar_color)')
       .in('conversation_id', convIds)
 
     // 4. Dernier message par conversation

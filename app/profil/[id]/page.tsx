@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { LISTING_TYPE_LABELS, LISTING_TYPE_COLORS } from '@/lib/types'
-import { cn } from '@/lib/utils'
+import { cn, getAvatarStyle } from '@/lib/utils'
 
 export default async function PublicProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const supabase = await createClient()
@@ -11,7 +11,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, full_name, username, bio, avatar_url')
+    .select('id, full_name, username, bio, avatar_url, avatar_color')
     .eq('id', id)
     .single()
 
@@ -35,7 +35,10 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
 
       {/* Profile header */}
       <div className="flex items-center gap-4 mb-8">
-        <div className="w-16 h-16 rounded-full bg-brand-100 flex items-center justify-center text-2xl font-bold text-brand-700 flex-shrink-0">
+        <div
+          className="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold flex-shrink-0"
+          style={getAvatarStyle(profile.avatar_color)}
+        >
           {initial}
         </div>
         <div>

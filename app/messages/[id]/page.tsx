@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { ArrowLeft, Send, Loader2, Users, UserCircle2 } from 'lucide-react'
 import type { DirectMessage, ConversationParticipant, Profile } from '@/lib/types'
-import { formatDateTime } from '@/lib/utils'
+import { formatDateTime, getAvatarStyle } from '@/lib/utils'
 import { MessageBubble } from '@/components/messages/MessageBubble'
 
 export default function ConversationPage() {
@@ -62,7 +62,7 @@ export default function ConversationPage() {
       // Participants avec profil
       const { data: parts } = await supabase
         .from('conversation_participants')
-        .select('conversation_id, user_id, last_read_at, joined_at, profiles(id, username, full_name, avatar_url)')
+        .select('conversation_id, user_id, last_read_at, joined_at, profiles(id, username, full_name, avatar_url, avatar_color)')
         .eq('conversation_id', id)
       setParticipants((parts ?? []) as unknown as ConversationParticipant[])
 
@@ -194,6 +194,11 @@ export default function ConversationPage() {
     return name === 'Vous' ? 'V' : name[0]?.toUpperCase() || '?'
   }
 
+  const getParticipantAvatarColor = (senderId: string) => {
+    const p = participants.find(p => p.user_id === senderId)
+    return (p?.profiles as Profile | undefined)?.avatar_color
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -218,7 +223,10 @@ export default function ConversationPage() {
         <Link href="/messages" className="text-gray-500 hover:text-gray-700 flex-shrink-0">
           <ArrowLeft size={20} />
         </Link>
-        <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 ${isGroup ? 'bg-purple-100 text-purple-700' : 'bg-brand-100 text-brand-700'}`}>
+        <div
+          className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0"
+          style={isGroup ? { backgroundColor: '#f3e8ff', color: '#6b21a8' } : getAvatarStyle((others[0]?.profiles as Profile | undefined)?.avatar_color)}
+        >
           {isGroup ? <Users size={16} /> : (headerName[0]?.toUpperCase() || '?')}
         </div>
         <div className="flex-1 min-w-0">
@@ -254,6 +262,7 @@ export default function ConversationPage() {
               showSender={showSender}
               senderName={getParticipantName(msg.sender_id)}
               senderInitial={getInitial(msg.sender_id)}
+              senderAvatarColor={getParticipantAvatarColor(msg.sender_id)}
               onDelete={handleDelete}
             />
           )

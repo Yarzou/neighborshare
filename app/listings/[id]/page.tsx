@@ -4,7 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { MapPin, Clock, ArrowLeft, CalendarDays, MessageCircle, RefreshCw } from 'lucide-react'
 import { isListingType, LISTING_TYPE_LABELS, LISTING_TYPE_COLORS, LISTING_STATUS_LABELS, LISTING_STATUS_COLORS, type Listing } from '@/lib/types'
-import { formatDate, formatChildcarePeriod, formatChildcareSlots } from '@/lib/utils'
+import { formatDate, formatChildcarePeriod, formatChildcareSlots, getAvatarStyle } from '@/lib/utils'
 import { ContactButton } from '@/components/listings/ContactButton'
 import { ListingActions } from '@/components/listings/ListingActions'
 import CarpoolMiniMap from '@/components/map/CarpoolMiniMapDynamic'
@@ -33,7 +33,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
   if (typedListing.responder_id) {
     const { data } = await supabase
       .from('profiles')
-      .select('id, username, full_name, avatar_url, rating, rating_count')
+      .select('id, username, full_name, avatar_url, avatar_color, rating, rating_count')
       .eq('id', typedListing.responder_id)
       .single()
     responderProfile = data
@@ -187,7 +187,10 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
 
           {/* Profil du propriétaire */}
           <Link href={`/profil/${listing.user_id}`} className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-bold group-hover:bg-brand-200 transition-colors">
+            <div
+              className="w-10 h-10 rounded-full flex items-center justify-center font-bold group-hover:opacity-80 transition-opacity"
+              style={getAvatarStyle(listing.profiles?.avatar_color)}
+            >
               {listing.profiles?.full_name?.[0] || listing.profiles?.username?.[0] || '?'}
             </div>
             <div>
@@ -204,7 +207,10 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
                   {typedListing.status === 'validee' ? '✅ Demande validée' : '⏳ Demande en cours'}
                 </p>
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-orange-200 flex items-center justify-center text-orange-700 font-bold text-sm">
+                  <div
+                    className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm"
+                    style={getAvatarStyle(responderProfile.avatar_color)}
+                  >
                     {responderProfile.full_name?.[0] || responderProfile.username?.[0] || '?'}
                   </div>
                   <div>

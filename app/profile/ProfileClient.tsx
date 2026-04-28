@@ -10,6 +10,7 @@ import { LISTING_TYPE_LABELS, LISTING_TYPE_COLORS } from '@/lib/types'
 import { getCategoryEmoji } from '@/lib/categories'
 import { formatDate } from '@/lib/utils'
 import { cn } from '@/lib/utils'
+import { getAvatarStyle, DEFAULT_AVATAR_COLOR } from '@/lib/utils'
 import {
   Package, Pencil, Trash2, Edit2,
   Check, X, Loader2, AlertCircle, Plus,
@@ -28,8 +29,6 @@ const AVATAR_COLORS = [
   '#e0f2fe', // cyan
   '#f1f5f9', // gris
 ]
-
-const DEFAULT_AVATAR_COLOR = '#dcfce7'
 
 /** Retourne la couleur de texte (noir ou blanc) selon la luminosité du fond hex */
 function getTextColor(hex: string): string {
@@ -255,8 +254,6 @@ export default function ProfileClient() {
 
   const displayName = profile.full_name || profile.username
   const initials = displayName?.[0]?.toUpperCase() || '?'
-  const avatarBg = profile.avatar_color || DEFAULT_AVATAR_COLOR
-  const avatarTextColor = getTextColor(avatarBg)
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 flex flex-col gap-6">
@@ -267,7 +264,7 @@ export default function ProfileClient() {
           <div className="flex flex-col items-center text-center gap-3">
             <div
               className="w-20 h-20 rounded-full flex items-center justify-center font-bold text-3xl select-none"
-              style={{ backgroundColor: avatarBg, color: avatarTextColor }}
+              style={getAvatarStyle(profile.avatar_color)}
             >
               {initials}
             </div>
@@ -304,7 +301,7 @@ export default function ProfileClient() {
             <div className="flex flex-col items-center gap-3">
               <div
                 className="w-20 h-20 rounded-full flex items-center justify-center font-bold text-3xl select-none"
-                style={{ backgroundColor: form.avatar_color, color: getTextColor(form.avatar_color) }}
+                style={getAvatarStyle(form.avatar_color)}
               >
                 {initials}
               </div>

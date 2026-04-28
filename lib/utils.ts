@@ -84,3 +84,22 @@ export function formatChildcareSlots(slots: ChildcareSlot[]): string {
 
   return parts.join(' · ')
 }
+
+// ── Avatar helpers ───────────────────────────────────────────────────────────
+
+export const DEFAULT_AVATAR_COLOR = '#dcfce7'
+
+/** Retourne la couleur de texte (sombre ou blanc) optimale pour un fond hex donné. */
+function getAvatarTextColor(hex: string): string {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+  return luminance > 0.6 ? '#1a3c2a' : '#ffffff'
+}
+
+/** Style inline à appliquer sur un cercle d'avatar (initiales). */
+export function getAvatarStyle(color?: string | null): { backgroundColor: string; color: string } {
+  const bg = color || DEFAULT_AVATAR_COLOR
+  return { backgroundColor: bg, color: getAvatarTextColor(bg) }
+}

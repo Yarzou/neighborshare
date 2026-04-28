@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react'
 import { Trash2 } from 'lucide-react'
-import { formatDateTime } from '@/lib/utils'
+import { formatDateTime, getAvatarStyle } from '@/lib/utils'
 import type { DirectMessage } from '@/lib/types'
 
 interface Props {
@@ -13,6 +13,7 @@ interface Props {
   showSender: boolean
   senderName: string
   senderInitial: string
+  senderAvatarColor?: string | null
   onDelete: (id: string) => void
 }
 
@@ -26,6 +27,7 @@ export function MessageBubble({
   showSender,
   senderName,
   senderInitial,
+  senderAvatarColor,
   onDelete,
 }: Props) {
   const [swipeX, setSwipeX] = useState(0)
@@ -71,9 +73,8 @@ export function MessageBubble({
       {/* Avatar autres participants */}
       {!isMe && (
         <div
-          className={`w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold ${
-            isSameAuthor ? 'opacity-0' : 'bg-blue-100 text-blue-700'
-          }`}
+          className={`w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold ${isSameAuthor ? 'opacity-0' : ''}`}
+          style={isSameAuthor ? undefined : getAvatarStyle(senderAvatarColor)}
         >
           {senderInitial}
         </div>

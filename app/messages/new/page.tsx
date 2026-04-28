@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { ArrowLeft, Search, X, Users, Loader2, Check, AlertCircle } from 'lucide-react'
 import type { Profile } from '@/lib/types'
+import { getAvatarStyle } from '@/lib/utils'
 
 export default function NewConversationPage() {
   const router = useRouter()
@@ -39,7 +40,7 @@ export default function NewConversationPage() {
     debounceRef.current = setTimeout(async () => {
       const { data } = await supabase
         .from('profiles')
-        .select('id, username, full_name, avatar_url, bio, rating, rating_count, created_at')
+        .select('id, username, full_name, avatar_url, bio, rating, rating_count, created_at, avatar_color')
         .or(`username.ilike.%${query}%,full_name.ilike.%${query}%`)
         .neq('id', userId ?? '')
         .limit(8)
@@ -177,7 +178,10 @@ export default function NewConversationPage() {
                 onClick={() => toggleSelect(profile)}
                 className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${i > 0 ? 'border-t border-gray-50' : ''} ${sel ? 'bg-brand-50' : 'hover:bg-gray-50'}`}
               >
-                <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 ${sel ? 'bg-brand-600 text-white' : 'bg-brand-100 text-brand-700'}`}>
+                <div
+                  className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0"
+                  style={sel ? { backgroundColor: '#16a34a', color: '#ffffff' } : getAvatarStyle(profile.avatar_color)}
+                >
                   {sel ? <Check size={16} /> : (profile.full_name || profile.username)[0].toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
