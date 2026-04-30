@@ -13,7 +13,3 @@ CREATE POLICY "categories_select" ON public.categories FOR SELECT USING (true);
 -- Tables internes Liquibase : RLS activé sans politique = inaccessibles via PostgREST
 ALTER TABLE public.databasechangelog ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.databasechangeloglock ENABLE ROW LEVEL SECURITY;
-
--- Note: spatial_ref_sys appartient à l'extension PostGIS (owned by superuser),
--- il est impossible d'y activer RLS sans droits superuser. Ce warning Supabase
--- peut être ignoré — la table est en lecture seule et ne contient aucune donnée sensible.
