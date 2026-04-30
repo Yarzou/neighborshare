@@ -140,9 +140,15 @@ export default function MessagesClient() {
         </h1>
         <Link
           href="/messages/new"
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium bg-brand-600 text-white hover:bg-brand-700 transition-colors"
+          className="flex items-center justify-center gap-1.5
+                     w-10 h-10 rounded-full
+                     sm:w-auto sm:h-auto sm:px-4 sm:py-2 sm:rounded-xl
+                     bg-brand-600 text-white hover:bg-brand-700 transition-colors
+                     text-sm font-medium flex-shrink-0"
+          aria-label="Nouvelle conversation"
         >
-          <Plus size={15} /> Nouvelle conversation
+          <Plus size={18} />
+          <span className="hidden sm:inline">Nouvelle conversation</span>
         </Link>
       </div>
 
