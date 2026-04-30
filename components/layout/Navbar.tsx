@@ -106,7 +106,7 @@ export function Navbar() {
     <nav className="fixed top-0 left-0 right-0 z-[1200] bg-white border-b border-gray-200 shadow-sm">
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 font-bold text-brand-700 text-lg">
+        <Link href={user ? '/map' : '/'} className="flex items-center gap-2 font-bold text-brand-700 text-lg">
           <Image src="/logo_cedre.png" alt="Logo" width={50} height={50} className="rounded-lg" />
           <span>Les voisins du Cèdre</span>
         </Link>

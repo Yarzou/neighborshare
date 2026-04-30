@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { MapPin, ArrowRight, Users } from 'lucide-react'
 import { CATEGORY_LIST } from '@/lib/categories'
 import { createClient } from '@/lib/supabase/server'
@@ -6,6 +7,8 @@ import { createClient } from '@/lib/supabase/server'
 export default async function HomePage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+
+  if (user) redirect('/map')
 
   return (
     <div className="flex flex-col">
