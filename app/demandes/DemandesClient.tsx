@@ -141,6 +141,30 @@ function DemandeCard({
             Annuler ma demande
           </button>
         )}
+
+        {/* Owner: undo a validated request */}
+        {role === 'owner' && item.status === 'validee' && (
+          <button
+            onClick={() => run('cancel', 'cancel_listing_response')}
+            disabled={loading !== null}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl border border-red-200 text-red-600 text-xs font-medium hover:bg-red-50 transition-colors disabled:opacity-50"
+          >
+            {loading === 'cancel' ? <Loader2 size={12} className="animate-spin" /> : <XCircle size={13} />}
+            Annuler la validation
+          </button>
+        )}
+
+        {/* Responder: cancel an accepted request */}
+        {role === 'responder' && item.status === 'validee' && (
+          <button
+            onClick={() => run('cancel', 'cancel_listing_response', 'cancelled')}
+            disabled={loading !== null}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl border border-red-200 text-red-600 text-xs font-medium hover:bg-red-50 transition-colors disabled:opacity-50"
+          >
+            {loading === 'cancel' ? <Loader2 size={12} className="animate-spin" /> : <XCircle size={13} />}
+            Terminer ma demande
+          </button>
+        )}
       </div>
     </div>
   )
