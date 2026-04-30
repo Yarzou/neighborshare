@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
-import { MapPin, Plus, MessageCircle, User, LogOut, Menu, X, Sparkles } from 'lucide-react'
+import { MapPin, Plus, MessageCircle, User, LogOut, Menu, X, ClipboardList } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
@@ -15,6 +15,7 @@ export function Navbar() {
   const [user, setUser] = useState<SupabaseUser | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0)
   const supabase = createClient()
 
   useEffect(() => {
@@ -50,7 +51,25 @@ export function Navbar() {
       setUnreadCount(total)
     }
 
+    const fetchPendingRequests = async () => {
+      // Count en_cours listings where user is owner OR responder
+      const [{ count: asOwner }, { count: asResponder }] = await Promise.all([
+        supabase
+          .from('listings')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('status', 'en_cours'),
+        supabase
+          .from('listings')
+          .select('id', { count: 'exact', head: true })
+          .eq('responder_id', user.id)
+          .eq('status', 'en_cours'),
+      ])
+      setPendingRequestsCount((asOwner ?? 0) + (asResponder ?? 0))
+    }
+
     fetchUnread()
+    fetchPendingRequests()
 
     // Realtime: met à jour le badge dès qu'un nouveau message arrive
     const channel = supabase
@@ -62,6 +81,14 @@ export function Navbar() {
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'conversation_participants',
         filter: `user_id=eq.${user.id}` }, () => {
         fetchUnread()
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'listings',
+        filter: `user_id=eq.${user.id}` }, () => {
+        fetchPendingRequests()
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'listings',
+        filter: `responder_id=eq.${user.id}` }, () => {
+        fetchPendingRequests()
       })
       .subscribe()
 
@@ -102,6 +129,14 @@ export function Navbar() {
     }
   }
 
+  const handleDemandes = () => {
+    if (user) {
+      router.push('/demandes')
+    } else {
+      router.push('/auth/login?redirect=%2Fdemandes')
+    }
+  }
+
   return (
     <nav className="fixed top-0 left-0 right-0 z-[1200] bg-white border-b border-gray-200 shadow-sm">
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
@@ -134,6 +169,22 @@ export function Navbar() {
             )}>
             <Plus size={16} /> Publier
           </button>
+          {user && (
+            <button onClick={handleDemandes}
+              className={cn(
+                'relative flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-colors',
+                pathname?.startsWith('/demandes')
+                  ? 'bg-brand-50 text-brand-700'
+                  : 'text-gray-600 hover:bg-gray-100'
+              )}>
+              <ClipboardList size={16} /> Demandes
+              {pendingRequestsCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
+                  {pendingRequestsCount > 9 ? '9+' : pendingRequestsCount}
+                </span>
+              )}
+            </button>
+          )}
           {user && (
             <button onClick={handleMessages}
               className={cn(
@@ -198,6 +249,20 @@ export function Navbar() {
             className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100">
             <Plus size={16} /> Publier
           </button>
+          {user && (
+            <button onClick={() => { handleDemandes(); setMenuOpen(false) }}
+              className={cn(
+                'relative flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-100',
+                pathname?.startsWith('/demandes') ? 'text-brand-700' : 'text-gray-700'
+              )}>
+              <ClipboardList size={16} /> Demandes
+              {pendingRequestsCount > 0 && (
+                <span className="ml-auto min-w-[20px] h-5 px-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {pendingRequestsCount > 9 ? '9+' : pendingRequestsCount}
+                </span>
+              )}
+            </button>
+          )}
           {user && (
             <button onClick={() => { handleMessages(); setMenuOpen(false) }}
               className={cn(

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { ArrowLeft, Send, Loader2, Users, UserCircle2 } from 'lucide-react'
+import { ArrowLeft, Send, Loader2, Users, UserCircle2, Package } from 'lucide-react'
 import type { DirectMessage, ConversationParticipant, Profile } from '@/lib/types'
 import { formatDateTime, getAvatarStyle } from '@/lib/utils'
 import { MessageBubble } from '@/components/messages/MessageBubble'
@@ -19,6 +19,7 @@ export default function ConversationPage() {
   const [messages, setMessages] = useState<DirectMessage[]>([])
   const [participants, setParticipants] = useState<ConversationParticipant[]>([])
   const [convName, setConvName] = useState<string | null>(null)
+  const [linkedListing, setLinkedListing] = useState<{ id: string; title: string; category: { icon: string } | null } | null>(null)
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const [notFound, setNotFound] = useState(false)
@@ -58,6 +59,22 @@ export default function ConversationPage() {
         .eq('id', id)
         .maybeSingle()
       setConvName(conv?.name ?? null)
+
+      // Fetch the listing linked to this conversation (if any)
+      const { data: listing } = await supabase
+        .from('listings')
+        .select('id, title, categories(icon)')
+        .eq('conversation_id', id)
+        .maybeSingle()
+      if (listing) {
+        setLinkedListing({
+          id: listing.id,
+          title: listing.title,
+          category: Array.isArray(listing.categories)
+            ? (listing.categories[0] as { icon: string } | null)
+            : (listing.categories as unknown as { icon: string } | null),
+        })
+      }
 
       // Participants avec profil
       const { data: parts } = await supabase
@@ -236,6 +253,23 @@ export default function ConversationPage() {
           </p>
         </div>
       </div>
+
+      {/* Listing banner */}
+      {linkedListing && (
+        <Link
+          href={`/listings/${linkedListing.id}`}
+          className="flex items-center gap-2.5 px-4 py-2.5 bg-brand-50 border-b border-brand-100 hover:bg-brand-100 transition-colors flex-shrink-0"
+        >
+          <div className="w-7 h-7 rounded-lg bg-brand-100 flex items-center justify-center flex-shrink-0 text-base">
+            {linkedListing.category?.icon ?? <Package size={14} className="text-brand-600" />}
+          </div>
+          <div className="min-w-0">
+            <p className="text-[11px] font-medium text-brand-500 uppercase tracking-wide leading-none mb-0.5">Annonce liée</p>
+            <p className="text-sm font-semibold text-brand-700 truncate">{linkedListing.title}</p>
+          </div>
+          <span className="ml-auto text-brand-400 text-xs flex-shrink-0">→</span>
+        </Link>
+      )}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3 bg-gray-50">
