@@ -110,6 +110,7 @@ export interface DirectMessage {
   sender_id: string
   content: string
   created_at: string
+  is_system?: boolean
   profiles?: Profile
 }
 

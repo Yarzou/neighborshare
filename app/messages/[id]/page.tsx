@@ -86,7 +86,7 @@ export default function ConversationPage() {
       // Messages (50 derniers) — filtrés par visible_from si défini
       let msgsQuery = supabase
         .from('messages')
-        .select('id, conversation_id, sender_id, content, created_at, profiles(id, username, full_name, avatar_url)')
+        .select('id, conversation_id, sender_id, content, created_at, is_system, profiles(id, username, full_name, avatar_url)')
         .eq('conversation_id', id)
         .order('created_at', { ascending: true })
         .limit(50)
@@ -176,7 +176,7 @@ export default function ConversationPage() {
       // Rollback : recharge les messages depuis la BDD
       const { data: msgs } = await supabase
         .from('messages')
-        .select('id, conversation_id, sender_id, content, created_at, profiles(id, username, full_name, avatar_url)')
+        .select('id, conversation_id, sender_id, content, created_at, is_system, profiles(id, username, full_name, avatar_url)')
         .eq('conversation_id', id)
         .order('created_at', { ascending: true })
         .limit(50)

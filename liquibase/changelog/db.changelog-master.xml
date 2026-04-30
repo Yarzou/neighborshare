@@ -65,4 +65,7 @@
   <!-- RLS manquant sur categories, databasechangelog* et spatial_ref_sys -->
   <include file="liquibase/changelog/020-fix-rls.sql"/>
 
+  <!-- Messages système (is_system) + RPCs validate/cancel avec message auto -->
+  <include file="liquibase/changelog/021-system-messages.sql"/>
+
 </databaseChangeLog>

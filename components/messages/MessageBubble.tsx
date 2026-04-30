@@ -37,6 +37,20 @@ export function MessageBubble({
   const isTemp = msg.id.startsWith('temp-')
   const canDelete = isMe && !isTemp
 
+  // ── Système ────────────────────────────────────────────────────────────────
+  if (msg.is_system) {
+    return (
+      <div className="flex justify-center py-2 px-4">
+        <div className="flex flex-col items-center gap-1 max-w-xs text-center">
+          <span className="text-xs text-gray-500 bg-gray-100 px-4 py-1.5 rounded-full border border-gray-200 font-medium">
+            {msg.content}
+          </span>
+          <span className="text-[10px] text-gray-400">{formatDateTime(msg.created_at)}</span>
+        </div>
+      </div>
+    )
+  }
+
   // ── Touch handlers (mobile swipe) ──────────────────────────────────────────
   const handleTouchStart = (e: React.TouchEvent) => {
     if (!canDelete) return
