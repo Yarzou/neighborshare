@@ -14,7 +14,6 @@ CREATE POLICY "categories_select" ON public.categories FOR SELECT USING (true);
 ALTER TABLE public.databasechangelog ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.databasechangeloglock ENABLE ROW LEVEL SECURITY;
 
---changeset neighborshare:020-rls-spatial-ref-sys
--- Table de référence PostGIS : lecture publique en lecture seule
-ALTER TABLE public.spatial_ref_sys ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "spatial_ref_sys_select" ON public.spatial_ref_sys FOR SELECT USING (true);
+-- Note: spatial_ref_sys appartient à l'extension PostGIS (owned by superuser),
+-- il est impossible d'y activer RLS sans droits superuser. Ce warning Supabase
+-- peut être ignoré — la table est en lecture seule et ne contient aucune donnée sensible.
