@@ -20,7 +20,7 @@ export function ListingActions({ listingId, status, conversationId, isOwner, isR
   const [loading, setLoading] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const run = async (action: string, rpc: string) => {
+  const run = async (action: string, rpc: string, event?: string) => {
     setLoading(action)
     setError(null)
     const { error: rpcError } = await supabase.rpc(rpc, { p_listing_id: listingId })
@@ -28,6 +28,13 @@ export function ListingActions({ listingId, status, conversationId, isOwner, isR
       setError(rpcError.message)
       setLoading(null)
       return
+    }
+    if (event) {
+      fetch('/api/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ listingId, event }),
+      }).catch(console.error)
     }
     router.refresh()
     setLoading(null)
@@ -59,7 +66,7 @@ export function ListingActions({ listingId, status, conversationId, isOwner, isR
       {/* Propriétaire : valider */}
       {isOwner && status === 'en_cours' && (
         <button
-          onClick={() => run('validate', 'validate_listing_response')}
+          onClick={() => run('validate', 'validate_listing_response', 'accepted')}
           disabled={loading !== null}
           className="w-full py-2.5 rounded-xl bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
         >
@@ -83,7 +90,7 @@ export function ListingActions({ listingId, status, conversationId, isOwner, isR
       {/* Propriétaire : annuler la demande en cours */}
       {isOwner && status === 'en_cours' && (
         <button
-          onClick={() => run('cancel', 'cancel_listing_response')}
+          onClick={() => run('cancel', 'cancel_listing_response', 'refused')}
           disabled={loading !== null}
           className="w-full py-2.5 rounded-xl border border-gray-200 text-gray-500 text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
         >
@@ -95,7 +102,7 @@ export function ListingActions({ listingId, status, conversationId, isOwner, isR
       {/* Répondant : annuler sa propre demande */}
       {isResponder && (status === 'en_cours' || status === 'validee') && (
         <button
-          onClick={() => run('cancel', 'cancel_listing_response')}
+          onClick={() => run('cancel', 'cancel_listing_response', 'cancelled')}
           disabled={loading !== null}
           className="w-full py-2.5 rounded-xl border border-red-200 text-red-600 text-sm font-medium hover:bg-red-50 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
         >

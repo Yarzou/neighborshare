@@ -44,6 +44,13 @@ export function ContactButton({ listingId, receiverId, listingStatus }: Props) {
       return
     }
 
+    // Fire-and-forget: notify listing owner of the new request
+    fetch('/api/notifications', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ listingId, event: 'new_request' }),
+    }).catch(console.error)
+
     router.push(`/messages/${convId}`)
   }
 

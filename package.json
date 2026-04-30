@@ -21,6 +21,7 @@
     "date-fns": "^3.6.0",
     "dotenv": "^17.4.1",
     "firebase": "^12.12.1",
+    "firebase-admin": "^13.8.0",
     "geist": "^1.7.0",
     "leaflet": "^1.9.4",
     "leaflet.markercluster": "^1.5.3",
@@ -28,6 +29,7 @@
     "next": "16.2.4",
     "react": "^19",
     "react-dom": "^19",
+    "resend": "^6.12.2",
     "tailwind-merge": "^2.3.0",
     "zustand": "^4.5.2"
   },
