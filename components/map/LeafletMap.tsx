@@ -7,6 +7,7 @@ import 'leaflet.markercluster'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 import type { Listing } from '@/lib/types'
+import { LISTING_TYPE_MARKER_COLORS } from '@/lib/types'
 import { getCategoryEmoji } from '@/lib/categories'
 
 // Fix icônes Leaflet avec Next.js
@@ -184,8 +185,9 @@ export default function LeafletMap({ userPosition, listings, onSelectListing, se
       if (!listing.lat_out || !listing.lng_out) return
 
       const isDemande = listing.listing_intent === 'demande'
+      const typeColor = LISTING_TYPE_MARKER_COLORS[listing.type] ?? '#16a34a'
       const icon = L.divIcon({
-        html: `<div class="custom-marker${isDemande ? ' custom-marker--demande' : ''}" title="${listing.title}">${getCategoryEmoji(listing.category_id)}</div>`,
+        html: `<div class="custom-marker${isDemande ? ' custom-marker--demande' : ''}" style="border-color:${typeColor}" title="${listing.title}">${getCategoryEmoji(listing.category_id)}</div>`,
         iconSize: [36, 36],
         iconAnchor: [18, 18],
         className: '',
@@ -214,14 +216,16 @@ export default function LeafletMap({ userPosition, listings, onSelectListing, se
   // Highlight selected
   useEffect(() => {
     Object.entries(markersRef.current).forEach(([id, marker]) => {
+      const listing = listings.find(l => l.id === id)
       const el = marker.getElement()
       if (!el) return
       const inner = el.querySelector('.custom-marker') as HTMLElement
       if (!inner) return
-      inner.style.borderColor = id === selectedId ? '#dc2626' : '#16a34a'
+      const typeColor = listing ? (LISTING_TYPE_MARKER_COLORS[listing.type] ?? '#16a34a') : '#16a34a'
+      inner.style.borderColor = id === selectedId ? '#dc2626' : typeColor
       inner.style.transform = id === selectedId ? 'scale(1.2)' : 'scale(1)'
     })
-  }, [selectedId])
+  }, [selectedId, listings])
 
   return <div ref={containerRef} className="w-full h-full" />
 }

@@ -3,9 +3,10 @@ import Image from 'next/image'
 import dynamic from 'next/dynamic'
 import { Clock, CalendarDays } from 'lucide-react'
 import type { Listing } from '@/lib/types'
-import { LISTING_TYPE_LABELS, LISTING_TYPE_COLORS, LISTING_STATUS_LABELS, LISTING_STATUS_COLORS } from '@/lib/types'
 import { getCategoryEmoji } from '@/lib/categories'
 import { formatDate, formatChildcarePeriod, formatChildcareSlots, cn } from '@/lib/utils'
+import { TypeBadge } from './TypeBadge'
+import { StatusBadge } from './StatusBadge'
 
 const CarpoolMiniMap = dynamic(() => import('@/components/map/CarpoolMiniMap'), { ssr: false })
 
@@ -99,22 +100,15 @@ export function ListingCard({ listing, compact = false, onClick, active }: Props
             {listing.title}
           </h3>
           <div className="flex flex-col items-end gap-1 flex-shrink-0">
-            {/* Statut : uniquement si la demande est en cours ou validée */}
-            {(listing.status === 'en_cours' || listing.status === 'validee') && (
-              <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full', LISTING_STATUS_COLORS[listing.status])}>
-                {LISTING_STATUS_LABELS[listing.status]}
-              </span>
-            )}
+            <StatusBadge status={listing.status} />
             {listing.listing_intent === 'demande' && (
               <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
                 Recherche
               </span>
             )}
-            <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full', LISTING_TYPE_COLORS[listing.type])}>
-              {LISTING_TYPE_LABELS[listing.type]}
-            </span>
+            <TypeBadge type={listing.type} />
             {listing.type === 'vente' && listing.price != null && (
-              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-700">
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700">
                 {listing.price % 1 === 0
                   ? `${listing.price} €`
                   : `${Number(listing.price).toFixed(2).replace('.', ',')} €`}

@@ -6,11 +6,11 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile, Listing } from '@/lib/types'
-import { LISTING_TYPE_LABELS, LISTING_TYPE_COLORS } from '@/lib/types'
 import { getCategoryEmoji } from '@/lib/categories'
 import { formatDate } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { getAvatarStyle, DEFAULT_AVATAR_COLOR } from '@/lib/utils'
+import { TypeBadge } from '@/components/listings/TypeBadge'
 import {
   Package, Pencil, Trash2, Edit2,
   Check, X, Loader2, AlertCircle,
@@ -478,9 +478,7 @@ export default function ProfileClient() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
                         <p className="font-semibold text-sm text-gray-900 line-clamp-1">{listing.title}</p>
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${LISTING_TYPE_COLORS[listing.type]}`}>
-                          {LISTING_TYPE_LABELS[listing.type]}
-                        </span>
+                        <TypeBadge type={listing.type} className="flex-shrink-0" />
                       </div>
                       {listing.city && <p className="text-xs text-gray-400 mt-0.5">{listing.city}</p>}
                       <p className="text-xs text-gray-400 mt-0.5">{formatDate(listing.created_at)}</p>

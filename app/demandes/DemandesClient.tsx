@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/lib/types'
 import { getAvatarStyle } from '@/lib/utils'
 import { Loader2, MessageCircle, CheckCircle, XCircle, Clock, ArrowRight, Package } from 'lucide-react'
+import { StatusBadge } from '@/components/listings/StatusBadge'
 
 interface DemandeListing {
   id: string
@@ -16,21 +17,6 @@ interface DemandeListing {
   conversation_id: string | null
   categories: { icon: string; label: string } | null
   other_profile: Profile | null
-}
-
-function StatusBadge({ status }: { status: 'en_cours' | 'validee' }) {
-  if (status === 'en_cours') {
-    return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-medium">
-        <Clock size={10} /> En attente
-      </span>
-    )
-  }
-  return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-medium">
-      <CheckCircle size={10} /> Validée
-    </span>
-  )
 }
 
 function DemandeCard({

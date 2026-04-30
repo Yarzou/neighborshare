@@ -137,17 +137,26 @@ export const LISTING_STATUS_LABELS: Record<ListingStatus, string> = {
 }
 
 export const LISTING_STATUS_COLORS: Record<ListingStatus, string> = {
-  disponible: 'bg-green-100 text-green-700',
-  reserve: 'bg-yellow-100 text-yellow-700',
-  termine: 'bg-gray-100 text-gray-500',
+  disponible: 'bg-emerald-100 text-emerald-700',
+  reserve: 'bg-amber-100 text-amber-700',
+  termine: 'bg-gray-200 text-gray-500',
   en_cours: 'bg-orange-100 text-orange-700',
   validee: 'bg-brand-100 text-brand-700',
 }
 
 export const LISTING_TYPE_COLORS: Record<ListingType, string> = {
-  pret: 'bg-blue-100 text-blue-700',
-  don: 'bg-green-100 text-green-700',
-  echange: 'bg-purple-100 text-purple-700',
-  service: 'bg-orange-100 text-orange-700',
-  vente: 'bg-red-100 text-red-700',
+  pret: 'bg-sky-100 text-sky-700',
+  don: 'bg-teal-100 text-teal-700',
+  echange: 'bg-violet-100 text-violet-700',
+  service: 'bg-amber-100 text-amber-800',
+  vente: 'bg-rose-100 text-rose-700',
+}
+
+/** Couleurs CSS hex pour les marqueurs Leaflet (border-color) */
+export const LISTING_TYPE_MARKER_COLORS: Record<ListingType, string> = {
+  pret: '#0284c7',
+  don: '#0d9488',
+  echange: '#7c3aed',
+  service: '#d97706',
+  vente: '#e11d48',
 }

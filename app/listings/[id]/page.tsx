@@ -3,11 +3,13 @@ import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { MapPin, Clock, ArrowLeft, CalendarDays, MessageCircle, RefreshCw } from 'lucide-react'
-import { isListingType, LISTING_TYPE_LABELS, LISTING_TYPE_COLORS, LISTING_STATUS_LABELS, LISTING_STATUS_COLORS, type Listing } from '@/lib/types'
+import { isListingType, type Listing } from '@/lib/types'
 import { formatDate, formatChildcarePeriod, formatChildcareSlots, getAvatarStyle } from '@/lib/utils'
 import { ContactButton } from '@/components/listings/ContactButton'
 import { ListingActions } from '@/components/listings/ListingActions'
 import CarpoolMiniMap from '@/components/map/CarpoolMiniMapDynamic'
+import { TypeBadge } from '@/components/listings/TypeBadge'
+import { StatusBadge } from '@/components/listings/StatusBadge'
 
 type ListingWithJoins = Listing
 
@@ -147,19 +149,15 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
           <div className="flex items-start justify-between gap-3">
             <h1 className="text-xl font-bold text-gray-900">{typedListing.title}</h1>
             <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-              <span className={`text-sm font-medium px-3 py-1 rounded-full ${LISTING_TYPE_COLORS[listingType]}`}>
-                {LISTING_TYPE_LABELS[listingType]}
-              </span>
+              <TypeBadge type={listingType} className="text-sm px-3 py-1" />
               {listingType === 'vente' && typedListing.price != null && (
-                <span className="text-base font-bold px-3 py-1 rounded-full bg-red-50 text-red-700">
+                <span className="text-base font-bold px-3 py-1 rounded-full bg-rose-50 text-rose-700">
                   {typedListing.price % 1 === 0
                     ? `${typedListing.price} €`
                     : `${Number(typedListing.price).toFixed(2).replace('.', ',')} €`}
                 </span>
               )}
-              <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${LISTING_STATUS_COLORS[typedListing.status]}`}>
-                {LISTING_STATUS_LABELS[typedListing.status]}
-              </span>
+              <StatusBadge status={typedListing.status} showAll className="text-xs px-2.5 py-0.5" />
             </div>
           </div>
 
