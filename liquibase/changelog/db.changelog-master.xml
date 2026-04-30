@@ -59,4 +59,7 @@
   <!-- Couleur de fond personnalisable de l'avatar -->
   <include file="liquibase/changelog/018-avatar-color.sql"/>
 
+  <!-- Adresse par défaut dans le profil (pré-remplissage annonces, inscription) -->
+  <include file="liquibase/changelog/019-profile-address.sql"/>
+
 </databaseChangeLog>

@@ -5,10 +5,12 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Mail, Lock, User, Loader2, AlertCircle, CheckCircle } from 'lucide-react'
+import AddressAutocomplete, { type ResolvedAddress } from '@/components/forms/AddressAutocomplete'
 
 export default function RegisterPage() {
   const router = useRouter()
   const [form, setForm] = useState({ email: '', password: '', username: '', full_name: '' })
+  const [addressResolved, setAddressResolved] = useState<ResolvedAddress | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
@@ -19,6 +21,10 @@ export default function RegisterPage() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!addressResolved) {
+      setError('Veuillez sélectionner votre adresse.')
+      return
+    }
     setLoading(true)
     setError(null)
 
@@ -26,7 +32,15 @@ export default function RegisterPage() {
       email: form.email,
       password: form.password,
       options: {
-        data: { username: form.username, full_name: form.full_name },
+        data: {
+          username: form.username,
+          full_name: form.full_name,
+          address_display: addressResolved.displayName,
+          address_road: addressResolved.road,
+          address_city: addressResolved.city,
+          address_lat: addressResolved.lat,
+          address_lng: addressResolved.lon,
+        },
       },
     })
 
@@ -106,6 +120,20 @@ export default function RegisterPage() {
                 <input type="password" name="password" value={form.password} onChange={handleChange} required placeholder="Min. 8 caractères" minLength={8}
                   className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm" />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Adresse <span className="text-red-500">*</span>
+              </label>
+              <p className="text-xs text-gray-400 mb-2">
+                Votre adresse de quartier — utilisée pour afficher les annonces proches de chez vous.
+              </p>
+              <AddressAutocomplete
+                onSelect={r => setAddressResolved(r)}
+                onClear={() => setAddressResolved(null)}
+                placeholder="Ex : 12 rue de la Paix, Paris"
+              />
             </div>
 
             <button type="submit" disabled={loading}

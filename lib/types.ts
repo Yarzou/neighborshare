@@ -34,6 +34,11 @@ export interface Profile {
   email_notifications_enabled?: boolean
   push_notifications_enabled?: boolean
   avatar_color?: string | null
+  address_display?: string | null
+  address_road?: string | null
+  address_city?: string | null
+  address_lat?: number | null
+  address_lng?: number | null
 }
 
 export interface Listing {

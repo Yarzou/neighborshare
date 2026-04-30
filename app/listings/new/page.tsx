@@ -66,6 +66,10 @@ export default function NewListingPage() {
   const [authReady, setAuthReady] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
 
+  // Adresse pré-remplie depuis le profil
+  const [profileDefaultAddressDisplay, setProfileDefaultAddressDisplay] = useState<string | undefined>(undefined)
+  const [profileHadAddress, setProfileHadAddress] = useState(false)
+
   const selectedCategory = categories.find(c => String(c.id) === form.category_id)
   const isCarpool = selectedCategory?.slug === CARPOOL_SLUG
   const isChildcare = selectedCategory?.slug === CHILDCARE_SLUG
@@ -93,6 +97,21 @@ export default function NewListingPage() {
       const { data: { user: currentUser } } = await supabase.auth.getUser()
         const sessionUserId = currentUser?.id ?? null
         if (!cancelled) setUserId(sessionUserId)
+
+        // Charge l'adresse par défaut du profil pour pré-remplir le champ adresse
+        if (sessionUserId) {
+          const { data: prof } = await supabase
+            .from('profiles')
+            .select('address_display, address_road, address_city, address_lat, address_lng')
+            .eq('id', sessionUserId)
+            .single()
+          if (!cancelled && prof?.address_lat && prof?.address_lng && prof?.address_display) {
+            setProfileDefaultAddressDisplay(prof.address_display)
+            setProfileHadAddress(true)
+            setLocation({ lat: prof.address_lat, lng: prof.address_lng })
+            setForm(f => ({ ...f, address: prof.address_road || prof.address_display, city: prof.address_city || '' }))
+          }
+        }
 
         // Se re-synchronise avec l'état auth au fil du temps.
         const {
@@ -253,6 +272,16 @@ export default function NewListingPage() {
       setError('Erreur lors de la publication. Réessayez.')
       setLoading(false)
     } else {
+      // Si le profil n'avait pas d'adresse, on la sauvegarde depuis cette première annonce
+      if (!profileHadAddress && location && !isCarpool) {
+        await supabase.from('profiles').update({
+          address_display: form.address,
+          address_road: form.address,
+          address_city: form.city,
+          address_lat: location.lat,
+          address_lng: location.lng,
+        }).eq('id', user.id)
+      }
       router.push(`/listings/${data.id}`)
     }
   }
@@ -539,6 +568,7 @@ export default function NewListingPage() {
               Tapez une adresse et sélectionnez-la dans la liste, ou utilisez votre position actuelle.
             </p>
             <AddressAutocomplete
+              lockedValue={profileDefaultAddressDisplay}
               onSelect={handleAddressSelect}
               onClear={handleAddressClear}
               placeholder="Ex : 12 rue de la Paix, Paris"

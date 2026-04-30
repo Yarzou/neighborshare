@@ -14,9 +14,10 @@ import { getAvatarStyle, DEFAULT_AVATAR_COLOR } from '@/lib/utils'
 import {
   Package, Pencil, Trash2, Edit2,
   Check, X, Loader2, AlertCircle, Plus,
-  Lock, ShieldAlert, Eye, EyeOff, Bell, Mail, ChevronDown,
+  Lock, ShieldAlert, Eye, EyeOff, Bell, Mail, ChevronDown, MapPin,
 } from 'lucide-react'
 import { isPushSupported, activatePushNotifications, deactivatePushNotifications } from '@/lib/pushNotifications'
+import AddressAutocomplete, { type ResolvedAddress } from '@/components/forms/AddressAutocomplete'
 
 const AVATAR_COLORS = [
   '#dcfce7', // vert (défaut)
@@ -52,6 +53,11 @@ export default function ProfileClient() {
   const [form, setForm] = useState({ full_name: '', username: '', bio: '', avatar_color: DEFAULT_AVATAR_COLOR })
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+
+  // Adresse par défaut du profil (null = non définie ou effacée par l'utilisateur)
+  const [addressResolved, setAddressResolved] = useState<{
+    displayName: string; road: string; city: string; lat: number; lon: number
+  } | null>(null)
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -107,6 +113,15 @@ export default function ProfileClient() {
         setForm({ full_name: prof.full_name || '', username: prof.username || '', bio: prof.bio || '', avatar_color: prof.avatar_color || DEFAULT_AVATAR_COLOR })
         setEmailEnabled(prof.email_notifications_enabled ?? true)
         setPushEnabled(prof.push_notifications_enabled ?? true)
+        if (prof.address_lat && prof.address_lng && prof.address_display) {
+          setAddressResolved({
+            displayName: prof.address_display,
+            road: prof.address_road || '',
+            city: prof.address_city || '',
+            lat: prof.address_lat,
+            lon: prof.address_lng,
+          })
+        }
       }
       setListings((lists || []) as Listing[])
       setPageLoading(false)
@@ -126,6 +141,11 @@ export default function ProfileClient() {
         username: form.username.trim(),
         bio: form.bio.trim() || null,
         avatar_color: form.avatar_color,
+        address_display: addressResolved?.displayName ?? null,
+        address_road: addressResolved?.road ?? null,
+        address_city: addressResolved?.city ?? null,
+        address_lat: addressResolved?.lat ?? null,
+        address_lng: addressResolved?.lon ?? null,
       })
       .eq('id', userId)
 
@@ -138,6 +158,11 @@ export default function ProfileClient() {
         username: form.username.trim(),
         bio: form.bio.trim() || null,
         avatar_color: form.avatar_color,
+        address_display: addressResolved?.displayName ?? null,
+        address_road: addressResolved?.road ?? null,
+        address_city: addressResolved?.city ?? null,
+        address_lat: addressResolved?.lat ?? null,
+        address_lng: addressResolved?.lon ?? null,
       }) : p)
       setEditMode(false)
     }
@@ -243,6 +268,17 @@ export default function ProfileClient() {
       bio: profile?.bio || '',
       avatar_color: profile?.avatar_color || DEFAULT_AVATAR_COLOR,
     })
+    if (profile?.address_lat && profile?.address_lng && profile?.address_display) {
+      setAddressResolved({
+        displayName: profile.address_display,
+        road: profile.address_road || '',
+        city: profile.address_city || '',
+        lat: profile.address_lat,
+        lon: profile.address_lng,
+      })
+    } else {
+      setAddressResolved(null)
+    }
   }
 
   if (pageLoading) {
@@ -276,6 +312,11 @@ export default function ProfileClient() {
               <p className="text-sm text-gray-400">@{profile.username}</p>
               {profile.bio && (
                 <p className="text-sm text-gray-500 mt-1.5 leading-snug max-w-xs mx-auto">{profile.bio}</p>
+              )}
+              {profile.address_city && (
+                <p className="text-xs text-gray-400 mt-1 flex items-center justify-center gap-1">
+                  <MapPin size={11} /> {profile.address_city}
+                </p>
               )}
             </div>
             <div className="flex items-center gap-2">
@@ -355,6 +396,20 @@ export default function ProfileClient() {
                 rows={2}
                 placeholder="Quelques mots sur vous…"
                 className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 resize-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1.5 flex items-center gap-1.5">
+                <MapPin size={12} className="text-brand-500" /> Adresse par défaut
+              </label>
+              <p className="text-xs text-gray-400 mb-2">
+                Sera pré-remplie lors de la création d&apos;une annonce.
+              </p>
+              <AddressAutocomplete
+                lockedValue={addressResolved?.displayName}
+                onSelect={(r: ResolvedAddress) => setAddressResolved({ displayName: r.displayName, road: r.road, city: r.city, lat: r.lat, lon: r.lon })}
+                onClear={() => setAddressResolved(null)}
+                placeholder="Rechercher votre adresse…"
               />
             </div>
             <div className="flex gap-2 justify-end">
