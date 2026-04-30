@@ -2,13 +2,13 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import dynamic from 'next/dynamic'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { Listing } from '@/lib/types'
 import { ListingCard } from '@/components/listings/ListingCard'
 import { FilterBar } from '@/components/map/FilterBar'
-import { MapPin, Loader2, X, Map, List } from 'lucide-react'
-import { normalizeSearch } from '@/lib/utils'
+import { MapPin, Loader2, X, Map, List, Plus } from 'lucide-react'
+import { normalizeSearch, cn } from '@/lib/utils'
 
 // Dynamic import pour éviter SSR avec Leaflet
 const LeafletMap = dynamic(() => import('@/components/map/LeafletMap'), {
@@ -24,6 +24,7 @@ const NEIGHBORHOOD: [number, number] = [47.300837, -1.560131]
 
 export function MapView() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const [listings, setListings] = useState<Listing[]>([])
   const [selected, setSelected] = useState<Listing | null>(null)
   // searchCenter: centre utilisé pour le rayon de recherche (La Chapelle par défaut)
@@ -37,7 +38,17 @@ export function MapView() {
   const [slugToId, setSlugToId] = useState<Record<string, number>>({})
   const [mobileView, setMobileView] = useState<'list' | 'map'>('list')
   const [isMobile, setIsMobile] = useState(false)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
   const supabase = createClient()
+
+  // Suivi de la session
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setIsLoggedIn(!!data.user))
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      setIsLoggedIn(!!session?.user)
+    })
+    return () => subscription.unsubscribe()
+  }, [])
 
   // Charge le mapping slug → id une seule fois
   useEffect(() => {
@@ -182,6 +193,24 @@ export function MapView() {
               </div>
           )}
         </div>
+
+        {/* FAB mobile — Publier une annonce (connecté uniquement) */}
+        {isLoggedIn && (
+        <button
+          onClick={() => router.push('/listings/new')}
+          className={cn(
+            'fixed md:hidden z-[1100]',
+            'w-14 h-14 rounded-full bg-brand-600 text-white shadow-xl',
+            'flex items-center justify-center',
+            'hover:bg-brand-700 active:scale-95 transition-all duration-150',
+            'right-4',
+            selected ? 'bottom-52' : 'bottom-6',
+          )}
+          aria-label="Publier une annonce"
+        >
+          <Plus size={26} strokeWidth={2.5} />
+        </button>
+        )}
       </div>
   )
 }
