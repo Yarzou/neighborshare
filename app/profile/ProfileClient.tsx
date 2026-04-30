@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils'
 import { getAvatarStyle, DEFAULT_AVATAR_COLOR } from '@/lib/utils'
 import {
   Package, Pencil, Trash2, Edit2,
-  Check, X, Loader2, AlertCircle, Plus,
+  Check, X, Loader2, AlertCircle,
   Lock, ShieldAlert, Eye, EyeOff, Bell, Mail, ChevronDown, MapPin,
 } from 'lucide-react'
 import { isPushSupported, activatePushNotifications, deactivatePushNotifications } from '@/lib/pushNotifications'
@@ -449,13 +449,6 @@ export default function ProfileClient() {
             </span>
             <ChevronDown size={16} className={cn('text-gray-400 transition-transform', listingsOpen && 'rotate-180')} />
           </button>
-          <Link
-            href="/listings/new"
-            onClick={e => e.stopPropagation()}
-            className="flex items-center gap-1.5 px-3 py-1.5 mr-4 rounded-xl text-sm font-medium bg-brand-600 text-white hover:bg-brand-700 transition-colors flex-shrink-0"
-          >
-            <Plus size={14} /> Publier
-          </Link>
         </div>
 
         {listingsOpen && (
@@ -470,9 +463,6 @@ export default function ProfileClient() {
               <div className="text-center py-10 text-gray-400">
                 <Package size={36} className="mx-auto mb-2 opacity-20" />
                 <p className="font-medium">Vous n&apos;avez pas encore d&apos;annonces</p>
-                <Link href="/listings/new" className="mt-3 inline-flex items-center gap-1 text-sm text-brand-600 hover:underline">
-                  <Plus size={13} /> Publier ma première annonce
-                </Link>
               </div>
             ) : (
               listings.map(listing => (
