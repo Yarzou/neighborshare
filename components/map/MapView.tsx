@@ -161,6 +161,7 @@ export function MapView() {
                         key={listing.id}
                         listing={listing}
                         compact
+                        outlineOnly
                         onClick={isMobile && mobileView === 'list' ? undefined : () => setSelected(listing)}
                         active={selected?.id === listing.id}
                     />
@@ -188,7 +189,7 @@ export function MapView() {
                           className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md border border-gray-200 z-10">
                     <X size={14} />
                   </button>
-                  <ListingCard listing={selected} />
+                  <ListingCard listing={selected} outlineOnly />
                 </div>
               </div>
           )}
