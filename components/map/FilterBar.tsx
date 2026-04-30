@@ -54,7 +54,9 @@ export function FilterBar({ category, onCategoryChange, count, loading, search, 
               'flex items-center justify-center gap-1 px-2 py-1.5 rounded-full text-xs font-medium transition-colors border w-full',
               category === cat.slug
                 ? 'bg-brand-600 text-white border-brand-600'
-                : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-brand-300'
+                : cat.color
+                  ? cn(cat.color, cat.hoverColor, 'text-gray-700')
+                  : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-brand-300'
             )}>
             <span>{cat.icon}</span>
             <span>{cat.label}</span>

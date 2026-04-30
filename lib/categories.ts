@@ -12,18 +12,20 @@ export interface CategoryDef {
   /** Label court pour les filtres (carte, derniers ajouts) */
   filterLabel: string
   icon: string
-  /** Classes Tailwind pour les tuiles de la page d'accueil */
+  /** Classes Tailwind pour les tuiles de la page d'accueil et les cartes d'annonces */
   color: string
+  /** Classes Tailwind pour le survol des cartes d'annonces (légèrement plus foncé) */
+  hoverColor: string
 }
 
 export const CATEGORY_LIST: CategoryDef[] = [
-  { id: 1, slug: 'outils',       label: 'Outils',          filterLabel: 'Outils',   icon: '🔧', color: 'bg-blue-50 border-blue-200' },
-  { id: 2, slug: 'services',     label: 'Services',         filterLabel: 'Services', icon: '🤝', color: 'bg-green-50 border-green-200' },
-  { id: 3, slug: 'garde-enfant', label: "Garde d'enfant",   filterLabel: 'Enfants',  icon: '👶', color: 'bg-pink-50 border-pink-200' },
-  { id: 4, slug: 'covoiturage',  label: 'Covoiturage',      filterLabel: 'Trajet',   icon: '🚗', color: 'bg-yellow-50 border-yellow-200' },
-  { id: 5, slug: 'dons',         label: 'Dons / Objets',    filterLabel: 'Dons',     icon: '📦', color: 'bg-purple-50 border-purple-200' },
-  { id: 6, slug: 'jardinage',    label: 'Jardinage',        filterLabel: 'Jardin',   icon: '🌿', color: 'bg-emerald-50 border-emerald-200' },
-  { id: 7, slug: 'cuisine',      label: 'Cuisine',          filterLabel: 'Cuisine',  icon: '🍳', color: 'bg-orange-50 border-orange-200' },
+  { id: 1, slug: 'outils',       label: 'Outils',          filterLabel: 'Outils',   icon: '🔧', color: 'bg-blue-50 border-blue-200',     hoverColor: 'hover:bg-blue-100 hover:border-blue-300' },
+  { id: 2, slug: 'services',     label: 'Services',         filterLabel: 'Services', icon: '🤝', color: 'bg-green-50 border-green-200',   hoverColor: 'hover:bg-green-100 hover:border-green-300' },
+  { id: 3, slug: 'garde-enfant', label: "Garde d'enfant",   filterLabel: 'Enfants',  icon: '👶', color: 'bg-pink-50 border-pink-200',     hoverColor: 'hover:bg-pink-100 hover:border-pink-300' },
+  { id: 4, slug: 'covoiturage',  label: 'Covoiturage',      filterLabel: 'Trajet',   icon: '🚗', color: 'bg-yellow-50 border-yellow-200', hoverColor: 'hover:bg-yellow-100 hover:border-yellow-300' },
+  { id: 5, slug: 'dons',         label: 'Dons / Objets',    filterLabel: 'Dons',     icon: '📦', color: 'bg-purple-50 border-purple-200', hoverColor: 'hover:bg-purple-100 hover:border-purple-300' },
+  { id: 6, slug: 'jardinage',    label: 'Jardinage',        filterLabel: 'Jardin',   icon: '🌿', color: 'bg-emerald-50 border-emerald-200', hoverColor: 'hover:bg-emerald-100 hover:border-emerald-300' },
+  { id: 7, slug: 'cuisine',      label: 'Cuisine',          filterLabel: 'Cuisine',  icon: '🍳', color: 'bg-orange-50 border-orange-200', hoverColor: 'hover:bg-orange-100 hover:border-orange-300' },
 ]
 
 /** Slugs de catégories incompatibles avec le type "vente" */
@@ -38,8 +40,19 @@ export function getCategoryEmoji(id: number | null): string {
   return cat?.icon ?? '📍'
 }
 
+/**
+ * Retourne les classes Tailwind de fond/bordure pour une carte d'annonce,
+ * avec variante hover légèrement plus foncée.
+ * Fallback sur blanc si la catégorie est inconnue.
+ */
+export function getCategoryCardClasses(id: number | null): string {
+  const cat = CATEGORY_LIST.find(c => c.id === id)
+  if (!cat) return 'bg-white border-gray-200 hover:border-brand-300 hover:shadow-sm'
+  return `${cat.color} ${cat.hoverColor} hover:shadow-sm`
+}
+
 /** Liste pour les barres de filtres — inclut "Tout" en tête */
 export const FILTER_CATEGORIES = [
-  { slug: '', label: 'Tout', icon: '🗺️' },
-  ...CATEGORY_LIST.map(c => ({ slug: c.slug, label: c.filterLabel, icon: c.icon })),
+  { slug: '', label: 'Tout', icon: '🗺️', color: '', hoverColor: '' },
+  ...CATEGORY_LIST.map(c => ({ slug: c.slug, label: c.filterLabel, icon: c.icon, color: c.color, hoverColor: c.hoverColor })),
 ]

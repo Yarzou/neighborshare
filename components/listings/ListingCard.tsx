@@ -3,7 +3,7 @@ import Image from 'next/image'
 import dynamic from 'next/dynamic'
 import { Clock, CalendarDays } from 'lucide-react'
 import type { Listing } from '@/lib/types'
-import { getCategoryEmoji } from '@/lib/categories'
+import { getCategoryEmoji, getCategoryCardClasses } from '@/lib/categories'
 import { formatDate, formatChildcarePeriod, formatChildcareSlots, cn } from '@/lib/utils'
 import { TypeBadge } from './TypeBadge'
 import { StatusBadge } from './StatusBadge'
@@ -20,8 +20,10 @@ interface Props {
 export function ListingCard({ listing, compact = false, onClick, active }: Props) {
   const content = (
     <div className={cn(
-      'bg-white rounded-2xl border transition-all cursor-pointer',
-      active ? 'border-brand-500 shadow-md shadow-brand-100' : 'border-gray-200 hover:border-brand-300 hover:shadow-sm',
+      'rounded-2xl border transition-all cursor-pointer',
+      active
+        ? 'bg-white border-brand-500 shadow-md shadow-brand-100'
+        : getCategoryCardClasses(listing.category_id),
       compact ? 'flex gap-3 p-3' : 'flex flex-col overflow-hidden shadow-sm'
     )} onClick={onClick}>
 
