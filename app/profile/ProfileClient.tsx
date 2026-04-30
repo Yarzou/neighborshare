@@ -57,6 +57,9 @@ export default function ProfileClient() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
+  // Listings accordion
+  const [listingsOpen, setListingsOpen] = useState(false)
+
   // Password change
   const [pwdOpen, setPwdOpen] = useState(false)
   const [pwdForm, setPwdForm] = useState({ current: '', next: '', confirm: '' })
@@ -372,87 +375,107 @@ export default function ProfileClient() {
       </div>
 
       {/* ── Mes annonces ── */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-base font-semibold flex items-center gap-2 text-gray-800">
-            <Package size={17} className="text-brand-600" /> Mes annonces
-          </h2>
-          <Link href="/listings/new" className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium bg-brand-600 text-white hover:bg-brand-700 transition-colors">
+      <div className="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="flex items-center border-b border-gray-100">
+          <button
+            onClick={() => setListingsOpen(o => !o)}
+            className="flex-1 flex items-center justify-between px-6 py-4 text-left hover:bg-gray-50 transition-colors"
+          >
+            <span className="flex items-center gap-3">
+              <Package size={17} className="text-brand-600 flex-shrink-0" />
+              <span className="text-sm font-medium text-gray-800">
+                Mes annonces
+                {listings.length > 0 && (
+                  <span className="ml-2 text-xs font-semibold text-brand-600 bg-brand-50 px-2 py-0.5 rounded-full">
+                    {listings.length}
+                  </span>
+                )}
+              </span>
+            </span>
+            <ChevronDown size={16} className={cn('text-gray-400 transition-transform', listingsOpen && 'rotate-180')} />
+          </button>
+          <Link
+            href="/listings/new"
+            onClick={e => e.stopPropagation()}
+            className="flex items-center gap-1.5 px-3 py-1.5 mr-4 rounded-xl text-sm font-medium bg-brand-600 text-white hover:bg-brand-700 transition-colors flex-shrink-0"
+          >
             <Plus size={14} /> Publier
           </Link>
         </div>
 
-        {deleteError && (
-          <div className="flex items-center gap-2 text-sm text-red-500 bg-red-50 rounded-xl px-4 py-2 mb-3">
-            <AlertCircle size={14} /> {deleteError}
-          </div>
-        )}
+        {listingsOpen && (
+          <div className="p-4 flex flex-col gap-3">
+            {deleteError && (
+              <div className="flex items-center gap-2 text-sm text-red-500 bg-red-50 rounded-xl px-4 py-2">
+                <AlertCircle size={14} /> {deleteError}
+              </div>
+            )}
 
-        {listings.length === 0 ? (
-          <div className="text-center py-12 text-gray-400 bg-white rounded-2xl border border-gray-200">
-            <Package size={36} className="mx-auto mb-2 opacity-20" />
-            <p className="font-medium">Vous n&apos;avez pas encore d&apos;annonces</p>
-            <Link href="/listings/new" className="mt-3 inline-flex items-center gap-1 text-sm text-brand-600 hover:underline">
-              <Plus size={13} /> Publier ma première annonce
-            </Link>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {listings.map(listing => (
-              <div key={listing.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-                <div className="flex gap-3 p-3">
-                  <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-brand-50 to-brand-100 flex items-center justify-center text-2xl flex-shrink-0 overflow-hidden">
-                    {listing.image_url ? (
-                      <Image src={listing.image_url} alt={listing.title} width={64} height={64} className="object-cover w-full h-full" />
+            {listings.length === 0 ? (
+              <div className="text-center py-10 text-gray-400">
+                <Package size={36} className="mx-auto mb-2 opacity-20" />
+                <p className="font-medium">Vous n&apos;avez pas encore d&apos;annonces</p>
+                <Link href="/listings/new" className="mt-3 inline-flex items-center gap-1 text-sm text-brand-600 hover:underline">
+                  <Plus size={13} /> Publier ma première annonce
+                </Link>
+              </div>
+            ) : (
+              listings.map(listing => (
+                <div key={listing.id} className="bg-gray-50 rounded-2xl border border-gray-200 overflow-hidden">
+                  <div className="flex gap-3 p-3">
+                    <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-brand-50 to-brand-100 flex items-center justify-center text-2xl flex-shrink-0 overflow-hidden">
+                      {listing.image_url ? (
+                        <Image src={listing.image_url} alt={listing.title} width={64} height={64} className="object-cover w-full h-full" />
+                      ) : (
+                        getCategoryEmoji(listing.category_id)
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-semibold text-sm text-gray-900 line-clamp-1">{listing.title}</p>
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${LISTING_TYPE_COLORS[listing.type]}`}>
+                          {LISTING_TYPE_LABELS[listing.type]}
+                        </span>
+                      </div>
+                      {listing.city && <p className="text-xs text-gray-400 mt-0.5">{listing.city}</p>}
+                      <p className="text-xs text-gray-400 mt-0.5">{formatDate(listing.created_at)}</p>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-gray-100 flex">
+                    <Link
+                      href={`/listings/${listing.id}/edit`}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors border-r border-gray-100"
+                    >
+                      <Edit2 size={14} /> Modifier
+                    </Link>
+
+                    {confirmDeleteId === listing.id ? (
+                      <div className="flex-1 flex items-center justify-center gap-3 py-2.5 bg-red-50">
+                        <button onClick={() => setConfirmDeleteId(null)} className="text-xs text-gray-500 hover:text-gray-700 font-medium">
+                          Annuler
+                        </button>
+                        <button
+                          onClick={() => handleDelete(listing.id)}
+                          disabled={deletingId === listing.id}
+                          className="flex items-center gap-1 text-xs font-semibold text-red-600 hover:text-red-700"
+                        >
+                          {deletingId === listing.id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                          Confirmer
+                        </button>
+                      </div>
                     ) : (
-                      getCategoryEmoji(listing.category_id)
+                      <button
+                        onClick={() => setConfirmDeleteId(listing.id)}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium text-red-500 hover:bg-red-50 transition-colors"
+                      >
+                        <Trash2 size={14} /> Supprimer
+                      </button>
                     )}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="font-semibold text-sm text-gray-900 line-clamp-1">{listing.title}</p>
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${LISTING_TYPE_COLORS[listing.type]}`}>
-                        {LISTING_TYPE_LABELS[listing.type]}
-                      </span>
-                    </div>
-                    {listing.city && <p className="text-xs text-gray-400 mt-0.5">{listing.city}</p>}
-                    <p className="text-xs text-gray-400 mt-0.5">{formatDate(listing.created_at)}</p>
-                  </div>
                 </div>
-
-                <div className="border-t border-gray-100 flex">
-                  <Link
-                    href={`/listings/${listing.id}/edit`}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors border-r border-gray-100"
-                  >
-                    <Edit2 size={14} /> Modifier
-                  </Link>
-
-                  {confirmDeleteId === listing.id ? (
-                    <div className="flex-1 flex items-center justify-center gap-3 py-2.5 bg-red-50">
-                      <button onClick={() => setConfirmDeleteId(null)} className="text-xs text-gray-500 hover:text-gray-700 font-medium">
-                        Annuler
-                      </button>
-                      <button
-                        onClick={() => handleDelete(listing.id)}
-                        disabled={deletingId === listing.id}
-                        className="flex items-center gap-1 text-xs font-semibold text-red-600 hover:text-red-700"
-                      >
-                        {deletingId === listing.id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
-                        Confirmer
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => setConfirmDeleteId(listing.id)}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium text-red-500 hover:bg-red-50 transition-colors"
-                    >
-                      <Trash2 size={14} /> Supprimer
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         )}
       </div>
