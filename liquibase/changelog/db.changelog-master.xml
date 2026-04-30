@@ -62,4 +62,7 @@
   <!-- Adresse par défaut dans le profil (pré-remplissage annonces, inscription) -->
   <include file="liquibase/changelog/019-profile-address.sql"/>
 
+  <!-- RLS manquant sur categories, databasechangelog* et spatial_ref_sys -->
+  <include file="liquibase/changelog/020-fix-rls.sql"/>
+
 </databaseChangeLog>
