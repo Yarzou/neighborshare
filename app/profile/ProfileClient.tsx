@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { isPushSupported, activatePushNotifications, deactivatePushNotifications } from '@/lib/pushNotifications'
 import AddressAutocomplete, { type ResolvedAddress } from '@/components/forms/AddressAutocomplete'
+import { useTheme, type ThemeChoice } from '@/components/theme/ThemeProvider'
 
 const AVATAR_COLORS = [
   '#dcfce7', // vert (défaut)
@@ -87,6 +88,9 @@ export default function ProfileClient() {
   const [pushSaving, setPushSaving] = useState(false)
   const [pushError, setPushError] = useState<string | null>(null)
   const [pushSupported, setPushSupported] = useState(true)
+
+  // Thème
+  const { theme, setTheme } = useTheme()
 
   useEffect(() => {
     setPushSupported(isPushSupported())
@@ -527,6 +531,38 @@ export default function ProfileClient() {
       <div className="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100">
           <h2 className="text-base font-semibold text-gray-800">Paramètres</h2>
+        </div>
+
+        {/* Apparence */}
+        <div className="flex items-center justify-between gap-4 px-6 py-4 border-b border-gray-100">
+          <div className="flex items-start gap-3">
+            <span className="text-gray-400 mt-0.5 flex-shrink-0 text-base leading-none">🎨</span>
+            <div>
+              <p className="text-sm font-medium text-gray-800">Apparence</p>
+              <p className="text-xs text-gray-400">Thème de l&apos;interface</p>
+            </div>
+          </div>
+          <div className="flex gap-1 bg-gray-100 p-1 rounded-xl flex-shrink-0">
+            {([
+              { value: 'light',  label: '☀️', title: 'Clair' },
+              { value: 'dark',   label: '🌙', title: 'Sombre' },
+              { value: 'system', label: '💻', title: 'Système' },
+            ] as { value: ThemeChoice; label: string; title: string }[]).map(opt => (
+              <button
+                key={opt.value}
+                onClick={() => setTheme(opt.value)}
+                title={opt.title}
+                className={cn(
+                  'px-2.5 py-1.5 rounded-lg text-sm transition-all',
+                  theme === opt.value
+                    ? 'bg-white text-gray-900 shadow-sm font-medium'
+                    : 'text-gray-500 hover:text-gray-700'
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Notifications email */}

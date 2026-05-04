@@ -110,5 +110,5 @@ export default function CarpoolMiniMap({
     }
   }, [departureLat, departureLng, arrivalLat, arrivalLng, departureLabel, arrivalLabel])
 
-  return <div ref={containerRef} className={className} />
+  return <div ref={containerRef} className={`carpool-mini-map ${className ?? ''}`} />
 }

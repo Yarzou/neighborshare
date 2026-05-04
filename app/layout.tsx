@@ -6,6 +6,7 @@ import { Navbar } from '@/components/layout/Navbar'
 import FirebaseSWRegister from '@/components/layout/FirebaseSWRegister'
 import PWAInstallBanner from '@/components/layout/PWAInstallBanner'
 import PushNotificationBanner from '@/components/layout/PushNotificationBanner'
+import { ThemeProvider } from '@/components/theme/ThemeProvider'
 
 export const metadata: Metadata = {
   title: 'Les voisins du Cèdre',
@@ -34,17 +35,27 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr">
+    <html lang="fr" suppressHydrationWarning>
+      <head>
+        {/* Script anti-FOUC : applique la classe dark avant le premier paint */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||(t==='system'||!t)&&window.matchMedia('(prefers-color-scheme: dark)').matches){document.documentElement.classList.add('dark')}}catch(e){}})()`,
+          }}
+        />
+      </head>
       <body
         className={`${GeistSans.variable} ${GeistMono.variable} font-sans bg-gray-50 text-gray-900 antialiased`}
       >
-        <Navbar />
-        <FirebaseSWRegister />
-        <PWAInstallBanner />
-        <PushNotificationBanner />
-        <main className="min-h-screen pt-16">
-          {children}
-        </main>
+        <ThemeProvider>
+          <Navbar />
+          <FirebaseSWRegister />
+          <PWAInstallBanner />
+          <PushNotificationBanner />
+          <main className="min-h-screen pt-16">
+            {children}
+          </main>
+        </ThemeProvider>
       </body>
     </html>
   )

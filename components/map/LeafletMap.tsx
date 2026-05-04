@@ -36,18 +36,30 @@ export default function LeafletMap({ userPosition, listings, onSelectListing, se
   const containerRef = useRef<HTMLDivElement>(null)
   const searchMarkerRef = useRef<L.Marker | null>(null)
   const userMarkerRef = useRef<L.Marker | null>(null)
+  const tileLayerRef = useRef<L.TileLayer | null>(null)
   // Timer ref to delay unspiderfy so hovering child markers doesn't collapse immediately
   const unspiderfyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const addTileLayer = (map: L.Map) => {
+    if (tileLayerRef.current) {
+      tileLayerRef.current.remove()
+      tileLayerRef.current = null
+    }
+    tileLayerRef.current = L.tileLayer(
+      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      {
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        maxZoom: 19,
+      }
+    ).addTo(map)
+  }
 
   // Init map centered on neighborhood
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
 
-    const map = L.map(containerRef.current).setView(NEIGHBORHOOD_CENTER, 17)
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      maxZoom: 19,
-    }).addTo(map)
+    const map = L.map(containerRef.current, { maxZoom: 19 }).setView(NEIGHBORHOOD_CENTER, 17)
+    addTileLayer(map)
 
     // Cluster group with custom cluster icon
     const clusterGroup = L.markerClusterGroup({
@@ -227,5 +239,5 @@ export default function LeafletMap({ userPosition, listings, onSelectListing, se
     })
   }, [selectedId, listings])
 
-  return <div ref={containerRef} className="w-full h-full" />
+  return <div ref={containerRef} className="main-map w-full h-full" />
 }
