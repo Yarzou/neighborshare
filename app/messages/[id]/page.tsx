@@ -163,25 +163,29 @@ export default function ConversationPage() {
       }, (payload) => {
         const reaction = payload.new as MessageReaction
         if (reaction.user_id === userId) return // déjà géré en optimiste
-        setMessages(prev => prev.map(m =>
-          m.id === reaction.message_id
-            ? { ...m, reactions: [...(m.reactions ?? []), reaction] }
-            : m
-        ))
+        setMessages(prev => prev.map(m => {
+          if (m.id !== reaction.message_id) return m
+          // Déduplique : évite d'accumuler si le DELETE précédent n'a pas nettoyé l'état
+          const filtered = (m.reactions ?? []).filter(r =>
+            !(r.user_id === reaction.user_id && r.emoji === reaction.emoji)
+          )
+          return { ...m, reactions: [...filtered, reaction] }
+        }))
       })
-      // Réaction supprimée (toggle off) par un autre utilisateur
+      // Réaction supprimée (toggle off) par un autre utilisateur.
+      // Supabase ne renvoie que la PK dans payload.old sans REPLICA IDENTITY FULL,
+      // donc on cherche par reaction.id sur l'ensemble des messages.
       .on('postgres_changes', {
         event: 'DELETE',
         schema: 'public',
         table: 'message_reactions',
       }, (payload) => {
-        const reaction = payload.old as MessageReaction
-        if (reaction.user_id === userId) return // déjà géré en optimiste
-        setMessages(prev => prev.map(m =>
-          m.id === reaction.message_id
-            ? { ...m, reactions: (m.reactions ?? []).filter(r => r.id !== reaction.id) }
-            : m
-        ))
+        const reactionId = (payload.old as { id?: string }).id
+        if (!reactionId) return
+        setMessages(prev => prev.map(m => ({
+          ...m,
+          reactions: (m.reactions ?? []).filter(r => r.id !== reactionId),
+        })))
       })
       .subscribe()
 
