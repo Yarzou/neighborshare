@@ -36,8 +36,8 @@ export default async function HomePage() {
               <MapPin size={18} />
               Explorer les annonces et la carte
             </Link>
-            <Link href="/listings/new" className="inline-flex items-center gap-2 bg-brand-500 text-white font-semibold px-8 py-3.5 rounded-2xl hover:bg-brand-400 transition-colors border border-brand-400">
-              Publier une annonce
+            <Link href="/auth/register" className="inline-flex items-center gap-2 bg-brand-500 text-white font-semibold px-8 py-3.5 rounded-2xl hover:bg-brand-400 transition-colors border border-brand-400">
+              Créer un compte
               <ArrowRight size={18} />
             </Link>
           </div>
