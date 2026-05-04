@@ -15,19 +15,14 @@ export default async function HomePage() {
                     bg-gradient-to-b from-white to-brand-50
                     dark:from-gray-950 dark:to-gray-900">
 
-      {/* Badge */}
-      <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-brand-100 text-brand-700 text-sm font-medium mb-6">
-        🌿 Quartier du Cèdre
-      </span>
-
       {/* Headline */}
       <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-center text-gray-900 leading-tight mb-4">
-        Partagez avec<br />vos voisins
+          Partagez avec<br />vos voisins<br /> du Cèdre
       </h1>
 
       {/* Tagline */}
       <p className="text-lg text-gray-500 text-center mb-10">
-        Outils · services · entraide entre voisins
+        Outils · services · entraide
       </p>
 
       {/* CTAs */}
