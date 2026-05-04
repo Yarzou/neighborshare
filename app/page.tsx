@@ -22,7 +22,7 @@ export default async function HomePage() {
 
       {/* Tagline */}
       <p className="text-lg text-gray-500 text-center mb-10">
-        Outils · services · entraide
+        Outils · Services · Entraide
       </p>
 
       {/* CTAs */}
