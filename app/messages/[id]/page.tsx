@@ -117,16 +117,25 @@ export default function ConversationPage() {
         filter: `conversation_id=eq.${id}`,
       }, async (payload) => {
         const newMsg = payload.new as DirectMessage
-        // Récupère le profil du sender si ce n'est pas nous
-        if (newMsg.sender_id !== userId) {
+        if (newMsg.sender_id === userId) {
+          // Remplace le message temporaire optimiste par le vrai message
+          setMessages(prev => {
+            const tempIndex = prev.findIndex(m => m.id.startsWith('temp-'))
+            if (tempIndex === -1) return [...prev, newMsg]
+            const updated = [...prev]
+            updated[tempIndex] = newMsg
+            return updated
+          })
+        } else {
+          // Récupère le profil du sender pour les messages des autres
           const { data: sender } = await supabase
             .from('profiles')
             .select('id, username, full_name, avatar_url')
             .eq('id', newMsg.sender_id)
             .single()
           newMsg.profiles = sender as Profile | undefined
+          setMessages(prev => [...prev, newMsg])
         }
-        setMessages(prev => [...prev, newMsg])
         scrollToBottom()
         // Marquer comme lu si la fenêtre est active
         if (document.visibilityState === 'visible') {
