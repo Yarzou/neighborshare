@@ -6,7 +6,7 @@ import Link from 'next/link'
 import {createClient} from '@/lib/supabase/client'
 import {ArrowLeft, Loader2, Package, Send, UserCircle2, Users} from 'lucide-react'
 import type {RealtimeChannel} from '@supabase/supabase-js'
-import type {ConversationParticipant, DirectMessage, Profile} from '@/lib/types'
+import type {ConversationParticipant, DirectMessage, MessageEmoji, MessageReaction, Profile} from '@/lib/types'
 import {getAvatarStyle} from '@/lib/utils'
 import {MessageBubble} from '@/components/messages/MessageBubble'
 import {TypingIndicator} from '@/components/messages/TypingIndicator'
@@ -91,7 +91,7 @@ export default function ConversationPage() {
       // Messages (50 derniers) — filtrés par visible_from si défini
       let msgsQuery = supabase
         .from('messages')
-        .select('id, conversation_id, sender_id, content, created_at, is_system, profiles(id, username, full_name, avatar_url)')
+        .select('id, conversation_id, sender_id, content, created_at, is_system, profiles(id, username, full_name, avatar_url), message_reactions(id, message_id, user_id, emoji, created_at)')
         .eq('conversation_id', id)
         .order('created_at', { ascending: true })
         .limit(50)
@@ -110,7 +110,7 @@ export default function ConversationPage() {
     init()
   }, [id])
 
-  // Realtime : nouveaux messages
+  // Realtime : nouveaux messages + réactions
   useEffect(() => {
     if (!userId) return
 
@@ -147,6 +147,34 @@ export default function ConversationPage() {
         if (document.visibilityState === 'visible') {
           await supabase.rpc('mark_conversation_read', { conv_id: id })
         }
+      })
+      // Réaction ajoutée par un autre utilisateur
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'message_reactions',
+      }, (payload) => {
+        const reaction = payload.new as MessageReaction
+        if (reaction.user_id === userId) return // déjà géré en optimiste
+        setMessages(prev => prev.map(m =>
+          m.id === reaction.message_id
+            ? { ...m, reactions: [...(m.reactions ?? []), reaction] }
+            : m
+        ))
+      })
+      // Réaction supprimée (toggle off) par un autre utilisateur
+      .on('postgres_changes', {
+        event: 'DELETE',
+        schema: 'public',
+        table: 'message_reactions',
+      }, (payload) => {
+        const reaction = payload.old as MessageReaction
+        if (reaction.user_id === userId) return // déjà géré en optimiste
+        setMessages(prev => prev.map(m =>
+          m.id === reaction.message_id
+            ? { ...m, reactions: (m.reactions ?? []).filter(r => r.id !== reaction.id) }
+            : m
+        ))
       })
       .subscribe()
 
@@ -233,11 +261,56 @@ export default function ConversationPage() {
       // Rollback : recharge les messages depuis la BDD
       const { data: msgs } = await supabase
         .from('messages')
-        .select('id, conversation_id, sender_id, content, created_at, is_system, profiles(id, username, full_name, avatar_url)')
+        .select('id, conversation_id, sender_id, content, created_at, is_system, profiles(id, username, full_name, avatar_url), message_reactions(id, message_id, user_id, emoji, created_at)')
         .eq('conversation_id', id)
         .order('created_at', { ascending: true })
         .limit(50)
       if (msgs) setMessages(msgs as unknown as DirectMessage[])
+    }
+  }
+
+  const handleReact = async (messageId: string, emoji: MessageEmoji) => {
+    if (!userId) return
+    const msg = messages.find(m => m.id === messageId)
+    if (!msg) return
+
+    const existing = msg.reactions?.find(r => r.user_id === userId && r.emoji === emoji)
+
+    if (existing) {
+      // Toggle off — suppression optimiste
+      setMessages(prev => prev.map(m =>
+        m.id === messageId
+          ? { ...m, reactions: (m.reactions ?? []).filter(r => r.id !== existing.id) }
+          : m
+      ))
+      await supabase.from('message_reactions').delete().eq('id', existing.id)
+    } else {
+      // Toggle on — insertion optimiste
+      const tempReaction: MessageReaction = {
+        id: `temp-${Date.now()}`,
+        message_id: messageId,
+        user_id: userId,
+        emoji,
+        created_at: new Date().toISOString(),
+      }
+      setMessages(prev => prev.map(m =>
+        m.id === messageId
+          ? { ...m, reactions: [...(m.reactions ?? []), tempReaction] }
+          : m
+      ))
+      const { data } = await supabase
+        .from('message_reactions')
+        .insert({ message_id: messageId, user_id: userId, emoji })
+        .select()
+        .single()
+      if (data) {
+        // Remplace la réaction temporaire par la vraie
+        setMessages(prev => prev.map(m =>
+          m.id === messageId
+            ? { ...m, reactions: (m.reactions ?? []).map(r => r.id === tempReaction.id ? data as MessageReaction : r) }
+            : m
+        ))
+      }
     }
   }
 
@@ -370,6 +443,8 @@ export default function ConversationPage() {
               senderInitial={getInitial(msg.sender_id)}
               senderAvatarColor={getParticipantAvatarColor(msg.sender_id)}
               onDelete={handleDelete}
+              onReact={handleReact}
+              currentUserId={userId}
             />
           )
         })}

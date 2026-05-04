@@ -112,7 +112,19 @@ export interface DirectMessage {
   created_at: string
   is_system?: boolean
   profiles?: Profile
+  reactions?: MessageReaction[]
 }
+
+export interface MessageReaction {
+  id: string
+  message_id: string
+  user_id: string
+  emoji: string
+  created_at: string
+}
+
+export const MESSAGE_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏'] as const
+export type MessageEmoji = typeof MESSAGE_EMOJIS[number]
 
 export interface ConversationWithDetails extends Conversation {
   participants: ConversationParticipant[]

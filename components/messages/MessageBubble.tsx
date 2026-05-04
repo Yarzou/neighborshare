@@ -3,7 +3,8 @@
 import { useRef, useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import { formatDateTime, getAvatarStyle } from '@/lib/utils'
-import type { DirectMessage } from '@/lib/types'
+import type { DirectMessage, MessageEmoji } from '@/lib/types'
+import { MESSAGE_EMOJIS } from '@/lib/types'
 
 interface Props {
   msg: DirectMessage
@@ -14,7 +15,9 @@ interface Props {
   senderName: string
   senderInitial: string
   senderAvatarColor?: string | null
+  currentUserId: string | null
   onDelete: (id: string) => void
+  onReact: (messageId: string, emoji: MessageEmoji) => void
 }
 
 const SWIPE_THRESHOLD = 60 // px
@@ -28,14 +31,35 @@ export function MessageBubble({
   senderName,
   senderInitial,
   senderAvatarColor,
+  currentUserId,
   onDelete,
+  onReact,
 }: Props) {
   const [swipeX, setSwipeX] = useState(0)
   const [swiping, setSwiping] = useState(false)
+  const [showPicker, setShowPicker] = useState(false)
   const touchStartX = useRef<number | null>(null)
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pickerRef = useRef<HTMLDivElement>(null)
 
   const isTemp = msg.id.startsWith('temp-')
   const canDelete = isMe && !isTemp
+
+  // ── Groupement des réactions ────────────────────────────────────────────────
+  const reactionGroups = MESSAGE_EMOJIS.reduce<Record<string, { count: number; mine: boolean }>>(
+    (acc, emoji) => {
+      const group = msg.reactions?.filter(r => r.emoji === emoji) ?? []
+      if (group.length > 0) {
+        acc[emoji] = {
+          count: group.length,
+          mine: group.some(r => r.user_id === currentUserId),
+        }
+      }
+      return acc
+    },
+    {}
+  )
+  const hasReactions = Object.keys(reactionGroups).length > 0
 
   // ── Système ────────────────────────────────────────────────────────────────
   if (msg.is_system) {
@@ -51,24 +75,39 @@ export function MessageBubble({
     )
   }
 
-  // ── Touch handlers (mobile swipe) ──────────────────────────────────────────
+  // ── Touch handlers (mobile swipe to delete + long press to react) ──────────
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (!canDelete) return
     touchStartX.current = e.touches[0].clientX
     setSwiping(true)
+
+    if (!isTemp) {
+      longPressTimer.current = setTimeout(() => {
+        setShowPicker(true)
+        setSwiping(false)
+        setSwipeX(0)
+      }, 500)
+    }
   }
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (!canDelete || touchStartX.current === null) return
+    if (touchStartX.current === null) return
+
     const dx = e.touches[0].clientX - touchStartX.current
-    // Seulement glisser vers la gauche (dx négatif)
-    if (dx < 0) setSwipeX(Math.max(dx, -SWIPE_THRESHOLD - 20))
+    // Si l'utilisateur glisse, annule le long press
+    if (Math.abs(dx) > 10 && longPressTimer.current) {
+      clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
+    // Seulement glisser vers la gauche pour mes messages (suppression)
+    if (canDelete && dx < 0) setSwipeX(Math.max(dx, -SWIPE_THRESHOLD - 20))
   }
 
   const handleTouchEnd = () => {
-    if (!canDelete) return
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
     setSwiping(false)
-    // Si on a dépassé le seuil, on garde le bouton visible; sinon snap-back
     if (swipeX < -SWIPE_THRESHOLD) {
       setSwipeX(-SWIPE_THRESHOLD)
     } else {
@@ -80,6 +119,11 @@ export function MessageBubble({
   const handleDeleteClick = () => {
     setSwipeX(0)
     onDelete(msg.id)
+  }
+
+  const handleEmojiClick = (emoji: MessageEmoji) => {
+    setShowPicker(false)
+    onReact(msg.id, emoji)
   }
 
   return (
@@ -94,7 +138,6 @@ export function MessageBubble({
         </div>
       )}
 
-      {/* Zone swipeable (mobile) + hover (desktop) */}
       <div
         className={`flex flex-col gap-0.5 max-w-[70%] ${isMe ? 'items-end' : 'items-start'}`}
       >
@@ -103,9 +146,8 @@ export function MessageBubble({
           <span className="text-xs text-gray-400 px-1">{senderName}</span>
         )}
 
-        {/* Wrapper relatif pour superposer le bouton supprimer (mobile) */}
+        {/* Wrapper relatif pour le bouton supprimer (mobile swipe) */}
         <div className="relative">
-          {/* Bouton supprimer mobile : invisible jusqu'au swipe, révélé progressivement */}
           {canDelete && (
             <button
               onClick={handleDeleteClick}
@@ -122,7 +164,7 @@ export function MessageBubble({
             </button>
           )}
 
-          {/* Bulle — groupe hover desktop */}
+          {/* Bulle */}
           <div
             className={`group relative flex items-center gap-1 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}
             style={{
@@ -146,6 +188,39 @@ export function MessageBubble({
               </button>
             )}
 
+            {/* Bouton réaction desktop (hover) */}
+            {!isTemp && (
+              <div className={`relative hidden md:flex flex-shrink-0 ${isMe ? 'order-last ml-1' : 'order-first mr-1'}`}>
+                <button
+                  onClick={() => setShowPicker(v => !v)}
+                  aria-label="Ajouter une réaction"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 text-sm leading-none"
+                >
+                  😊
+                </button>
+                {/* Palette desktop */}
+                {showPicker && (
+                  <div
+                    ref={pickerRef}
+                    className={`absolute bottom-full mb-1 z-20 bg-white border border-gray-200 rounded-2xl shadow-lg px-2 py-1.5 flex gap-1 ${
+                      isMe ? 'right-0' : 'left-0'
+                    }`}
+                  >
+                    {MESSAGE_EMOJIS.map(emoji => (
+                      <button
+                        key={emoji}
+                        onClick={() => handleEmojiClick(emoji as MessageEmoji)}
+                        className="text-lg hover:scale-125 transition-transform leading-none p-0.5"
+                        aria-label={`Réagir avec ${emoji}`}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div
               className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed select-none ${
                 isMe
@@ -157,7 +232,52 @@ export function MessageBubble({
             </div>
           </div>
         </div>
+
+        {/* Réactions affichées sous la bulle */}
+        {hasReactions && (
+          <div className={`flex flex-wrap gap-1 mt-0.5 px-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
+            {(Object.entries(reactionGroups) as [string, { count: number; mine: boolean }][]).map(([emoji, { count, mine }]) => (
+              <button
+                key={emoji}
+                onClick={() => !isTemp && onReact(msg.id, emoji as MessageEmoji)}
+                className={`flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs border transition-colors ${
+                  mine
+                    ? 'bg-brand-100 border-brand-300 text-brand-700 dark:bg-brand-900 dark:border-brand-600 dark:text-brand-300'
+                    : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300'
+                }`}
+                aria-label={`${emoji} ${count}`}
+              >
+                <span>{emoji}</span>
+                {count > 1 && <span className="font-medium">{count}</span>}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* Palette mobile (long press) — overlay centré */}
+      {showPicker && (
+        <div
+          className="fixed inset-0 z-30 md:hidden"
+          onClick={() => setShowPicker(false)}
+        >
+          <div
+            className="absolute bottom-24 left-1/2 -translate-x-1/2 bg-white border border-gray-200 rounded-2xl shadow-xl px-3 py-2 flex gap-2"
+            onClick={e => e.stopPropagation()}
+          >
+            {MESSAGE_EMOJIS.map(emoji => (
+              <button
+                key={emoji}
+                onClick={() => handleEmojiClick(emoji as MessageEmoji)}
+                className="text-2xl hover:scale-125 active:scale-110 transition-transform leading-none p-1"
+                aria-label={`Réagir avec ${emoji}`}
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

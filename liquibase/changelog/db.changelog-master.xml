@@ -68,4 +68,7 @@
   <!-- Messages système (is_system) + RPCs validate/cancel avec message auto -->
   <include file="liquibase/changelog/021-system-messages.sql"/>
 
+  <!-- Réactions emoji sur les messages (table message_reactions + RLS + realtime) -->
+  <include file="liquibase/changelog/022-message-reactions.sql"/>
+
 </databaseChangeLog>
