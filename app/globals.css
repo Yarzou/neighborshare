@@ -282,4 +282,7 @@ html.dark .custom-marker {
 }
 html.dark .custom-marker--demande { background: #2d1a0a !important; }
 
+/* ─── Images : atténuation fond blanc ───────────────────────────────────── */
+html.dark img { filter: brightness(0.85) saturate(0.9); }
+
 
