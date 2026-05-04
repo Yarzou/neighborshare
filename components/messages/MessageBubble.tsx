@@ -38,9 +38,11 @@ export function MessageBubble({
   const [swipeX, setSwipeX] = useState(0)
   const [swiping, setSwiping] = useState(false)
   const [showPicker, setShowPicker] = useState(false)
+  const [pickerPos, setPickerPos] = useState<{ top: number; left: number } | null>(null)
   const touchStartX = useRef<number | null>(null)
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pickerRef = useRef<HTMLDivElement>(null)
+  const bubbleRef = useRef<HTMLDivElement>(null)
 
   const isTemp = msg.id.startsWith('temp-')
   const canDelete = isMe && !isTemp
@@ -82,6 +84,13 @@ export function MessageBubble({
 
     if (!isTemp) {
       longPressTimer.current = setTimeout(() => {
+        if (bubbleRef.current) {
+          const rect = bubbleRef.current.getBoundingClientRect()
+          const PICKER_WIDTH = 280 // approximate width
+          let left = rect.left + rect.width / 2
+          left = Math.max(PICKER_WIDTH / 2 + 8, Math.min(left, window.innerWidth - PICKER_WIDTH / 2 - 8))
+          setPickerPos({ top: rect.bottom + 8, left })
+        }
         setShowPicker(true)
         setSwiping(false)
         setSwipeX(0)
@@ -222,6 +231,7 @@ export function MessageBubble({
             )}
 
             <div
+              ref={bubbleRef}
               className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed select-none ${
                 isMe
                   ? 'bg-green-500 text-white rounded-br-sm'
@@ -255,14 +265,19 @@ export function MessageBubble({
         )}
       </div>
 
-      {/* Palette mobile (long press) — overlay centré */}
+      {/* Palette mobile (long press) — positionnée sous la bulle */}
       {showPicker && (
         <div
           className="fixed inset-0 z-30 md:hidden"
           onClick={() => setShowPicker(false)}
         >
           <div
-            className="absolute bottom-24 left-1/2 -translate-x-1/2 bg-white border border-gray-200 rounded-2xl shadow-xl px-3 py-2 flex gap-2"
+            className="absolute bg-white border border-gray-200 rounded-2xl shadow-xl px-3 py-2 flex gap-2"
+            style={
+              pickerPos
+                ? { top: pickerPos.top, left: pickerPos.left, transform: 'translateX(-50%)' }
+                : { bottom: '6rem', left: '50%', transform: 'translateX(-50%)' }
+            }
             onClick={e => e.stopPropagation()}
           >
             {MESSAGE_EMOJIS.map(emoji => (
