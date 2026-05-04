@@ -156,11 +156,6 @@ export default function MessagesClient() {
         <div className="text-center py-16 text-gray-400 bg-white rounded-2xl border border-gray-200">
           <MessageCircle size={48} className="mx-auto mb-3 opacity-20" />
           <p className="font-medium">Aucune conversation pour l&apos;instant</p>
-          <p className="text-sm mt-1">Démarrez une discussion avec vos voisins !</p>
-          <Link href="/messages/new"
-            className="inline-flex items-center gap-1.5 mt-4 px-5 py-2.5 bg-brand-600 text-white rounded-xl text-sm font-medium hover:bg-brand-700 transition-colors">
-            <Plus size={14} /> Nouvelle conversation
-          </Link>
         </div>
       ) : (
         <div className="flex flex-col gap-2">
