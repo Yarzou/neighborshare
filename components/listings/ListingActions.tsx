@@ -107,7 +107,7 @@ export function ListingActions({ listingId, status, conversationId, isOwner, isR
           className="w-full py-2.5 rounded-xl border border-red-200 text-red-600 text-sm font-medium hover:bg-red-50 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
         >
           {loading === 'cancel' ? <Loader2 size={15} className="animate-spin" /> : <XCircle size={15} />}
-          Annuler ma demande
+          Clôturer ma demande
         </button>
       )}
     </div>

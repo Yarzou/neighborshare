@@ -124,7 +124,7 @@ function DemandeCard({
             className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl border border-red-200 text-red-600 text-xs font-medium hover:bg-red-50 transition-colors disabled:opacity-50"
           >
             {loading === 'cancel' ? <Loader2 size={12} className="animate-spin" /> : <XCircle size={13} />}
-            Annuler ma demande
+            Clôturer ma demande
           </button>
         )}
 
@@ -275,8 +275,8 @@ export default function DemandesClient() {
   const sentPending = sent.filter(r => r.status === 'en_cours')
   const sentDone = sent.filter(r => r.status === 'validee')
 
-  const receivedBadge = receivedPending.length
-  const sentBadge = sentPending.length
+  const receivedBadge = received.length
+  const sentBadge = sent.length
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">

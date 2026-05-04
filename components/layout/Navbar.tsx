@@ -52,18 +52,18 @@ export function Navbar() {
     }
 
     const fetchPendingRequests = async () => {
-      // Count en_cours listings where user is owner OR responder
+      // Count en_cours + validee listings where user is owner OR responder
       const [{ count: asOwner }, { count: asResponder }] = await Promise.all([
         supabase
           .from('listings')
           .select('id', { count: 'exact', head: true })
           .eq('user_id', user.id)
-          .eq('status', 'en_cours'),
+          .in('status', ['en_cours', 'validee']),
         supabase
           .from('listings')
           .select('id', { count: 'exact', head: true })
           .eq('responder_id', user.id)
-          .eq('status', 'en_cours'),
+          .in('status', ['en_cours', 'validee']),
       ])
       setPendingRequestsCount((asOwner ?? 0) + (asResponder ?? 0))
     }
