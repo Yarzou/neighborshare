@@ -285,4 +285,13 @@ html.dark .custom-marker--demande { background: #2d1a0a !important; }
 /* ─── Images : atténuation fond blanc ───────────────────────────────────── */
 html.dark img { filter: brightness(0.85) saturate(0.9); }
 
-
+/* ─── Homepage (page d'accueil non connecté) ────────────────────────────── */
+html.dark .homepage-category-pill {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+  color: #cbd5e1 !important;
+}
+html.dark .homepage-category-pill:hover {
+  border-color: #4ade80 !important;
+  color: #4ade80 !important;
+}

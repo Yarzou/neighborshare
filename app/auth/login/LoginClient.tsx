@@ -76,7 +76,9 @@ export default function LoginClient() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-brand-50 to-white">
+    <div className="min-h-screen flex items-center justify-center px-4
+                    bg-gradient-to-b from-white to-brand-50
+                    dark:from-gray-950 dark:to-gray-900">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="text-4xl mb-3">🏘️</div>
