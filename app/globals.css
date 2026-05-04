@@ -117,11 +117,13 @@ html.dark {
 /* Body / page background */
 html.dark body,
 html.dark .bg-gray-50  { background-color: #0f172a !important; }
-html.dark .bg-gray-100 { background-color: #1e293b !important; }
 html.dark .bg-gray-200 { background-color: #334155 !important; }
 
 /* Cards, modals, panneaux */
 html.dark .bg-white { background-color: #1e293b !important; }
+
+/* Panels / conteneurs secondaires (tabs, etc.) */
+html.dark .bg-gray-100 { background-color: #0f172a !important; }
 
 /* Text */
 html.dark .text-gray-900 { color: #f1f5f9 !important; }
@@ -178,4 +180,106 @@ html.dark .carpool-mini-map .leaflet-tile-pane {
 
 /* Fond du conteneur Leaflet */
 html.dark .leaflet-container { background: #1e293b !important; }
+
+/* ─── Brand colors ───────────────────────────────────────────────────────── */
+html.dark .bg-brand-50  { background-color: rgba(20,83,45,0.25) !important; }
+html.dark .bg-brand-100 { background-color: rgba(20,83,45,0.40) !important; }
+html.dark .bg-brand-600 { background-color: #15803d !important; }
+html.dark .border-brand-600 { border-color: #15803d !important; }
+html.dark .text-brand-700 { color: #86efac !important; }
+html.dark .text-brand-600 { color: #4ade80 !important; }
+html.dark .hover\:bg-brand-50:hover { background-color: rgba(20,83,45,0.25) !important; }
+
+/* ─── Status badges ──────────────────────────────────────────────────────── */
+html.dark .bg-emerald-100 { background-color: rgba(6,78,59,0.40) !important; }
+html.dark .text-emerald-700 { color: #6ee7b7 !important; }
+
+html.dark .bg-amber-100 { background-color: rgba(120,53,15,0.40) !important; }
+html.dark .text-amber-700 { color: #fcd34d !important; }
+html.dark .text-amber-800 { color: #fbbf24 !important; }
+
+html.dark .bg-orange-100 { background-color: rgba(124,45,18,0.40) !important; }
+html.dark .text-orange-700 { color: #fdba74 !important; }
+
+html.dark .bg-sky-100 { background-color: rgba(12,74,110,0.40) !important; }
+html.dark .text-sky-700 { color: #7dd3fc !important; }
+
+html.dark .bg-teal-100 { background-color: rgba(19,78,74,0.40) !important; }
+html.dark .text-teal-700 { color: #5eead4 !important; }
+
+html.dark .bg-violet-100 { background-color: rgba(76,29,149,0.40) !important; }
+html.dark .text-violet-700 { color: #c4b5fd !important; }
+
+html.dark .bg-rose-100 { background-color: rgba(136,19,55,0.40) !important; }
+html.dark .text-rose-700 { color: #fda4af !important; }
+
+html.dark .bg-red-100 { background-color: rgba(127,29,29,0.40) !important; }
+html.dark .text-red-700 { color: #fca5a5 !important; }
+html.dark .text-red-500 { color: #f87171 !important; }
+
+/* ─── Texte blanc → atténué ──────────────────────────────────────────────── */
+html.dark .text-white { color: #e2e8f0 !important; }
+
+/* ─── Couleurs *-50 (filtres catégories) ─────────────────────────────────── */
+html.dark .bg-blue-50    { background-color: rgba(30,58,138,0.30) !important; }
+html.dark .bg-green-50   { background-color: rgba(20,83,45,0.25)  !important; }
+html.dark .bg-pink-50    { background-color: rgba(131,24,67,0.25) !important; }
+html.dark .bg-yellow-50  { background-color: rgba(113,63,18,0.30) !important; }
+html.dark .bg-purple-50  { background-color: rgba(88,28,135,0.30) !important; }
+html.dark .bg-emerald-50 { background-color: rgba(6,78,59,0.25)   !important; }
+html.dark .bg-orange-50  { background-color: rgba(124,45,18,0.25) !important; }
+html.dark .bg-indigo-50  { background-color: rgba(49,46,129,0.30) !important; }
+html.dark .bg-rose-50    { background-color: rgba(136,19,55,0.25) !important; }
+
+/* Bordures des filtres inactifs */
+html.dark .border-blue-200   { border-color: #1e3a8a !important; }
+html.dark .border-green-200  { border-color: #14532d !important; }
+html.dark .border-pink-200   { border-color: #831843 !important; }
+html.dark .border-yellow-200 { border-color: #713f12 !important; }
+html.dark .border-purple-200 { border-color: #581c87 !important; }
+html.dark .border-emerald-200 { border-color: #064e3b !important; }
+html.dark .border-orange-200 { border-color: #7c2d12 !important; }
+
+/* Hover des filtres inactifs */
+html.dark .hover\:bg-blue-100:hover    { background-color: rgba(30,58,138,0.45)  !important; }
+html.dark .hover\:bg-green-100:hover   { background-color: rgba(20,83,45,0.40)   !important; }
+html.dark .hover\:bg-pink-100:hover    { background-color: rgba(131,24,67,0.40)  !important; }
+html.dark .hover\:bg-yellow-100:hover  { background-color: rgba(113,63,18,0.45)  !important; }
+html.dark .hover\:bg-purple-100:hover  { background-color: rgba(88,28,135,0.45)  !important; }
+html.dark .hover\:bg-emerald-100:hover { background-color: rgba(6,78,59,0.40)    !important; }
+html.dark .hover\:bg-orange-100:hover  { background-color: rgba(124,45,18,0.40)  !important; }
+
+/* ─── Gradients (ListingCard, home) ─────────────────────────────────────── */
+html.dark .from-brand-50  { --tw-gradient-from: rgba(20,83,45,0.3) !important; }
+html.dark .to-brand-100   { --tw-gradient-to:   rgba(20,83,45,0.5) !important; }
+html.dark .from-brand-100 { --tw-gradient-from: rgba(20,83,45,0.4) !important; }
+html.dark .from-violet-50 { --tw-gradient-from: rgba(76,29,149,0.3) !important; }
+html.dark .to-violet-50   { --tw-gradient-to:   rgba(76,29,149,0.3) !important; }
+html.dark .bg-violet-50   { background-color: rgba(76,29,149,0.25) !important; }
+html.dark .text-violet-800 { color: #ddd6fe !important; }
+html.dark .text-violet-500 { color: #a78bfa !important; }
+html.dark .text-violet-400 { color: #818cf8 !important; }
+
+/* warm gradient (home page) */
+html.dark .from-warm-50 { --tw-gradient-from: rgba(60,30,10,0.3) !important; }
+html.dark .to-warm-50   { --tw-gradient-to:   rgba(60,30,10,0.3) !important; }
+html.dark .border-brand-100 { border-color: #1a3c28 !important; }
+html.dark .text-brand-800 { color: #bbf7d0 !important; }
+
+/* ─── Cluster bubbles (carte) ────────────────────────────────────────────── */
+html.dark .cluster-bubble {
+  background: #166534 !important;
+  border-color: #94a3b8 !important;
+  color: #e2e8f0 !important;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.6) !important;
+}
+html.dark .cluster-bubble:hover { background: #14532d !important; }
+
+/* ─── Marqueurs personnalisés (carte) ────────────────────────────────────── */
+html.dark .custom-marker {
+  background: #1e293b !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5) !important;
+}
+html.dark .custom-marker--demande { background: #2d1a0a !important; }
+
 
