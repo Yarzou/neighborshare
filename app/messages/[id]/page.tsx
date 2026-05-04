@@ -99,7 +99,14 @@ export default function ConversationPage() {
         msgsQuery = msgsQuery.gte('created_at', myPart.visible_from)
       }
       const { data: msgs } = await msgsQuery
-      setMessages((msgs ?? []) as unknown as DirectMessage[])
+      // Supabase retourne la relation sous le nom de la table "message_reactions",
+      // mais le type DirectMessage utilise "reactions" → on renomme ici.
+      const normalized = (msgs ?? []).map((m: any) => ({
+        ...m,
+        reactions: m.message_reactions ?? [],
+        message_reactions: undefined,
+      }))
+      setMessages(normalized as DirectMessage[])
 
       setLoading(false)
       scrollToBottom()
@@ -265,7 +272,14 @@ export default function ConversationPage() {
         .eq('conversation_id', id)
         .order('created_at', { ascending: true })
         .limit(50)
-      if (msgs) setMessages(msgs as unknown as DirectMessage[])
+      if (msgs) {
+        const normalized = msgs.map((m: any) => ({
+          ...m,
+          reactions: m.message_reactions ?? [],
+          message_reactions: undefined,
+        }))
+        setMessages(normalized as DirectMessage[])
+      }
     }
   }
 
