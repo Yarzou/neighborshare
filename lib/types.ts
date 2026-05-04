@@ -133,7 +133,7 @@ export const LISTING_STATUS_LABELS: Record<ListingStatus, string> = {
   reserve: 'Réservé',
   termine: 'Terminé',
   en_cours: 'En cours',
-  validee: 'Validée',
+  validee: 'En utilisation',
 }
 
 export const LISTING_STATUS_COLORS: Record<ListingStatus, string> = {
