@@ -7,11 +7,13 @@ import { MapPin, Plus, MessageCircle, User, LogOut, Menu, X, ClipboardList } fro
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
+import { useTheme } from '@/components/theme/ThemeProvider'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
 
 export function Navbar() {
   const pathname = usePathname()
   const router = useRouter()
+  const { setTheme } = useTheme()
   const [user, setUser] = useState<SupabaseUser | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
@@ -96,11 +98,7 @@ export function Navbar() {
   }, [user, pathname])
 
   const handleLogout = async () => {
-    localStorage.removeItem('theme')
-    document.documentElement.classList.toggle(
-      'dark',
-      window.matchMedia('(prefers-color-scheme: dark)').matches
-    )
+    setTheme('system')
     await supabase.auth.signOut()
     router.push('/')
     router.refresh()

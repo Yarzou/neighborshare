@@ -41,7 +41,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setThemeState(stored)
     applyTheme(stored)
 
-    // Écoute les changements de préférence système
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
     const onChange = () => {
       const current = (localStorage.getItem('theme') ?? 'system') as ThemeChoice
