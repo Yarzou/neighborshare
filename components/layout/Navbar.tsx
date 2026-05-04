@@ -163,15 +163,17 @@ export function Navbar() {
               {link.label}
             </Link>
           ))}
-          <button onClick={handlePublish}
-            className={cn(
-              'flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-colors',
-              pathname === '/listings/new'
-                ? 'bg-brand-50 text-brand-700'
-                : 'text-gray-600 hover:bg-gray-100'
-            )}>
-            <Plus size={16} /> Publier
-          </button>
+          {user && (
+            <button onClick={handlePublish}
+              className={cn(
+                'flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-colors',
+                pathname === '/listings/new'
+                  ? 'bg-brand-50 text-brand-700'
+                  : 'text-gray-600 hover:bg-gray-100'
+              )}>
+              <Plus size={16} /> Publier
+            </button>
+          )}
           {user && (
             <button onClick={handleDemandes}
               className={cn(
@@ -248,10 +250,12 @@ export function Navbar() {
               {link.icon} {link.label}
             </Link>
           ))}
-          <button onClick={() => { handlePublish(); setMenuOpen(false) }}
-            className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100">
-            <Plus size={16} /> Publier
-          </button>
+          {user && (
+            <button onClick={() => { handlePublish(); setMenuOpen(false) }}
+              className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100">
+              <Plus size={16} /> Publier
+            </button>
+          )}
           {user && (
             <button onClick={() => { handleDemandes(); setMenuOpen(false) }}
               className={cn(

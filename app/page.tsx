@@ -34,10 +34,10 @@ export default async function HomePage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/map" className="inline-flex items-center gap-2 bg-white text-brand-700 font-semibold px-8 py-3.5 rounded-2xl hover:bg-brand-50 transition-colors shadow-lg">
               <MapPin size={18} />
-              Explorer les annonces et la carte
+              Explorer les annonces
             </Link>
-            <Link href="/auth/register" className="inline-flex items-center gap-2 bg-brand-500 dark:bg-brand-700 text-white font-semibold px-8 py-3.5 rounded-2xl hover:bg-brand-400 dark:hover:bg-brand-600 transition-colors border border-brand-400 dark:border-brand-600">
-              Créer un compte
+            <Link href="/auth/login" className="inline-flex items-center gap-2 bg-brand-500 dark:bg-brand-700 text-white font-semibold px-8 py-3.5 rounded-2xl hover:bg-brand-400 dark:hover:bg-brand-600 transition-colors border border-brand-400 dark:border-brand-600">
+              Se connecter
               <ArrowRight size={18} />
             </Link>
           </div>
@@ -59,19 +59,22 @@ export default async function HomePage() {
       </section>
 
       {/* CTA — only for unauthenticated users */}
-      {!user && (
-        <section className="max-w-4xl mx-auto px-4 py-16 w-full text-center">
-          <div className="bg-gradient-to-br from-brand-50 to-warm-50 rounded-3xl p-10 border border-brand-100">
-            <Users className="mx-auto mb-4 text-brand-600" size={40} />
-            <h2 className="text-2xl font-bold mb-3">Rejoignez votre quartier du Cèdre</h2>
-            <p className="text-gray-500 mb-6">Créez votre compte et commencez à partager.</p>
+      <section className="max-w-4xl mx-auto px-4 py-16 w-full text-center">
+        <div className="bg-gradient-to-br from-brand-50 to-warm-50 rounded-3xl p-10 border border-brand-100">
+          <Users className="mx-auto mb-4 text-brand-600" size={40} />
+          <h2 className="text-2xl font-bold mb-3">Rejoignez votre quartier du Cèdre</h2>
+          <p className="text-gray-500 mb-6">Créez votre compte et commencez à partager avec vos voisins.</p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link href="/auth/register" className="inline-flex items-center gap-2 bg-brand-600 text-white font-semibold px-8 py-3.5 rounded-2xl hover:bg-brand-700 transition-colors">
-              S&apos;inscrire
+              Créer un compte
               <ArrowRight size={18} />
             </Link>
+            <Link href="/auth/login" className="inline-flex items-center gap-2 border border-brand-600 text-brand-600 font-semibold px-8 py-3.5 rounded-2xl hover:bg-brand-50 transition-colors">
+              Se connecter
+            </Link>
           </div>
-        </section>
-      )}
+        </div>
+      </section>
     </div>
   )
 }
