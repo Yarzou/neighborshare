@@ -1,13 +1,15 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import {useCallback, useEffect, useRef, useState} from 'react'
+import {useParams, useRouter} from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/client'
-import { ArrowLeft, Send, Loader2, Users, UserCircle2, Package } from 'lucide-react'
-import type { DirectMessage, ConversationParticipant, Profile } from '@/lib/types'
-import { formatDateTime, getAvatarStyle } from '@/lib/utils'
-import { MessageBubble } from '@/components/messages/MessageBubble'
+import {createClient} from '@/lib/supabase/client'
+import {ArrowLeft, Loader2, Package, Send, UserCircle2, Users} from 'lucide-react'
+import type {RealtimeChannel} from '@supabase/supabase-js'
+import type {ConversationParticipant, DirectMessage, Profile} from '@/lib/types'
+import {getAvatarStyle} from '@/lib/utils'
+import {MessageBubble} from '@/components/messages/MessageBubble'
+import {TypingIndicator} from '@/components/messages/TypingIndicator'
 
 export default function ConversationPage() {
   const router = useRouter()
@@ -23,9 +25,12 @@ export default function ConversationPage() {
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const [notFound, setNotFound] = useState(false)
+  const [typingUsers, setTypingUsers] = useState<string[]>([])
 
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const presenceChannelRef = useRef<RealtimeChannel | null>(null)
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
@@ -108,6 +113,7 @@ export default function ConversationPage() {
   // Realtime : nouveaux messages
   useEffect(() => {
     if (!userId) return
+
     const channel = supabase
       .channel(`conv:${id}`)
       .on('postgres_changes', {
@@ -143,7 +149,45 @@ export default function ConversationPage() {
         }
       })
       .subscribe()
+
     return () => { supabase.removeChannel(channel) }
+  }, [userId, id])
+
+  // Broadcast : indicateur de frappe (plus fiable que Presence, pas de config serveur)
+  useEffect(() => {
+    if (!userId) return
+
+    // Timeouts côté récepteur pour auto-effacer si le correspondant quitte sans broadcaster "false"
+    const receiverTimers: Record<string, ReturnType<typeof setTimeout>> = {}
+
+    const broadcastChannel = supabase
+      .channel(`typing:${id}`)
+      .on('broadcast', { event: 'typing' }, ({ payload }) => {
+        const { userId: typingUserId, typing } = payload as { userId: string; typing: boolean }
+        if (typingUserId === userId) return
+
+        // Annule le timer d'auto-effacement précédent pour cet utilisateur
+        if (receiverTimers[typingUserId]) clearTimeout(receiverTimers[typingUserId])
+
+        if (typing) {
+          setTypingUsers(prev => prev.includes(typingUserId) ? prev : [...prev, typingUserId])
+          scrollToBottom()
+          // Sécurité : efface automatiquement après 5s si on ne reçoit pas de "false"
+          receiverTimers[typingUserId] = setTimeout(() => {
+            setTypingUsers(prev => prev.filter(u => u !== typingUserId))
+          }, 5000)
+        } else {
+          setTypingUsers(prev => prev.filter(u => u !== typingUserId))
+        }
+      })
+      .subscribe()
+
+    presenceChannelRef.current = broadcastChannel
+    return () => {
+      Object.values(receiverTimers).forEach(clearTimeout)
+      supabase.removeChannel(broadcastChannel)
+      presenceChannelRef.current = null
+    }
   }, [userId, id])
 
   const handleSend = async () => {
@@ -152,6 +196,10 @@ export default function ConversationPage() {
     setInput('')
     setSending(true)
     inputRef.current?.focus()
+
+    // Arrête l'indicateur de frappe immédiatement
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current)
+    presenceChannelRef.current?.send({ type: 'broadcast', event: 'typing', payload: { userId, typing: false } })
 
     // Optimistic insert
     const tempMsg: DirectMessage = {
@@ -197,6 +245,21 @@ export default function ConversationPage() {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSend()
+    }
+  }
+
+  const handleInputChange = (value: string) => {
+    setInput(value)
+    if (!userId || !presenceChannelRef.current) return
+    if (value.trim()) {
+      presenceChannelRef.current.send({ type: 'broadcast', event: 'typing', payload: { userId, typing: true } })
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current)
+      typingTimerRef.current = setTimeout(() => {
+        presenceChannelRef.current?.send({ type: 'broadcast', event: 'typing', payload: { userId, typing: false } })
+      }, 2500)
+    } else {
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current)
+      presenceChannelRef.current.send({ type: 'broadcast', event: 'typing', payload: { userId, typing: false } })
     }
   }
 
@@ -310,6 +373,10 @@ export default function ConversationPage() {
             />
           )
         })}
+        <TypingIndicator
+            names={typingUsers.map(uid => getParticipantName(uid))}
+            isGroup={isGroup}
+        />
         <div ref={bottomRef} />
       </div>
 
@@ -319,7 +386,7 @@ export default function ConversationPage() {
           ref={inputRef}
           type="text"
           value={input}
-          onChange={e => setInput(e.target.value)}
+          onChange={e => handleInputChange(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Écrivez un message…"
           className="flex-1 min-w-0 px-4 py-2.5 rounded-full border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
