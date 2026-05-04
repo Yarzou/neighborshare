@@ -99,7 +99,7 @@ export function ListingCard({ listing, compact = false, onClick, active, outline
       )}
 
       {/* Content */}
-      <div className={cn('flex flex-col gap-1 min-w-0', !compact && 'p-4')}>
+      <div className={cn('flex flex-col gap-1 min-w-0', compact ? 'flex-1' : 'p-4')}>
         <div className="flex items-start justify-between gap-2">
           <h3 className={cn('font-semibold text-gray-900 truncate', compact ? 'text-sm' : 'text-base')}>
             {listing.title}
