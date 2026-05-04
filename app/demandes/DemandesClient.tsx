@@ -148,7 +148,7 @@ function DemandeCard({
             className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl border border-red-200 text-red-600 text-xs font-medium hover:bg-red-50 transition-colors disabled:opacity-50"
           >
             {loading === 'cancel' ? <Loader2 size={12} className="animate-spin" /> : <XCircle size={13} />}
-            Terminer ma demande
+            Clôturer ma demande
           </button>
         )}
       </div>
