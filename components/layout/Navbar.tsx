@@ -96,6 +96,11 @@ export function Navbar() {
   }, [user, pathname])
 
   const handleLogout = async () => {
+    localStorage.removeItem('theme')
+    document.documentElement.classList.toggle(
+      'dark',
+      window.matchMedia('(prefers-color-scheme: dark)').matches
+    )
     await supabase.auth.signOut()
     router.push('/')
     router.refresh()
