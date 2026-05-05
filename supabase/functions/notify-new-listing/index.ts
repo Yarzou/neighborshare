@@ -2,13 +2,12 @@
 // Déclencheur : Database Webhook sur INSERT dans public.listings
 //
 // Envoie :
-//   - Un email Resend à tous les utilisateurs avec email_notifications_enabled=true (sauf l'auteur)
+//   - Un email (via proxy Next.js → Gmail SMTP) à tous les utilisateurs avec email_notifications_enabled=true (sauf l'auteur)
 //   - Une notification push FCM à tous les utilisateurs avec un token FCM (sauf l'auteur)
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
-const RESEND_FROM    = Deno.env.get('RESEND_FROM_EMAIL') ?? 'Les voisins du Cèdre <notifications@voisinsducedre.fr>'
+const INTERNAL_EMAIL_SECRET = Deno.env.get('INTERNAL_EMAIL_SECRET')
 const APP_URL        = Deno.env.get('APP_URL') ?? 'https://neighborshare-liard.vercel.app/'
 
 interface ServiceAccount { client_email: string; private_key: string; project_id: string }
@@ -78,7 +77,7 @@ Deno.serve(async (req) => {
     const authorId   = listing.user_id
 
     // ── 1. Emails ─────────────────────────────────────────────────────────────
-    if (RESEND_API_KEY) {
+    if (INTERNAL_EMAIL_SECRET) {
       const { data: profiles } = await supabase
         .from('profiles')
         .select('id')
@@ -95,11 +94,14 @@ Deno.serve(async (req) => {
           userIds
             .map(id => emailMap.get(id))
             .filter((email): email is string => Boolean(email))
-            .map(email => fetch('https://api.resend.com/emails', {
+            .map(email => fetch(`${APP_URL}/api/internal/send-email`, {
               method: 'POST',
-              headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+              headers: {
+                'Content-Type': 'application/json',
+                'x-internal-secret': INTERNAL_EMAIL_SECRET,
+              },
               body: JSON.stringify({
-                from: RESEND_FROM, to: [email],
+                to: email,
                 subject: `Nouvelle annonce : ${title}`,
                 html: buildListingEmailHtml(title, listing.description, listing.city, listingUrl),
               }),
@@ -107,7 +109,7 @@ Deno.serve(async (req) => {
         )
       }
     } else {
-      console.warn('[notify-new-listing] RESEND_API_KEY not set — emails skipped')
+      console.warn('[notify-new-listing] INTERNAL_EMAIL_SECRET not set — emails skipped')
     }
 
     // ── 2. Push FCM ────────────────────────────────────────────────────────────

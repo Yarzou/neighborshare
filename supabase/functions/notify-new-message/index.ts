@@ -2,15 +2,14 @@
 // Déclencheur : Database Webhook sur INSERT dans public.messages
 //
 // Envoie :
-//   - Un email Resend aux participants de la conversation (sauf l'expéditeur)
+//   - Un email (via proxy Next.js → Gmail SMTP) aux participants de la conversation (sauf l'expéditeur)
 //     si email_notifications_enabled=true
 //   - Une notification push FCM aux participants (sauf l'expéditeur)
 //     si push_notifications_enabled=true et token FCM présent
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
-const RESEND_FROM    = Deno.env.get('RESEND_FROM_EMAIL') ?? 'Les voisins du Cèdre <notifications@voisinsducedre.fr>'
+const INTERNAL_EMAIL_SECRET = Deno.env.get('INTERNAL_EMAIL_SECRET')
 const APP_URL        = Deno.env.get('APP_URL') ?? 'https://neighborshare-liard.vercel.app/'
 
 // ── FCM utilities (inlined) ────────────────────────────────────────────────────
@@ -104,7 +103,7 @@ Deno.serve(async (req) => {
     const recipientIds = participants.map(p => p.user_id)
 
     // ── 1. Emails ─────────────────────────────────────────────────────────────
-    if (RESEND_API_KEY) {
+    if (INTERNAL_EMAIL_SECRET) {
       // Récupère les emails depuis auth.users
       const { data: { users } } = await supabase.auth.admin.listUsers({ perPage: 1000 })
       const emailMap = new Map(users.map(u => [u.id, u.email]))
@@ -119,15 +118,14 @@ Deno.serve(async (req) => {
 
       await Promise.allSettled(
         emailRecipients.map(email =>
-          fetch('https://api.resend.com/emails', {
+          fetch(`${APP_URL}/api/internal/send-email`, {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${RESEND_API_KEY}`,
               'Content-Type': 'application/json',
+              'x-internal-secret': INTERNAL_EMAIL_SECRET,
             },
             body: JSON.stringify({
-              from: RESEND_FROM,
-              to: [email],
+              to: email,
               subject: `Nouveau message de ${senderName}`,
               html: buildMessageEmailHtml(senderName, messagePreview, convUrl),
             }),
@@ -135,7 +133,7 @@ Deno.serve(async (req) => {
         )
       )
     } else {
-      console.warn('[notify-new-message] RESEND_API_KEY not set — emails skipped')
+      console.warn('[notify-new-message] INTERNAL_EMAIL_SECRET not set — emails skipped')
     }
 
     // ── 2. Push FCM ────────────────────────────────────────────────────────────

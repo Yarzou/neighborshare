@@ -1,16 +1,32 @@
-import { Resend } from 'resend'
+import nodemailer from 'nodemailer'
 
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
-const FROM = process.env.RESEND_FROM_EMAIL ?? 'VoisinsDuCèdre <onboarding@resend.dev>'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
 
+const transporter =
+  process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD
+    ? nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: process.env.GMAIL_USER,
+          pass: process.env.GMAIL_APP_PASSWORD,
+        },
+      })
+    : null
+
 /**
- * Sends an email notification. Silently no-ops if RESEND_API_KEY is not configured.
+ * Sends an email notification via Gmail SMTP.
+ * Exported so the internal API route can reuse it directly.
+ * Silently no-ops if GMAIL_USER / GMAIL_APP_PASSWORD are not configured.
  */
-async function sendEmail(to: string, subject: string, html: string): Promise<void> {
-  if (!resend) return
+export async function sendEmail(to: string, subject: string, html: string): Promise<void> {
+  if (!transporter) return
   try {
-    await resend.emails.send({ from: FROM, to, subject, html })
+    await transporter.sendMail({
+      from: `VoisinsDuCèdre <${process.env.GMAIL_USER}>`,
+      to,
+      subject,
+      html,
+    })
   } catch (err) {
     console.error('[Email] Error sending:', err)
   }
