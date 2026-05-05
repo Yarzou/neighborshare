@@ -139,7 +139,7 @@ Les positions sont stockées en format `geography(Point, 4326)` (WGS84).
 
 - [x] Messagerie temps réel (Supabase Realtime)
 - [x] Notifications push (Supabase Edge Functions)
-- [ ] Fil d'annonces public sans compte
+- [x] Fil d'annonces public sans compte
 - [x] Mode sombre
 - [x] Application mobile (Expo + React Native)
 
