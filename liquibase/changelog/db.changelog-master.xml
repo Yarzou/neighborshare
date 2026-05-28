@@ -71,4 +71,7 @@
   <!-- Réactions emoji sur les messages (table message_reactions + RLS + realtime) -->
   <include file="liquibase/changelog/022-message-reactions.sql"/>
 
+  <!-- (no-op) spatial_ref_sys appartient au superuser PostGIS, RLS non applicable -->
+  <include file="liquibase/changelog/023-rls-spatial-ref-sys.sql"/>
+
 </databaseChangeLog>
