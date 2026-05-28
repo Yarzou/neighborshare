@@ -123,6 +123,22 @@ export interface MessageReaction {
   created_at: string
 }
 
+export interface Event {
+  id: string
+  user_id: string
+  title: string
+  description: string | null
+  event_date: string
+  event_end_date: string | null
+  location_text: string | null
+  location_lat: number | null
+  location_lng: number | null
+  image_urls: string[]
+  created_at: string
+  // Join
+  profiles?: Profile
+}
+
 export const MESSAGE_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏'] as const
 export type MessageEmoji = typeof MESSAGE_EMOJIS[number]
 

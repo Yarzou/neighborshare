@@ -5,7 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import type { Profile, Listing } from '@/lib/types'
+import type { Profile, Listing, Event } from '@/lib/types'
 import { getCategoryEmoji } from '@/lib/categories'
 import { formatDate } from '@/lib/utils'
 import { cn } from '@/lib/utils'
@@ -14,7 +14,7 @@ import { TypeBadge } from '@/components/listings/TypeBadge'
 import {
   Package, Pencil, Trash2, Edit2,
   Check, X, Loader2, AlertCircle,
-  Lock, ShieldAlert, Eye, EyeOff, Bell, Mail, ChevronDown, MapPin,
+  Lock, ShieldAlert, Eye, EyeOff, Bell, Mail, ChevronDown, MapPin, CalendarDays,
 } from 'lucide-react'
 import { isPushSupported, activatePushNotifications, deactivatePushNotifications } from '@/lib/pushNotifications'
 import AddressAutocomplete, { type ResolvedAddress } from '@/components/forms/AddressAutocomplete'
@@ -48,6 +48,7 @@ export default function ProfileClient() {
   const [userId, setUserId] = useState<string | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [listings, setListings] = useState<Listing[]>([])
+  const [events, setEvents] = useState<Event[]>([])
   const [pageLoading, setPageLoading] = useState(true)
 
   const [editMode, setEditMode] = useState(false)
@@ -66,6 +67,11 @@ export default function ProfileClient() {
 
   // Listings accordion
   const [listingsOpen, setListingsOpen] = useState(false)
+  // Events accordion
+  const [eventsOpen, setEventsOpen] = useState(false)
+  const [confirmDeleteEventId, setConfirmDeleteEventId] = useState<string | null>(null)
+  const [deletingEventId, setDeletingEventId] = useState<string | null>(null)
+  const [deleteEventError, setDeleteEventError] = useState<string | null>(null)
 
   // Password change
   const [pwdOpen, setPwdOpen] = useState(false)
@@ -107,9 +113,10 @@ export default function ProfileClient() {
       const uid = user.id
       setUserId(uid)
 
-      const [{ data: prof }, { data: lists }] = await Promise.all([
+      const [{ data: prof }, { data: lists }, { data: evts }] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', uid).single(),
         supabase.from('listings').select('*, categories(*)').eq('user_id', uid).order('created_at', { ascending: false }),
+        supabase.from('events').select('*').eq('user_id', uid).order('event_date', { ascending: true }),
       ])
 
       if (prof) {
@@ -128,6 +135,7 @@ export default function ProfileClient() {
         }
       }
       setListings((lists || []) as Listing[])
+      setEvents((evts || []) as Event[])
       setPageLoading(false)
     }
     load()
@@ -190,6 +198,37 @@ export default function ProfileClient() {
       setConfirmDeleteId(null)
     }
     setDeletingId(null)
+  }
+
+  const handleDeleteEvent = async (id: string, imageUrls: string[]) => {
+    if (!userId) return
+    setDeletingEventId(id)
+    setDeleteEventError(null)
+
+    // Delete images from storage
+    if (imageUrls.length > 0) {
+      const paths = imageUrls.map(url => {
+        const parts = url.split('/events/')
+        return parts[1] || ''
+      }).filter(Boolean)
+      if (paths.length > 0) {
+        await supabase.storage.from('events').remove(paths)
+      }
+    }
+
+    const { error } = await supabase
+      .from('events')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', userId)
+
+    if (error) {
+      setDeleteEventError('Erreur lors de la suppression.')
+    } else {
+      setEvents(l => l.filter(x => x.id !== id))
+      setConfirmDeleteEventId(null)
+    }
+    setDeletingEventId(null)
   }
 
   const handleChangePassword = async () => {
@@ -522,6 +561,97 @@ export default function ProfileClient() {
                   </div>
                 </div>
               ))
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Mes événements ── */}
+      <div className="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="flex items-center border-b border-gray-100">
+          <button
+            onClick={() => setEventsOpen(o => !o)}
+            className="flex-1 flex items-center justify-between px-6 py-4 text-left hover:bg-gray-50 transition-colors"
+          >
+            <span className="flex items-center gap-3">
+              <CalendarDays size={17} className="text-brand-600 flex-shrink-0" />
+              <span className="text-sm font-medium text-gray-800">
+                Mes événements
+                {events.length > 0 && (
+                  <span className="ml-2 text-xs font-semibold text-brand-600 bg-brand-50 px-2 py-0.5 rounded-full">
+                    {events.length}
+                  </span>
+                )}
+              </span>
+            </span>
+            <ChevronDown size={16} className={cn('text-gray-400 transition-transform', eventsOpen && 'rotate-180')} />
+          </button>
+        </div>
+
+        {eventsOpen && (
+          <div className="p-4 flex flex-col gap-3">
+            {deleteEventError && (
+              <div className="flex items-center gap-2 text-sm text-red-500 bg-red-50 rounded-xl px-4 py-2">
+                <AlertCircle size={14} /> {deleteEventError}
+              </div>
+            )}
+
+            {events.length === 0 ? (
+              <div className="text-center py-10 text-gray-400">
+                <CalendarDays size={36} className="mx-auto mb-2 opacity-20" />
+                <p className="font-medium">Vous n&apos;avez pas encore créé d&apos;événements</p>
+              </div>
+            ) : (
+              events.map(event => {
+                const eventDate = new Date(event.event_date)
+                const dateStr = eventDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })
+                const timeStr = eventDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+                return (
+                  <div key={event.id} className="bg-gray-50 rounded-2xl border border-gray-200 overflow-hidden">
+                    <div className="flex gap-3 p-3">
+                      <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-brand-50 to-brand-100 flex items-center justify-center text-2xl flex-shrink-0 overflow-hidden">
+                        {event.image_urls?.[0] ? (
+                          <Image src={event.image_urls[0]} alt={event.title} width={64} height={64} className="object-cover w-full h-full" />
+                        ) : (
+                          <CalendarDays size={24} className="text-brand-400" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm text-gray-900 line-clamp-1">{event.title}</p>
+                        <p className="text-xs text-brand-600 mt-0.5">{dateStr} · {timeStr}</p>
+                        {event.location_text && (
+                          <p className="text-xs text-gray-400 mt-0.5 truncate">{event.location_text}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="border-t border-gray-100 flex">
+                      {confirmDeleteEventId === event.id ? (
+                        <div className="flex-1 flex items-center justify-center gap-3 py-2.5 bg-red-50">
+                          <button onClick={() => setConfirmDeleteEventId(null)} className="text-xs text-gray-500 hover:text-gray-700 font-medium">
+                            Annuler
+                          </button>
+                          <button
+                            onClick={() => handleDeleteEvent(event.id, event.image_urls || [])}
+                            disabled={deletingEventId === event.id}
+                            className="flex items-center gap-1 text-xs font-semibold text-red-600 hover:text-red-700"
+                          >
+                            {deletingEventId === event.id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                            Confirmer
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmDeleteEventId(event.id)}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium text-red-500 hover:bg-red-50 transition-colors"
+                        >
+                          <Trash2 size={14} /> Supprimer
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )
+              })
             )}
           </div>
         )}

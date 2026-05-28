@@ -7,7 +7,8 @@ import { createClient } from '@/lib/supabase/client'
 import type { Listing } from '@/lib/types'
 import { ListingCard } from '@/components/listings/ListingCard'
 import { FilterBar } from '@/components/map/FilterBar'
-import { MapPin, Loader2, X, Map, List, Plus } from 'lucide-react'
+import { EventsList } from '@/components/map/EventsList'
+import { MapPin, Loader2, X, Map, List, Plus, CalendarDays } from 'lucide-react'
 import { normalizeSearch, cn } from '@/lib/utils'
 
 // Dynamic import pour éviter SSR avec Leaflet
@@ -36,7 +37,7 @@ export function MapView() {
   const [loading, setLoading] = useState(true)
   const [searchedLocation, setSearchedLocation] = useState<[number, number] | null>(null)
   const [slugToId, setSlugToId] = useState<Record<string, number>>({})
-  const [mobileView, setMobileView] = useState<'list' | 'map'>('list')
+  const [mobileView, setMobileView] = useState<'list' | 'map' | 'events'>('list')
   const [isMobile, setIsMobile] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const supabase = createClient()
@@ -131,10 +132,20 @@ export function MapView() {
           >
             <Map size={16} /> Carte
           </button>
+          <button
+              onClick={() => setMobileView('events')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium transition-colors ${
+                  mobileView === 'events'
+                      ? 'text-brand-600 border-b-2 border-brand-600'
+                      : 'text-gray-500'
+              }`}
+          >
+            <CalendarDays size={16} /> Événements
+          </button>
         </div>
 
         {/* Sidebar */}
-        <div className={`w-full md:w-96 flex flex-col bg-white border-r border-gray-200 overflow-hidden z-10 ${mobileView === 'map' ? 'hidden md:flex' : 'flex'}`}>
+        <div className={`w-full md:w-96 flex flex-col bg-white border-r border-gray-200 overflow-hidden z-10 ${mobileView === 'map' || mobileView === 'events' ? 'hidden md:flex' : 'flex'}`}>
           <FilterBar
               category={category}
               onCategoryChange={setCategory}
@@ -170,8 +181,13 @@ export function MapView() {
           </div>
         </div>
 
+        {/* Events panel (mobile only) */}
+        <div className={`w-full flex flex-col bg-white overflow-hidden z-10 md:hidden ${mobileView === 'events' ? 'flex' : 'hidden'}`}>
+          <EventsList className="h-full" />
+        </div>
+
         {/* Map */}
-        <div className={`flex-1 relative ${mobileView === 'list' ? 'hidden md:block' : 'block'}`}>
+        <div className={`flex-1 relative ${mobileView === 'list' || mobileView === 'events' ? 'hidden md:block' : 'block'}`}>
           <LeafletMap
               userPosition={userGeoLocation}
               listings={listings}
