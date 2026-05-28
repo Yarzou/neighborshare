@@ -641,12 +641,20 @@ export default function ProfileClient() {
                           </button>
                         </div>
                       ) : (
-                        <button
-                          onClick={() => setConfirmDeleteEventId(event.id)}
-                          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium text-red-500 hover:bg-red-50 transition-colors"
-                        >
-                          <Trash2 size={14} /> Supprimer
-                        </button>
+                        <>
+                          <button
+                            onClick={() => router.push(`/evenements/${event.id}/edit`)}
+                            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium text-brand-600 hover:bg-brand-50 transition-colors border-r border-gray-100"
+                          >
+                            <Pencil size={14} /> Modifier
+                          </button>
+                          <button
+                            onClick={() => setConfirmDeleteEventId(event.id)}
+                            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium text-red-500 hover:bg-red-50 transition-colors"
+                          >
+                            <Trash2 size={14} /> Supprimer
+                          </button>
+                        </>
                       )}
                     </div>
                   </div>
