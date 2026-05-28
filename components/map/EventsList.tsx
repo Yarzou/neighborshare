@@ -29,8 +29,8 @@ interface EventsListProps {
   filterTo?: string
   /** Callback quand l'utilisateur change les filtres (desktop) */
   onFilterChange?: (from: string, to: string) => void
-  /** Callback quand un événement est sélectionné/désélectionné (pour surbrillance calendrier) */
-  onEventSelect?: (date: string | null) => void
+  /** Callback quand un événement est sélectionné/désélectionné (pour surbrillance calendrier + carte desktop) */
+  onEventSelect?: (event: Event | null) => void
 }
 
 export function EventsList({
@@ -297,7 +297,7 @@ export function EventsList({
                 onClick={() => {
                   const next = selectedEvent?.id === event.id ? null : event
                   setSelectedEvent(next)
-                  onEventSelect?.(next ? next.event_date.slice(0, 10) : null)
+                  onEventSelect?.(next ?? null)
                 }}
               />
             ))}

@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { EventsList } from '@/components/map/EventsList'
 import { MiniCalendar } from '@/components/map/MiniCalendar'
-import { CalendarDays, Plus } from 'lucide-react'
+import EventMiniMap from '@/components/map/EventMiniMapDynamic'
+import type { Event } from '@/lib/types'
+import { CalendarDays, Plus, MapPin } from 'lucide-react'
 
 export default function EvenementsPage() {
   const router = useRouter()
@@ -19,6 +21,13 @@ export default function EvenementsPage() {
   const [filterTo, setFilterTo] = useState('')
   // Date de l'event sélectionné (popup ouverte) — surbrillance calendrier uniquement
   const [selectedEventDate, setSelectedEventDate] = useState<string | null>(null)
+  // Event sélectionné complet — pour la mini-carte desktop
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
+
+  const handleEventSelect = (event: Event | null) => {
+    setSelectedEvent(event)
+    setSelectedEventDate(event ? event.event_date.slice(0, 10) : null)
+  }
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setIsLoggedIn(!!data.user))
@@ -93,7 +102,7 @@ export default function EvenementsPage() {
               filterFrom={filterFrom}
               filterTo={filterTo}
               onFilterChange={handleFilterChange}
-              onEventSelect={(date) => setSelectedEventDate(date)}
+              onEventSelect={(event) => handleEventSelect(event)}
             />
           </div>
         </div>
@@ -111,6 +120,27 @@ export default function EvenementsPage() {
               Cliquez sur une date pour filtrer · Re-cliquez pour effacer
             </p>
           </div>
+
+          {/* Mini-carte de l'événement sélectionné */}
+          {selectedEvent?.location_lat && selectedEvent?.location_lng && (
+            <div className="px-4 pb-4 flex flex-col gap-2 border-t border-gray-100 pt-3">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Localisation</p>
+              <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm">
+                <EventMiniMap
+                  lat={selectedEvent.location_lat}
+                  lng={selectedEvent.location_lng}
+                  label={selectedEvent.location_text ?? selectedEvent.title}
+                  className="w-full h-44"
+                />
+              </div>
+              {selectedEvent.location_text && (
+                <div className="flex items-start gap-1.5 text-xs text-gray-500">
+                  <MapPin size={12} className="shrink-0 mt-0.5 text-gray-400" />
+                  <span>{selectedEvent.location_text}</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
