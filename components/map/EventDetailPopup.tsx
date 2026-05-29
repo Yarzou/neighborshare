@@ -1,10 +1,12 @@
 'use client'
 
-import { useState } from 'react'
-import { X, CalendarDays, MapPin, ChevronLeft, ChevronRight, Clock, ChevronDown } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { X, CalendarDays, MapPin, ChevronLeft, ChevronRight, Clock, ChevronDown, Pencil } from 'lucide-react'
 import type { Event } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import EventMiniMap from './EventMiniMapDynamic'
+import { createClient } from '@/lib/supabase/client'
+import Link from 'next/link'
 
 function formatFullDate(dateStr: string) {
   const d = new Date(dateStr)
@@ -23,9 +25,17 @@ interface EventDetailPopupProps {
 export function EventDetailPopup({ event, onClose }: EventDetailPopupProps) {
   const [photoIndex, setPhotoIndex] = useState(0)
   const [mapOpen, setMapOpen] = useState(false)
+  const [isOwner, setIsOwner] = useState(false)
   const photos = event.image_urls ?? []
   const isPast = new Date(event.event_date) < new Date()
   const hasCoords = event.location_lat != null && event.location_lng != null
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data }) => {
+      setIsOwner(data.user?.id === event.user_id)
+    })
+  }, [event.user_id])
 
   const startTime = formatTime(event.event_date)
   const hasStartTime = startTime !== '00:00'
@@ -168,6 +178,19 @@ export function EventDetailPopup({ event, onClose }: EventDetailPopupProps) {
             <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
               {event.description}
             </p>
+          )}
+
+          {/* Modifier (owner) */}
+          {isOwner && (
+            <>
+              <div className="border-t border-gray-100" />
+              <Link
+                href={`/evenements/${event.id}/edit`}
+                className="w-full py-3 text-center bg-gray-100 text-gray-700 font-medium rounded-xl hover:bg-gray-200 transition-colors text-sm flex items-center justify-center gap-2"
+              >
+                <Pencil size={14} /> Modifier l&apos;événement
+              </Link>
+            </>
           )}
         </div>
       </div>
