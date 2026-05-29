@@ -41,16 +41,16 @@ export function EventDetailPopup({ event, onClose }: EventDetailPopupProps) {
 
   return (
     <>
-      {/* Backdrop — mobile seulement, sans blur sur desktop */}
+      {/* Backdrop — couvre uniquement la zone des cards (absolute dans EventsList) */}
       <div
-        className="fixed inset-0 z-[999] bg-black/20 md:bg-transparent"
+        className="absolute inset-0 z-[999] bg-black/10 backdrop-blur-[2px]"
         onClick={onClose}
       />
 
-      {/* Panel — ancré sous la navbar, jamais caché */}
+      {/* Panel — ancré sous navbar (4rem) + header events (~3rem) */}
       <div
         className="fixed left-1/2 -translate-x-1/2 z-[1000]
-                   top-[5rem] max-h-[calc(100vh-6rem)]
+                   top-[8rem] max-h-[calc(100vh-9rem)]
                    w-[calc(100vw-2rem)] max-w-2xl
                    flex flex-col rounded-2xl shadow-2xl bg-white border border-gray-200"
         onClick={e => e.stopPropagation()}
