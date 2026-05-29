@@ -1,10 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, CalendarDays, MapPin, ChevronLeft, ChevronRight, Clock, ChevronDown, Pencil } from 'lucide-react'
+import { X, CalendarDays, MapPin, ChevronLeft, ChevronRight, Clock, Pencil } from 'lucide-react'
 import type { Event } from '@/lib/types'
 import { cn } from '@/lib/utils'
-import EventMiniMap from './EventMiniMapDynamic'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 
@@ -24,11 +23,9 @@ interface EventDetailPopupProps {
 
 export function EventDetailPopup({ event, onClose }: EventDetailPopupProps) {
   const [photoIndex, setPhotoIndex] = useState(0)
-  const [mapOpen, setMapOpen] = useState(false)
   const [isOwner, setIsOwner] = useState(false)
   const photos = event.image_urls ?? []
   const isPast = new Date(event.event_date) < new Date()
-  const hasCoords = event.location_lat != null && event.location_lng != null
 
   useEffect(() => {
     const supabase = createClient()
@@ -142,34 +139,9 @@ export function EventDetailPopup({ event, onClose }: EventDetailPopupProps) {
 
           {/* Location */}
           {event.location_text && (
-            <div className="flex flex-col gap-1">
-              <button
-                type="button"
-                onClick={() => hasCoords && setMapOpen(o => !o)}
-                className={cn(
-                  'flex items-start gap-2 text-sm text-gray-600 w-full text-left',
-                  hasCoords && 'hover:text-brand-600 transition-colors'
-                )}
-              >
-                <MapPin size={14} className="text-gray-400 shrink-0 mt-0.5" />
-                <span className="flex-1">{event.location_text}</span>
-                {hasCoords && (
-                  <ChevronDown
-                    size={14}
-                    className={cn('text-gray-400 shrink-0 mt-0.5 transition-transform', mapOpen && 'rotate-180')}
-                  />
-                )}
-              </button>
-              {hasCoords && mapOpen && (
-                <div className="mt-1 rounded-2xl overflow-hidden border border-gray-200 shadow-sm">
-                  <EventMiniMap
-                    lat={event.location_lat!}
-                    lng={event.location_lng!}
-                    label={event.location_text}
-                    className="w-full h-48"
-                  />
-                </div>
-              )}
+            <div className="flex items-start gap-2 text-sm text-gray-600">
+              <MapPin size={14} className="text-gray-400 shrink-0 mt-0.5" />
+              <span>{event.location_text}</span>
             </div>
           )}
 
