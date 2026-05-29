@@ -168,7 +168,6 @@ export default function EvenementsPage() {
                 key={event.id}
                 event={event}
                 onClick={() => router.push(`/evenements/${event.id}`)}
-                currentUserId={userId}
               />
             ))}
           </div>

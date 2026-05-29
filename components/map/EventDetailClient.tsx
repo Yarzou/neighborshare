@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, CalendarDays, MapPin, Clock, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ArrowLeft, CalendarDays, MapPin, Clock, ChevronLeft, ChevronRight, Pencil } from 'lucide-react'
 import type { Event, Profile } from '@/lib/types'
 import { cn, getAvatarStyle } from '@/lib/utils'
 import EventMiniMap from '@/components/map/EventMiniMapDynamic'
@@ -25,6 +25,7 @@ interface Props {
 export default function EventDetailClient({ event }: Props) {
   const [photoIndex, setPhotoIndex] = useState(0)
   const [creator, setCreator] = useState<Profile | null>(null)
+  const [isOwner, setIsOwner] = useState(false)
   const photos = event.image_urls ?? []
   const isPast = new Date(event.event_date) < new Date()
   const hasCoords = event.location_lat != null && event.location_lng != null
@@ -37,6 +38,9 @@ export default function EventDetailClient({ event }: Props) {
       .eq('id', event.user_id)
       .single()
       .then(({ data }) => { if (data) setCreator(data as Profile) })
+    supabase.auth.getUser().then(({ data }) => {
+      setIsOwner(data.user?.id === event.user_id)
+    })
   }, [event.user_id])
 
   return (
@@ -189,6 +193,19 @@ export default function EventDetailClient({ event }: Props) {
               <p className="text-gray-700 leading-relaxed whitespace-pre-line text-sm">
                 {event.description}
               </p>
+            </>
+          )}
+
+          {/* Modifier (owner) */}
+          {isOwner && (
+            <>
+              <div className="border-t border-gray-100" />
+              <Link
+                href={`/evenements/${event.id}/edit`}
+                className="w-full py-3 text-center bg-gray-100 text-gray-700 font-medium rounded-xl hover:bg-gray-200 transition-colors text-sm flex items-center justify-center gap-2"
+              >
+                <Pencil size={14} /> Modifier l&apos;événement
+              </Link>
             </>
           )}
         </div>

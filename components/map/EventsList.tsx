@@ -302,7 +302,6 @@ export function EventsList({
                 event={event}
                 compact={layout !== 'grid'}
                 selected={selectedEvent?.id === event.id}
-                currentUserId={currentUserId}
                 onClick={() => {
                   const next = selectedEvent?.id === event.id ? null : event
                   setSelectedEvent(next)
