@@ -27,136 +27,150 @@ export function EventDetailPopup({ event, onClose }: EventDetailPopupProps) {
   const isPast = new Date(event.event_date) < new Date()
   const hasCoords = event.location_lat != null && event.location_lng != null
 
+  const startTime = formatTime(event.event_date)
+  const hasStartTime = startTime !== '00:00'
+  const endTime = event.event_end_date ? formatTime(event.event_end_date) : null
+  const hasEndTime = endTime && endTime !== '00:00'
+
   return (
-    <div
-      className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm md:max-w-xl lg:max-w-2xl z-[1000] max-h-[calc(100dvh-8rem)] overflow-y-auto rounded-2xl shadow-2xl bg-white border border-gray-200"
-      onClick={e => e.stopPropagation()}
-    >
-      {/* Close button */}
-      <button
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 z-[999] bg-black/20 backdrop-blur-[1px]"
         onClick={onClose}
-        className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md border border-gray-200 z-10"
+      />
+
+      {/* Panel centré */}
+      <div
+        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[1000]
+                   w-[calc(100vw-2rem)] max-w-2xl max-h-[calc(100dvh-4rem)]
+                   overflow-y-auto rounded-2xl shadow-2xl bg-white border border-gray-200"
+        onClick={e => e.stopPropagation()}
       >
-        <X size={14} />
-      </button>
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 bg-white rounded-full p-1.5 shadow-md border border-gray-200 z-10"
+        >
+          <X size={14} />
+        </button>
 
-      {/* Photo gallery */}
-      {photos.length > 0 ? (
-        <div className="relative w-full h-44 bg-gray-100 overflow-hidden rounded-t-2xl flex-shrink-0">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={photos[photoIndex]}
-            alt={event.title}
-            className="w-full h-full object-cover"
-          />
-          {photos.length > 1 && (
-            <>
-              <button
-                onClick={() => setPhotoIndex(i => (i - 1 + photos.length) % photos.length)}
-                className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 rounded-full p-1 shadow"
-              >
-                <ChevronLeft size={16} />
-              </button>
-              <button
-                onClick={() => setPhotoIndex(i => (i + 1) % photos.length)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 rounded-full p-1 shadow"
-              >
-                <ChevronRight size={16} />
-              </button>
-              {/* Dot indicators */}
-              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
-                {photos.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setPhotoIndex(i)}
-                    className={cn(
-                      'w-1.5 h-1.5 rounded-full transition-all',
-                      i === photoIndex ? 'bg-white scale-125' : 'bg-white/60'
-                    )}
-                  />
-                ))}
-              </div>
-              {/* Thumbnail strip */}
-              {photos.length > 1 && (
-                <div className="absolute bottom-6 left-0 right-0 hidden" />
-              )}
-            </>
-          )}
-        </div>
-      ) : (
-        <div className="w-full h-20 bg-gradient-to-br from-brand-50 to-brand-100 rounded-t-2xl flex items-center justify-center">
-          <CalendarDays size={32} className="text-brand-400" />
-        </div>
-      )}
-
-      {/* Content */}
-      <div className="p-4 flex flex-col gap-3">
-        {/* Title + badge */}
-        <div className="flex items-start justify-between gap-2">
-          <h2 className="font-bold text-base text-gray-900 leading-snug">{event.title}</h2>
-          <span className={cn(
-            'shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full',
-            isPast ? 'bg-gray-100 text-gray-500' : 'bg-brand-100 text-brand-700'
-          )}>
-            {isPast ? 'Passé' : 'À venir'}
-          </span>
-        </div>
-
-        {/* Date & time */}
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2 text-sm text-gray-700">
-            <CalendarDays size={14} className="text-brand-500 shrink-0" />
-            <span>{formatFullDate(event.event_date)}</span>
+        {/* Photo gallery */}
+        {photos.length > 0 ? (
+          <div className="relative w-full h-52 bg-gray-100 overflow-hidden rounded-t-2xl flex-shrink-0">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={photos[photoIndex]}
+              alt={event.title}
+              className="w-full h-full object-cover"
+            />
+            {photos.length > 1 && (
+              <>
+                <button
+                  onClick={() => setPhotoIndex(i => (i - 1 + photos.length) % photos.length)}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 rounded-full p-1 shadow"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <button
+                  onClick={() => setPhotoIndex(i => (i + 1) % photos.length)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 rounded-full p-1 shadow"
+                >
+                  <ChevronRight size={16} />
+                </button>
+                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+                  {photos.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setPhotoIndex(i)}
+                      className={cn(
+                        'w-1.5 h-1.5 rounded-full transition-all',
+                        i === photoIndex ? 'bg-white scale-125' : 'bg-white/60'
+                      )}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
           </div>
-          <div className="flex items-center gap-2 text-sm text-brand-600 font-medium pl-5">
-            <Clock size={13} className="shrink-0" />
-            <span>
-              {formatTime(event.event_date)}
-              {event.event_end_date && ` → ${formatTime(event.event_end_date)}`}
+        ) : (
+          <div className="w-full h-24 bg-gradient-to-br from-brand-50 to-brand-100 rounded-t-2xl flex items-center justify-center">
+            <CalendarDays size={32} className="text-brand-400" />
+          </div>
+        )}
+
+        {/* Content */}
+        <div className="p-6 flex flex-col gap-4">
+          {/* Title + badge */}
+          <div className="flex items-start justify-between gap-3">
+            <h2 className="font-bold text-lg text-gray-900 leading-snug">{event.title}</h2>
+            <span className={cn(
+              'shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full',
+              isPast ? 'bg-gray-100 text-gray-500' : 'bg-brand-100 text-brand-700'
+            )}>
+              {isPast ? 'Passé' : 'À venir'}
             </span>
           </div>
-        </div>
 
-        {/* Location */}
-        {event.location_text && (
-          <div className="flex flex-col gap-1">
-            <button
-              type="button"
-              onClick={() => hasCoords && setMapOpen(o => !o)}
-              className={cn(
-                'flex items-start gap-2 text-sm text-gray-600 w-full text-left',
-                hasCoords && 'hover:text-brand-600 transition-colors'
-              )}
-            >
-              <MapPin size={14} className="text-gray-400 shrink-0 mt-0.5" />
-              <span className="flex-1">{event.location_text}</span>
-              {hasCoords && (
-                <ChevronDown
-                  size={14}
-                  className={cn('text-gray-400 shrink-0 mt-0.5 transition-transform', mapOpen && 'rotate-180')}
-                />
-              )}
-            </button>
-            {hasCoords && mapOpen && (
-              <div className="mt-1 rounded-2xl overflow-hidden border border-gray-200 shadow-sm">
-                <EventMiniMap
-                  lat={event.location_lat!}
-                  lng={event.location_lng!}
-                  label={event.location_text}
-                  className="w-full h-40"
-                />
+          {/* Date & time */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center gap-2 text-sm text-gray-700">
+              <CalendarDays size={15} className="text-brand-500 shrink-0" />
+              <span>{formatFullDate(event.event_date)}</span>
+            </div>
+            {(hasStartTime || hasEndTime) && (
+              <div className="flex items-center gap-2 text-sm text-brand-600 font-medium pl-[23px]">
+                <Clock size={13} className="shrink-0" />
+                <span>
+                  {hasStartTime && startTime}
+                  {hasStartTime && hasEndTime && ` → ${endTime}`}
+                  {!hasStartTime && hasEndTime && `jusqu'à ${endTime}`}
+                </span>
               </div>
             )}
           </div>
-        )}
 
-        {/* Description */}
-        {event.description && (
-          <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
-            {event.description}
-          </p>
-        )}
+          {/* Location */}
+          {event.location_text && (
+            <div className="flex flex-col gap-1">
+              <button
+                type="button"
+                onClick={() => hasCoords && setMapOpen(o => !o)}
+                className={cn(
+                  'flex items-start gap-2 text-sm text-gray-600 w-full text-left',
+                  hasCoords && 'hover:text-brand-600 transition-colors'
+                )}
+              >
+                <MapPin size={14} className="text-gray-400 shrink-0 mt-0.5" />
+                <span className="flex-1">{event.location_text}</span>
+                {hasCoords && (
+                  <ChevronDown
+                    size={14}
+                    className={cn('text-gray-400 shrink-0 mt-0.5 transition-transform', mapOpen && 'rotate-180')}
+                  />
+                )}
+              </button>
+              {hasCoords && mapOpen && (
+                <div className="mt-1 rounded-2xl overflow-hidden border border-gray-200 shadow-sm">
+                  <EventMiniMap
+                    lat={event.location_lat!}
+                    lng={event.location_lng!}
+                    label={event.location_text}
+                    className="w-full h-48"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Description */}
+          {event.description && (
+            <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
+              {event.description}
+            </p>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   )
 }
