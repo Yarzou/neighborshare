@@ -102,10 +102,16 @@ export default function EventForm({ initialEvent }: EventFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.title.trim()) return setError('Veuillez saisir un titre.')
-    if (!form.event_date) return setError('Veuillez saisir une date et heure.')
-    if (form.event_end_date && form.event_end_date <= form.event_date) {
+    if (!form.event_date) return setError('Veuillez saisir une date de début.')
+
+    const startDt = `${form.event_date}T${form.event_time || '00:00'}`
+    const endDt = form.event_end_date ? `${form.event_end_date}T${form.event_end_time || '00:00'}` : ''
+    if (endDt && endDt <= startDt) {
       return setError('La date de fin doit être après la date de début.')
     }
+
+    const buildISO = (date: string, time: string): string =>
+      new Date(`${date}T${time || '00:00'}:00`).toISOString()
 
     setLoading(true)
     setError(null)
@@ -139,8 +145,8 @@ export default function EventForm({ initialEvent }: EventFormProps) {
     const payload = {
       title: form.title.trim(),
       description: form.description.trim() || null,
-      event_date: new Date(form.event_date).toISOString(),
-      event_end_date: form.event_end_date ? new Date(form.event_end_date).toISOString() : null,
+      event_date: buildISO(form.event_date, form.event_time),
+      event_end_date: form.event_end_date ? buildISO(form.event_end_date, form.event_end_time) : null,
       location_text: form.location_text || null,
       location_lat: location?.lat ?? null,
       location_lng: location?.lng ?? null,
@@ -215,32 +221,55 @@ export default function EventForm({ initialEvent }: EventFormProps) {
       </div>
 
       {/* Date & heure */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="flex flex-col gap-4">
+        {/* Début */}
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
-            <CalendarDays size={14} /> Date et heure de début *
+            <CalendarDays size={14} /> Date de début *
           </label>
-          <input
-            type="datetime-local"
-            name="event_date"
-            value={form.event_date}
-            onChange={handleChange}
-            required
-            className="border border-gray-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
-          />
+          <div className="flex gap-2">
+            <input
+              type="date"
+              name="event_date"
+              value={form.event_date}
+              onChange={handleChange}
+              required
+              className="flex-1 border border-gray-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+            />
+            <input
+              type="time"
+              name="event_time"
+              value={form.event_time}
+              onChange={handleChange}
+              placeholder="Heure (optionnelle)"
+              className="w-32 border border-gray-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+            />
+          </div>
         </div>
+
+        {/* Fin */}
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
-            <CalendarDays size={14} /> Date et heure de fin
+            <CalendarDays size={14} /> Date de fin
           </label>
-          <input
-            type="datetime-local"
-            name="event_end_date"
-            value={form.event_end_date}
-            onChange={handleChange}
-            min={form.event_date || undefined}
-            className="border border-gray-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
-          />
+          <div className="flex gap-2">
+            <input
+              type="date"
+              name="event_end_date"
+              value={form.event_end_date}
+              min={form.event_date || undefined}
+              onChange={handleChange}
+              className="flex-1 border border-gray-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+            />
+            <input
+              type="time"
+              name="event_end_time"
+              value={form.event_end_time}
+              onChange={handleChange}
+              disabled={!form.event_end_date}
+              className="w-32 border border-gray-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 disabled:opacity-40 disabled:cursor-not-allowed"
+            />
+          </div>
         </div>
       </div>
 

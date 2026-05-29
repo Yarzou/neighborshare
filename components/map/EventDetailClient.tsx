@@ -111,15 +111,30 @@ export default function EventDetailClient({ event }: Props) {
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-2 text-sm text-gray-700">
               <CalendarDays size={15} className="text-brand-500 shrink-0" />
-              <span>{formatFullDate(event.event_date)}</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-brand-600 font-medium pl-[23px]">
-              <Clock size={13} className="shrink-0" />
               <span>
-                {formatTime(event.event_date)}
-                {event.event_end_date && ` → ${formatTime(event.event_end_date)}`}
+                {formatFullDate(event.event_date)}
+                {event.event_end_date && new Date(event.event_date).toDateString() !== new Date(event.event_end_date).toDateString() && (
+                  <> → {formatFullDate(event.event_end_date)}</>
+                )}
               </span>
             </div>
+            {(() => {
+              const startTime = formatTime(event.event_date)
+              const hasStartTime = startTime !== '00:00'
+              const endTime = event.event_end_date ? formatTime(event.event_end_date) : null
+              const hasEndTime = endTime && endTime !== '00:00'
+              if (!hasStartTime && !hasEndTime) return null
+              return (
+                <div className="flex items-center gap-2 text-sm text-brand-600 font-medium pl-[23px]">
+                  <Clock size={13} className="shrink-0" />
+                  <span>
+                    {hasStartTime && startTime}
+                    {hasStartTime && hasEndTime && ` → ${endTime}`}
+                    {!hasStartTime && hasEndTime && `jusqu'à ${endTime}`}
+                  </span>
+                </div>
+              )
+            })()}
           </div>
 
           {/* Adresse + carte interactive */}

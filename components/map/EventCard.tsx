@@ -8,13 +8,27 @@ function formatEventDate(event: Event): string {
   const start = new Date(event.event_date)
   const dateStr = start.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
   const timeStr = start.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  const hasStartTime = timeStr !== '00:00'
 
   if (event.event_end_date) {
     const end = new Date(event.event_end_date)
-    const endTime = end.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-    return `${dateStr} · ${timeStr} – ${endTime}`
+    const endTimeStr = end.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+    const hasEndTime = endTimeStr !== '00:00'
+    const sameDay = start.toDateString() === end.toDateString()
+
+    if (sameDay) {
+      if (hasStartTime && hasEndTime) return `${dateStr} · ${timeStr} – ${endTimeStr}`
+      if (hasStartTime) return `${dateStr} · ${timeStr}`
+      return dateStr
+    } else {
+      const endDateStr = end.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
+      if (hasStartTime && hasEndTime) return `${dateStr} ${timeStr} → ${endDateStr} ${endTimeStr}`
+      return `${dateStr} → ${endDateStr}`
+    }
   }
-  return `${dateStr} · ${timeStr}`
+
+  if (hasStartTime) return `${dateStr} · ${timeStr}`
+  return dateStr
 }
 
 interface EventCardProps {
