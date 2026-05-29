@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { MapPin, ArrowRight, LogIn } from 'lucide-react'
+import { MapPin, ArrowRight, LogIn, CalendarDays } from 'lucide-react'
 import { CATEGORY_LIST } from '@/lib/categories'
 import { createClient } from '@/lib/supabase/server'
 
@@ -27,6 +27,12 @@ export default async function HomePage() {
 
       {/* CTAs */}
       <div className="flex flex-col sm:flex-row items-center gap-3 mb-10">
+        <Link
+          href="/evenements"
+          className="inline-flex items-center gap-2 bg-white border border-brand-300 text-brand-700 font-semibold px-7 py-3.5 rounded-2xl hover:bg-brand-50 transition-colors shadow-sm">
+          <CalendarDays size={18} />
+          Voir les événements
+        </Link>
         <Link
           href="/map"
           className="inline-flex items-center gap-2 bg-brand-600 text-white font-semibold px-7 py-3.5 rounded-2xl hover:bg-brand-700 transition-colors shadow-md">
