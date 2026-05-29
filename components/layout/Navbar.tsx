@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
-import { MapPin, Plus, MessageCircle, User, LogOut, Menu, X, ClipboardList, CalendarDays } from 'lucide-react'
+import { MapPin, Plus, MessageCircle, User, LogOut, Menu, X, ClipboardList, CalendarDays, Home } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
@@ -145,7 +145,7 @@ export function Navbar() {
     <nav className="fixed top-0 left-0 right-0 z-[1200] bg-white border-b border-gray-200 shadow-sm">
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
-        <Link href={user ? '/map' : '/'} className="flex items-center gap-2 font-bold text-brand-700 text-lg">
+        <Link href={user ? '/accueil' : '/'} className="flex items-center gap-2 font-bold text-brand-700 text-lg">
           <Image src="/logo_cedre.png" alt="Logo" width={50} height={50} className="rounded-lg" />
           <span>Les voisins du Cèdre</span>
         </Link>
@@ -245,6 +245,15 @@ export function Navbar() {
       {/* Mobile menu */}
       {menuOpen && (
         <div className="md:hidden bg-white border-t border-gray-100 px-4 py-3 flex flex-col gap-1">
+          {user && (
+            <Link href="/accueil" onClick={() => setMenuOpen(false)}
+              className={cn(
+                'flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium',
+                pathname === '/accueil' ? 'bg-brand-50 text-brand-700' : 'text-gray-700 hover:bg-gray-100'
+              )}>
+              <Home size={16} /> Accueil
+            </Link>
+          )}
           {navLinks.map((link) => (
             <Link key={link.href} href={link.href} onClick={() => setMenuOpen(false)}
               className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100">

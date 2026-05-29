@@ -7,11 +7,11 @@ import { createClient } from '@/lib/supabase/client'
 import { AlertCircle, Loader2, Lock, Mail } from 'lucide-react'
 
 function safeRedirectPath(value: string | null) {
-  if (!value) return '/map'
+  if (!value) return '/accueil'
   // Empêche les redirections externes (open redirect)
-  if (!value.startsWith('/')) return '/map'
+  if (!value.startsWith('/')) return '/accueil'
   // Optionnel: éviter la boucle vers login
-  if (value.startsWith('/auth/login')) return '/map'
+  if (value.startsWith('/auth/login')) return '/accueil'
   return value
 }
 
