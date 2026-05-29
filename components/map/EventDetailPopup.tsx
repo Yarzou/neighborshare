@@ -51,10 +51,10 @@ export function EventDetailPopup({ event, onClose }: EventDetailPopupProps) {
       <div
         className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[1000]
                    w-[calc(100vw-2rem)] max-w-2xl max-h-[calc(100dvh-4rem)]
-                   overflow-y-auto rounded-2xl shadow-2xl bg-white border border-gray-200"
+                   flex flex-col rounded-2xl shadow-2xl bg-white border border-gray-200"
         onClick={e => e.stopPropagation()}
       >
-        {/* Close button */}
+        {/* Close button — toujours visible, hors du scroll */}
         <button
           onClick={onClose}
           className="absolute top-3 right-3 bg-white rounded-full p-1.5 shadow-md border border-gray-200 z-10"
@@ -62,7 +62,7 @@ export function EventDetailPopup({ event, onClose }: EventDetailPopupProps) {
           <X size={14} />
         </button>
 
-        {/* Photo gallery */}
+        {/* Photo gallery — hauteur fixe, ne scroll pas */}
         {photos.length > 0 ? (
           <div className="relative w-full h-52 bg-gray-100 overflow-hidden rounded-t-2xl flex-shrink-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -106,8 +106,8 @@ export function EventDetailPopup({ event, onClose }: EventDetailPopupProps) {
           </div>
         )}
 
-        {/* Content */}
-        <div className="p-6 flex flex-col gap-4">
+        {/* Content — scrollable */}
+        <div className="overflow-y-auto flex-1 p-6 flex flex-col gap-4">
           {/* Title + badge */}
           <div className="flex items-start justify-between gap-3">
             <h2 className="font-bold text-lg text-gray-900 leading-snug">{event.title}</h2>
