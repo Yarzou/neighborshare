@@ -23,9 +23,11 @@ interface Props {
   label?: string
   className?: string
   zoom?: number
+  /** Activer les interactions utilisateur (zoom, drag, scroll). Défaut: false (carte statique). */
+  interactive?: boolean
 }
 
-export default function EventMiniMap({ lat, lng, label, className = 'w-full h-40 rounded-2xl', zoom = 15 }: Props) {
+export default function EventMiniMap({ lat, lng, label, className = 'w-full h-40 rounded-2xl', zoom = 15, interactive = false }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<L.Map | null>(null)
 
@@ -35,12 +37,12 @@ export default function EventMiniMap({ lat, lng, label, className = 'w-full h-40
     const map = L.map(containerRef.current, {
       center: [lat, lng],
       zoom,
-      zoomControl: false,
+      zoomControl: interactive,
       attributionControl: false,
-      dragging: false,
-      scrollWheelZoom: false,
-      doubleClickZoom: false,
-      touchZoom: false,
+      dragging: interactive,
+      scrollWheelZoom: interactive,
+      doubleClickZoom: interactive,
+      touchZoom: interactive,
     })
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {

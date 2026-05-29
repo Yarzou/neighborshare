@@ -29,7 +29,7 @@ export function EventDetailPopup({ event, onClose }: EventDetailPopupProps) {
 
   return (
     <div
-      className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm z-[1000] max-h-[calc(100dvh-8rem)] overflow-y-auto rounded-2xl shadow-2xl bg-white border border-gray-200"
+      className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm md:max-w-xl lg:max-w-2xl z-[1000] max-h-[calc(100dvh-8rem)] overflow-y-auto rounded-2xl shadow-2xl bg-white border border-gray-200"
       onClick={e => e.stopPropagation()}
     >
       {/* Close button */}

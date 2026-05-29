@@ -15,6 +15,8 @@ interface EventsListProps {
   className?: string
   /** Affiche le bouton toggle calendrier (mobile). Mettre à false en desktop. */
   showCalendarToggle?: boolean
+  /** Layout des cards : 'list' (colonne, défaut) ou 'grid' (grille 2 colonnes desktop) */
+  layout?: 'list' | 'grid'
   /** Date active contrôlée par le parent (desktop) */
   externalActiveDate?: string | null
   /** Callback quand le scroll change la date visible */
@@ -36,6 +38,7 @@ interface EventsListProps {
 export function EventsList({
   className,
   showCalendarToggle = true,
+  layout = 'list',
   externalActiveDate,
   onActiveDateChange,
   onMarkedDatesReady,
@@ -269,13 +272,16 @@ export function EventsList({
       )}
 
       {/* Events list */}
-      <div ref={listRef} className="flex-1 overflow-y-auto px-3 pb-3 flex flex-col gap-2">
+      <div ref={listRef} className={cn(
+        'flex-1 overflow-y-auto px-3 pb-3',
+        layout === 'grid' ? 'grid grid-cols-2 gap-3 content-start' : 'flex flex-col gap-2'
+      )}>
         {loading ? (
-          <div className="flex items-center justify-center py-12">
+          <div className={cn('flex items-center justify-center py-12', layout === 'grid' && 'col-span-2')}>
             <Loader2 className="animate-spin text-brand-600" size={28} />
           </div>
         ) : events.length === 0 ? (
-          <div className="text-center py-12 text-gray-400">
+          <div className={cn('text-center py-12 text-gray-400', layout === 'grid' && 'col-span-2')}>
             <CalendarDays size={40} className="mx-auto mb-3 opacity-30" />
             <p className="font-medium">{hasFilter ? 'Aucun événement sur cette période' : 'Aucun événement'}</p>
             {hasFilter ? (
@@ -292,7 +298,7 @@ export function EventsList({
               <EventCard
                 key={event.id}
                 event={event}
-                compact
+                compact={layout !== 'grid'}
                 selected={selectedEvent?.id === event.id}
                 onClick={() => {
                   const next = selectedEvent?.id === event.id ? null : event
@@ -301,14 +307,14 @@ export function EventsList({
                 }}
               />
             ))}
-            <div ref={sentinelRef} className="h-4 shrink-0" />
+            <div ref={sentinelRef} className={cn('h-4 shrink-0', layout === 'grid' && 'col-span-2')} />
             {loadingMore && (
-              <div className="flex justify-center py-2">
+              <div className={cn('flex justify-center py-2', layout === 'grid' && 'col-span-2')}>
                 <Loader2 className="animate-spin text-brand-400" size={20} />
               </div>
             )}
             {!hasMore && !hasFilter && events.length >= PAGE_SIZE && (
-              <p className="text-center text-xs text-gray-400 py-2">Tous les événements sont affichés</p>
+              <p className={cn('text-center text-xs text-gray-400 py-2', layout === 'grid' && 'col-span-2')}>Tous les événements sont affichés</p>
             )}
           </>
         )}
