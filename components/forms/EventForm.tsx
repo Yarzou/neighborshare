@@ -15,10 +15,17 @@ interface EventFormProps {
   initialEvent?: Event
 }
 
-// Format ISO → datetime-local input value (YYYY-MM-DDTHH:MM)
-function toDatetimeLocal(iso: string | null | undefined): string {
+// Format ISO → date part (YYYY-MM-DD)
+function toDatePart(iso: string | null | undefined): string {
   if (!iso) return ''
-  return iso.slice(0, 16)
+  return iso.slice(0, 10)
+}
+
+// Format ISO → time part (HH:MM)
+function toTimePart(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const time = iso.slice(11, 16)
+  return time === '00:00' ? '' : time
 }
 
 export default function EventForm({ initialEvent }: EventFormProps) {
@@ -30,8 +37,10 @@ export default function EventForm({ initialEvent }: EventFormProps) {
   const [form, setForm] = useState({
     title: initialEvent?.title ?? '',
     description: initialEvent?.description ?? '',
-    event_date: toDatetimeLocal(initialEvent?.event_date),
-    event_end_date: toDatetimeLocal(initialEvent?.event_end_date),
+    event_date: toDatePart(initialEvent?.event_date),
+    event_time: toTimePart(initialEvent?.event_date),
+    event_end_date: toDatePart(initialEvent?.event_end_date),
+    event_end_time: toTimePart(initialEvent?.event_end_date),
     location_text: initialEvent?.location_text ?? '',
   })
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(
@@ -157,7 +166,7 @@ export default function EventForm({ initialEvent }: EventFormProps) {
       return
     }
 
-    router.push('/profile')
+    router.push('/evenements')
     router.refresh()
   }
 

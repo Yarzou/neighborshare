@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, CalendarDays, MapPin, Clock, ChevronLeft, ChevronRight } from 'lucide-react'
-import type { Event } from '@/lib/types'
-import { cn } from '@/lib/utils'
+import type { Event, Profile } from '@/lib/types'
+import { cn, getAvatarStyle } from '@/lib/utils'
 import EventMiniMap from '@/components/map/EventMiniMapDynamic'
+import { createClient } from '@/lib/supabase/client'
 
 function formatFullDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('fr-FR', {
@@ -23,9 +24,20 @@ interface Props {
 
 export default function EventDetailClient({ event }: Props) {
   const [photoIndex, setPhotoIndex] = useState(0)
+  const [creator, setCreator] = useState<Profile | null>(null)
   const photos = event.image_urls ?? []
   const isPast = new Date(event.event_date) < new Date()
   const hasCoords = event.location_lat != null && event.location_lng != null
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase
+      .from('profiles')
+      .select('id, full_name, username, avatar_color')
+      .eq('id', event.user_id)
+      .single()
+      .then(({ data }) => { if (data) setCreator(data as Profile) })
+  }, [event.user_id])
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
@@ -132,6 +144,27 @@ export default function EventDetailClient({ event }: Props) {
                 </div>
               )}
             </div>
+          )}
+
+          {/* Créateur */}
+          {creator && (
+            <>
+              <div className="border-t border-gray-100" />
+              <Link
+                href={`/profil/${creator.id}`}
+                className="flex items-center gap-2.5 group w-fit"
+              >
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
+                  style={getAvatarStyle(creator.avatar_color ?? undefined)}
+                >
+                  {(creator.full_name || creator.username || 'V').charAt(0).toUpperCase()}
+                </div>
+                <span className="text-sm text-gray-600 group-hover:text-brand-600 transition-colors">
+                  Créé par <span className="font-semibold">{creator.full_name || creator.username || 'Voisin'}</span>
+                </span>
+              </Link>
+            </>
           )}
 
           {/* Description */}

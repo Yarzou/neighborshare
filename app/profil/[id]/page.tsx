@@ -2,8 +2,8 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
-import { LISTING_TYPE_LABELS, LISTING_TYPE_COLORS } from '@/lib/types'
-import { cn, getAvatarStyle } from '@/lib/utils'
+import { getAvatarStyle } from '@/lib/utils'
+import PublicProfileAccordion from '@/components/profil/PublicProfileAccordion'
 
 export default async function PublicProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const supabase = await createClient()
@@ -17,12 +17,19 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
 
   if (!profile) notFound()
 
-  const { data: listings } = await supabase
-    .from('listings')
-    .select('id, title, description, type, category_id, listing_intent, created_at, image_url')
-    .eq('user_id', id)
-    .eq('status', 'disponible')
-    .order('created_at', { ascending: false })
+  const [{ data: listings }, { data: events }] = await Promise.all([
+    supabase
+      .from('listings')
+      .select('id, title, description, type, listing_intent, image_url')
+      .eq('user_id', id)
+      .eq('status', 'disponible')
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('events')
+      .select('id, title, description, event_date, image_urls')
+      .eq('user_id', id)
+      .order('event_date', { ascending: false }),
+  ])
 
   const displayName = profile.full_name || profile.username || 'Voisin'
   const initial = displayName.charAt(0).toUpperCase()
@@ -47,42 +54,11 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
         </div>
       </div>
 
-      {/* Listings */}
-      <h2 className="text-base font-semibold text-gray-800 mb-4">
-        Annonces actives{listings && listings.length > 0 ? ` · ${listings.length}` : ''}
-      </h2>
-
-      {!listings || listings.length === 0 ? (
-        <p className="text-sm text-gray-400 text-center py-12">Aucune annonce active pour le moment.</p>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {listings.map(listing => (
-            <Link key={listing.id} href={`/listings/${listing.id}`}
-              className="flex items-center gap-3 p-4 rounded-2xl border border-gray-100 hover:border-brand-200 hover:bg-brand-50 transition-colors group">
-              {listing.image_url ? (
-                <img src={listing.image_url} alt="" className="w-14 h-14 rounded-xl object-cover flex-shrink-0" />
-              ) : (
-                <div className="w-14 h-14 rounded-xl bg-gray-100 flex items-center justify-center text-2xl flex-shrink-0">📦</div>
-              )}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  {listing.listing_intent === 'demande' && (
-                    <span className="text-xs font-medium px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">Recherche</span>
-                  )}
-                  <span className={cn('text-xs font-medium px-1.5 py-0.5 rounded-full', LISTING_TYPE_COLORS[listing.type as keyof typeof LISTING_TYPE_COLORS])}>
-                    {LISTING_TYPE_LABELS[listing.type as keyof typeof LISTING_TYPE_LABELS]}
-                  </span>
-                </div>
-                <p className="text-sm font-semibold text-gray-900 truncate">{listing.title}</p>
-                {listing.description && (
-                  <p className="text-xs text-gray-400 line-clamp-1">{listing.description}</p>
-                )}
-              </div>
-              <span className="text-xs text-gray-300 group-hover:text-gray-400 transition-colors">→</span>
-            </Link>
-          ))}
-        </div>
-      )}
+      <PublicProfileAccordion
+        listings={listings ?? []}
+        events={events ?? []}
+      />
     </div>
   )
 }
+
