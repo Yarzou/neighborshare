@@ -53,18 +53,6 @@ export default async function HomePage() {
         <ArrowRight size={14} className="inline ml-1" />
       </Link>
 
-      {/* Categories */}
-      <div className="flex flex-wrap gap-2 max-w-lg w-full justify-center">
-        {CATEGORY_LIST.map((cat) => (
-          <Link
-            key={cat.slug}
-            href={`/map?category=${cat.slug}`}
-            className="homepage-category-pill inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white border border-gray-200 shadow-sm text-sm font-medium text-gray-700 hover:border-brand-400 hover:text-brand-700 transition-colors whitespace-nowrap">
-            <span>{cat.icon}</span>
-            {cat.filterLabel}
-          </Link>
-        ))}
-      </div>
     </div>
   )
 }
