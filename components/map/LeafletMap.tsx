@@ -58,7 +58,7 @@ export default function LeafletMap({ userPosition, listings, onSelectListing, se
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
 
-    const map = L.map(containerRef.current, { maxZoom: 19 }).setView(NEIGHBORHOOD_CENTER, 17)
+    const map = L.map(containerRef.current, { maxZoom: 19 }).setView(NEIGHBORHOOD_CENTER, 15)
     addTileLayer(map)
 
     // Cluster group with custom cluster icon

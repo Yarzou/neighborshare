@@ -8,7 +8,7 @@ import { EventCard } from '@/components/map/EventCard'
 import { MiniCalendar } from '@/components/map/MiniCalendar'
 import EventMiniMap from '@/components/map/EventMiniMapDynamic'
 import type { Event } from '@/lib/types'
-import { CalendarDays, Plus, Loader2 } from 'lucide-react'
+import { CalendarDays, Plus, Loader2, X } from 'lucide-react'
 
 export default function EvenementsPage() {
   const router = useRouter()
@@ -28,19 +28,24 @@ export default function EvenementsPage() {
   // Mobile list state
   const [mobileEvents, setMobileEvents] = useState<Event[]>([])
   const [mobileLoading, setMobileLoading] = useState(true)
+  const [mobileFilterFrom, setMobileFilterFrom] = useState('')
+  const [mobileFilterTo, setMobileFilterTo] = useState('')
 
   const handleEventSelect = (event: Event | null) => {
     setSelectedEvent(event)
     setSelectedEventDate(event ? event.event_date.slice(0, 10) : null)
   }
 
-  const loadMobileEvents = useCallback(async () => {
+  const loadMobileEvents = useCallback(async (from: string, to: string) => {
     setMobileLoading(true)
-    const { data } = await supabase
+    let query = supabase
       .from('events')
       .select('*')
-      .gte('event_date', `${new Date().getFullYear()}-01-01T00:00:00`)
       .order('event_date', { ascending: true })
+    if (from) query = query.gte('event_date', `${from}T00:00:00`)
+    else query = query.gte('event_date', `${new Date().getFullYear()}-01-01T00:00:00`)
+    if (to) query = query.lte('event_date', `${to}T23:59:59`)
+    const { data } = await query
     setMobileEvents((data ?? []) as Event[])
     setMobileLoading(false)
   }, [supabase])
@@ -50,9 +55,14 @@ export default function EvenementsPage() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
       setIsLoggedIn(!!session?.user)
     })
-    loadMobileEvents()
+    loadMobileEvents('', '')
     return () => subscription.unsubscribe()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Reload mobile events when filters change
+  useEffect(() => {
+    loadMobileEvents(mobileFilterFrom, mobileFilterTo)
+  }, [mobileFilterFrom, mobileFilterTo]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Calendar date click → filter to that single day (toggle off if same day)
   const handleCalendarDateClick = (date: string) => {
@@ -101,6 +111,37 @@ export default function EvenementsPage() {
             <Plus size={18} />
             <span className="hidden sm:inline">Créer</span>
           </button>
+        </div>
+
+        {/* Filtre date mobile */}
+        <div className="flex items-center gap-2 mb-4 flex-wrap">
+          <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-xl px-2 py-1.5 flex-1 min-w-0">
+            <span className="text-xs text-gray-500 whitespace-nowrap">Du</span>
+            <input
+              type="date"
+              value={mobileFilterFrom}
+              onChange={e => setMobileFilterFrom(e.target.value)}
+              className="text-xs text-gray-700 bg-transparent outline-none w-full"
+            />
+          </div>
+          <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-xl px-2 py-1.5 flex-1 min-w-0">
+            <span className="text-xs text-gray-500 whitespace-nowrap">Au</span>
+            <input
+              type="date"
+              value={mobileFilterTo}
+              min={mobileFilterFrom || undefined}
+              onChange={e => setMobileFilterTo(e.target.value)}
+              className="text-xs text-gray-700 bg-transparent outline-none w-full"
+            />
+          </div>
+          {(mobileFilterFrom || mobileFilterTo) && (
+            <button
+              onClick={() => { setMobileFilterFrom(''); setMobileFilterTo('') }}
+              className="flex items-center gap-1 text-xs text-gray-500 hover:text-red-500 px-2 py-1.5 rounded-xl border border-gray-200 bg-gray-50 transition-colors whitespace-nowrap"
+            >
+              <X size={12} /> Effacer
+            </button>
+          )}
         </div>
 
         {mobileLoading ? (

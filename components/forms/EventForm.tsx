@@ -4,7 +4,7 @@ import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import AddressAutocomplete, { type ResolvedAddress } from '@/components/forms/AddressAutocomplete'
-import { Upload, X, Loader2, CalendarDays, MapPin, Image as ImageIcon } from 'lucide-react'
+import { Upload, X, Loader2, CalendarDays, MapPin, Image as ImageIcon, ChevronLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Event } from '@/lib/types'
 
@@ -163,6 +163,15 @@ export default function EventForm({ initialEvent }: EventFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="max-w-xl mx-auto px-4 py-8 flex flex-col gap-6">
+      <button
+        type="button"
+        onClick={() => router.push('/evenements')}
+        className="flex items-center gap-1 text-sm text-brand-600 hover:text-brand-700 font-medium w-fit -mb-2"
+      >
+        <ChevronLeft size={16} />
+        Retour aux événements
+      </button>
+
       <div>
         <h1 className="text-2xl font-bold text-gray-900 mb-1">
           {isEdit ? 'Modifier l\'événement' : 'Créer un événement'}
