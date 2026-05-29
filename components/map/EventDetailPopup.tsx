@@ -47,11 +47,16 @@ export function EventDetailPopup({ event, onClose }: EventDetailPopupProps) {
         onClick={onClose}
       />
 
-      {/* Panel — ancré sous navbar (4rem) + header events (~3rem) */}
+      {/* Panel — centré dans la zone floutée (cards area)
+          Zone cards : de top=7rem à bottom=100vh → centre Y = 50vh+3.5rem
+          Horizontal desktop : 50vw - 9rem (w-72 = 18rem → décalé du panneau droit) */}
       <div
-        className="fixed left-1/2 -translate-x-1/2 z-[1000]
-                   top-[8rem] max-h-[calc(100vh-9rem)]
+        className="fixed z-[1000]
+                   top-[calc(50vh+3.5rem)] -translate-y-1/2
+                   left-1/2 -translate-x-1/2
+                   md:left-[calc(50%-9rem)]
                    w-[calc(100vw-2rem)] max-w-2xl
+                   max-h-[calc(100vh-9rem)]
                    flex flex-col rounded-2xl shadow-2xl bg-white border border-gray-200"
         onClick={e => e.stopPropagation()}
       >
