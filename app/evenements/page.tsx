@@ -14,6 +14,7 @@ export default function EvenementsPage() {
   const router = useRouter()
   const supabase = createClient()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
 
   // Shared state between EventsList (desktop) and MiniCalendar
   const [activeDate, setActiveDate] = useState<string | null>(null)
@@ -51,9 +52,13 @@ export default function EvenementsPage() {
   }, [supabase])
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setIsLoggedIn(!!data.user))
+    supabase.auth.getUser().then(({ data }) => {
+      setIsLoggedIn(!!data.user)
+      setUserId(data.user?.id ?? null)
+    })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
       setIsLoggedIn(!!session?.user)
+      setUserId(session?.user?.id ?? null)
     })
     loadMobileEvents('', '')
     return () => subscription.unsubscribe()
@@ -99,18 +104,20 @@ export default function EvenementsPage() {
             <CalendarDays className="text-brand-600" size={26} />
             Événements
           </h1>
-          <button
-            onClick={() => isLoggedIn ? router.push('/evenements/new') : router.push('/auth/login?redirect=%2Fevenements%2Fnew')}
-            className="flex items-center justify-center gap-1.5
-                       w-10 h-10 rounded-full
-                       sm:w-auto sm:h-auto sm:px-4 sm:py-2 sm:rounded-xl
-                       bg-brand-600 text-white hover:bg-brand-700 transition-colors
-                       text-sm font-medium flex-shrink-0"
-            aria-label="Créer un événement"
-          >
-            <Plus size={18} />
-            <span className="hidden sm:inline">Créer</span>
-          </button>
+          {isLoggedIn && (
+            <button
+              onClick={() => router.push('/evenements/new')}
+              className="flex items-center justify-center gap-1.5
+                         w-10 h-10 rounded-full
+                         sm:w-auto sm:h-auto sm:px-4 sm:py-2 sm:rounded-xl
+                         bg-brand-600 text-white hover:bg-brand-700 transition-colors
+                         text-sm font-medium flex-shrink-0"
+              aria-label="Créer un événement"
+            >
+              <Plus size={18} />
+              <span className="hidden sm:inline">Créer</span>
+            </button>
+          )}
         </div>
 
         {/* Filtre date mobile */}
@@ -161,6 +168,7 @@ export default function EvenementsPage() {
                 key={event.id}
                 event={event}
                 onClick={() => router.push(`/evenements/${event.id}`)}
+                currentUserId={userId}
               />
             ))}
           </div>
@@ -175,12 +183,14 @@ export default function EvenementsPage() {
             <CalendarDays size={18} className="text-brand-600" />
             <h1 className="text-base font-bold text-gray-900">Événements du quartier</h1>
           </div>
-          <button
-            onClick={() => isLoggedIn ? router.push('/evenements/new') : router.push('/auth/login?redirect=%2Fevenements%2Fnew')}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 transition-colors"
-          >
-            <Plus size={15} /> Créer
-          </button>
+          {isLoggedIn && (
+            <button
+              onClick={() => router.push('/evenements/new')}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 transition-colors"
+            >
+              <Plus size={15} /> Créer
+            </button>
+          )}
         </div>
 
         {/* Body */}

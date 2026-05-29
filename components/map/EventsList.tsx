@@ -57,6 +57,7 @@ export function EventsList({
   const [markedDates, setMarkedDates] = useState<Set<string>>(new Set())
   const [showCalendar, setShowCalendar] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
   // Internal filter state (mobile) — controlled by parent on desktop
   const [internalFilterFrom, setInternalFilterFrom] = useState(`${new Date().getFullYear()}-01-01`)
@@ -131,6 +132,7 @@ export function EventsList({
       onMarkedDatesReady?.(dates)
     }
     loadMarked()
+    supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id ?? null))
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Infinite scroll sentinel
@@ -300,6 +302,7 @@ export function EventsList({
                 event={event}
                 compact={layout !== 'grid'}
                 selected={selectedEvent?.id === event.id}
+                currentUserId={currentUserId}
                 onClick={() => {
                   const next = selectedEvent?.id === event.id ? null : event
                   setSelectedEvent(next)

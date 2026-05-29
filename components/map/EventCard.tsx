@@ -1,6 +1,7 @@
 'use client'
 
-import { CalendarDays, MapPin } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { CalendarDays, MapPin, Pencil } from 'lucide-react'
 import type { Event } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -36,11 +37,14 @@ interface EventCardProps {
   compact?: boolean
   onClick?: () => void
   selected?: boolean
+  currentUserId?: string | null
 }
 
-export function EventCard({ event, compact = false, onClick, selected }: EventCardProps) {
+export function EventCard({ event, compact = false, onClick, selected, currentUserId }: EventCardProps) {
+  const router = useRouter()
   const isPast = new Date(event.event_date) < new Date()
   const firstImage = event.image_urls?.[0]
+  const isOwner = !!currentUserId && event.user_id === currentUserId
 
   return (
     <div
@@ -73,11 +77,22 @@ export function EventCard({ event, compact = false, onClick, selected }: EventCa
           <h3 className={cn('font-semibold text-gray-900 leading-tight', compact ? 'text-sm' : 'text-base')}>
             {event.title}
           </h3>
-          {isPast && (
-            <span className="shrink-0 text-[10px] font-medium bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
-              Passé
-            </span>
-          )}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {isOwner && (
+              <button
+                onClick={e => { e.stopPropagation(); router.push(`/evenements/${event.id}/edit`) }}
+                className="p-1.5 rounded-lg text-gray-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
+                aria-label="Modifier l'événement"
+              >
+                <Pencil size={13} />
+              </button>
+            )}
+            {isPast && (
+              <span className="text-[10px] font-medium bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+                Passé
+              </span>
+            )}
+          </div>
         </div>
 
         <div className={cn('flex items-center gap-1 text-brand-600', compact ? 'text-xs' : 'text-sm')}>
