@@ -41,16 +41,17 @@ export function EventDetailPopup({ event, onClose }: EventDetailPopupProps) {
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop — mobile seulement, sans blur sur desktop */}
       <div
-        className="fixed inset-0 z-[999] bg-black/20 backdrop-blur-[1px]"
+        className="fixed inset-0 z-[999] bg-black/20 md:bg-transparent"
         onClick={onClose}
       />
 
-      {/* Panel centré */}
+      {/* Panel — ancré sous la navbar, jamais caché */}
       <div
-        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[1000]
-                   w-[calc(100vw-2rem)] max-w-2xl max-h-[calc(100dvh-4rem)]
+        className="fixed left-1/2 -translate-x-1/2 z-[1000]
+                   top-[5rem] max-h-[calc(100vh-6rem)]
+                   w-[calc(100vw-2rem)] max-w-2xl
                    flex flex-col rounded-2xl shadow-2xl bg-white border border-gray-200"
         onClick={e => e.stopPropagation()}
       >
