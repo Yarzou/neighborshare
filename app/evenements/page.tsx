@@ -216,8 +216,8 @@ export default function EvenementsPage() {
           </div>
 
           {/* Right: calendar (desktop only, always visible) */}
-          <div className="hidden md:flex flex-col w-72 border-l border-gray-200 bg-white overflow-y-auto">
-            <div className="p-4 flex flex-col gap-3 sticky top-0">
+          <div className="hidden md:flex flex-col w-72 border-l border-gray-200 bg-white overflow-hidden">
+            <div className="p-4 flex flex-col gap-3 shrink-0">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Calendrier</p>
               <MiniCalendar
                 activeDate={selectedEventDate ?? (filterFrom && filterTo && filterFrom === filterTo ? filterFrom : activeDate)}
@@ -240,16 +240,16 @@ export default function EvenementsPage() {
               </p>
             </div>
 
-            {/* Mini-carte de l'événement sélectionné — carte seule, interactive */}
+            {/* Mini-carte de l'événement sélectionné — prend toute la hauteur restante */}
             {selectedEvent?.location_lat && selectedEvent?.location_lng && (
-              <div className="px-4 pb-4 flex flex-col gap-2 border-t border-gray-100 pt-3">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Localisation</p>
-                <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm">
+              <div className="px-4 pb-4 flex flex-col gap-2 border-t border-gray-100 pt-3 flex-1 min-h-0">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide shrink-0">Localisation</p>
+                <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm flex-1 min-h-0">
                   <EventMiniMap
                     lat={selectedEvent.location_lat}
                     lng={selectedEvent.location_lng}
                     label={selectedEvent.location_text ?? selectedEvent.title}
-                    className="w-full h-56"
+                    className="w-full h-full"
                     zoom={18}
                     interactive={true}
                   />
