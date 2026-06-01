@@ -59,11 +59,16 @@ export function EventCard({ event, compact = false, onClick, selected }: EventCa
       {/* Image */}
       {firstImage && (
         <div className={cn(
-          'overflow-hidden flex-shrink-0 bg-gray-100',
+          'relative overflow-hidden flex-shrink-0 bg-gray-100',
           compact ? 'w-20 h-20 rounded-xl' : 'w-full h-40'
         )}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={firstImage} alt={event.title} className="w-full h-full object-cover" />
+          {isPast && (
+            <span className="absolute top-2 right-2 text-[10px] font-medium bg-black/50 text-white px-2 py-0.5 rounded-full backdrop-blur-sm">
+              Passé
+            </span>
+          )}
         </div>
       )}
 
@@ -73,7 +78,7 @@ export function EventCard({ event, compact = false, onClick, selected }: EventCa
           <h3 className={cn('font-semibold text-gray-900 leading-tight', compact ? 'text-sm' : 'text-base')}>
             {event.title}
           </h3>
-          {isPast && (
+          {isPast && !firstImage && (
             <span className="shrink-0 text-[10px] font-medium bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
               Passé
             </span>
