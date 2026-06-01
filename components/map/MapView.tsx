@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { Listing } from '@/lib/types'
 import { ListingCard } from '@/components/listings/ListingCard'
 import { FilterBar } from '@/components/map/FilterBar'
-import { MapPin, Loader2, X, Map, List, Plus } from 'lucide-react'
+import { MapPin, Loader2, X, Map, List, Plus, LayoutGrid } from 'lucide-react'
 import { normalizeSearch, cn } from '@/lib/utils'
 
 // Dynamic import pour éviter SSR avec Leaflet
@@ -108,7 +108,23 @@ export function MapView() {
   useEffect(() => { fetchListings() }, [fetchListings])
 
   return (
-      <div className="flex flex-col h-full md:flex-row">
+      <div className="flex flex-col h-full">
+        {/* Header desktop — pleine largeur, au-dessus de la carte et de la sidebar */}
+        <div className="hidden md:flex items-center justify-between bg-white border-b border-gray-200 px-4 py-3 shrink-0">
+          <div className="flex items-center gap-2">
+            <LayoutGrid size={18} className="text-brand-600" />
+            <h1 className="text-base font-bold text-gray-900">Publications du quartier</h1>
+          </div>
+          {isLoggedIn && (
+            <button
+              onClick={() => router.push('/listings/new')}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 transition-colors"
+            >
+              <Plus size={15} /> Publier une annonce
+            </button>
+          )}
+        </div>
+
         {/* Toggle mobile */}
         <div className="md:hidden flex border-b border-gray-200 bg-white shrink-0">
           <button
@@ -132,6 +148,9 @@ export function MapView() {
             <Map size={16} /> Carte
           </button>
         </div>
+
+        {/* Body: sidebar + map */}
+        <div className="flex flex-1 overflow-hidden flex-col md:flex-row">
 
         {/* Sidebar */}
         <div className={`w-full md:w-96 flex flex-col bg-white border-r border-gray-200 overflow-hidden z-10 ${mobileView === 'map' ? 'hidden md:flex' : 'flex'}`}>
@@ -194,6 +213,8 @@ export function MapView() {
               </div>
           )}
         </div>
+
+        </div>{/* end Body */}
 
         {/* FAB mobile — Publier une annonce (connecté uniquement) */}
         {isLoggedIn && (
