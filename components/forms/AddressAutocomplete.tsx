@@ -3,20 +3,23 @@
 import { useState, useEffect, useRef } from 'react'
 import { MapPin, X, Loader2, Search, Check, Navigation } from 'lucide-react'
 
-interface NominatimResult {
-  place_id: number
-  display_name: string
-  lat: string
-  lon: string
-  address: {
-    road?: string
-    house_number?: string
-    city?: string
-    town?: string
-    village?: string
-    postcode?: string
-    country?: string
+interface BanFeature {
+  geometry: { coordinates: [number, number] } // [lon, lat]
+  properties: {
+    label: string
+    score: number
+    housenumber?: string
+    street?: string
+    name?: string
+    city: string
+    postcode: string
+    context: string
+    type: string
   }
+}
+
+interface BanResponse {
+  features: BanFeature[]
 }
 
 export interface ResolvedAddress {
@@ -45,7 +48,7 @@ export default function AddressAutocomplete({
   disabled = false,
 }: Props) {
   const [query, setQuery] = useState('')
-  const [suggestions, setSuggestions] = useState<NominatimResult[]>([])
+  const [suggestions, setSuggestions] = useState<BanFeature[]>([])
   const [sugLoading, setSugLoading] = useState(false)
   const [locked, setLocked] = useState(!!lockedValue)
   const [lockedText, setLockedText] = useState(lockedValue ?? '')
@@ -82,11 +85,10 @@ export default function AddressAutocomplete({
     debounceRef.current = setTimeout(async () => {
       try {
         const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&addressdetails=1`,
-          { headers: { 'Accept-Language': 'fr' } }
+          `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(query)}&limit=5&autocomplete=1`
         )
-        const data: NominatimResult[] = await res.json()
-        setSuggestions(data)
+        const data: BanResponse = await res.json()
+        setSuggestions(data.features ?? [])
       } catch {
         setSuggestions([])
       } finally {
@@ -95,11 +97,11 @@ export default function AddressAutocomplete({
     }, 400)
   }, [query])
 
-  const resolveResult = (result: NominatimResult, lat: number, lon: number): ResolvedAddress => {
-    const addr = result.address
-    const road = [addr.house_number, addr.road].filter(Boolean).join(' ')
-    const city = addr.city ?? addr.town ?? addr.village ?? ''
-    return { displayName: result.display_name, lat, lon, road, city }
+  const resolveResult = (feature: BanFeature): ResolvedAddress => {
+    const p = feature.properties
+    const [lon, lat] = feature.geometry.coordinates
+    const road = [p.housenumber, p.street ?? p.name].filter(Boolean).join(' ')
+    return { displayName: p.label, lat, lon, road, city: p.city }
   }
 
   const confirmSelection = (resolved: ResolvedAddress, displayText: string) => {
@@ -110,9 +112,9 @@ export default function AddressAutocomplete({
     onSelect(resolved)
   }
 
-  const handleSelect = (result: NominatimResult) => {
-    const resolved = resolveResult(result, parseFloat(result.lat), parseFloat(result.lon))
-    confirmSelection(resolved, result.display_name)
+  const handleSelect = (feature: BanFeature) => {
+    const resolved = resolveResult(feature)
+    confirmSelection(resolved, feature.properties.label)
   }
 
   const handleClear = () => {
@@ -136,12 +138,13 @@ export default function AddressAutocomplete({
         const { latitude: lat, longitude: lon } = pos.coords
         try {
           const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`,
-            { headers: { 'Accept-Language': 'fr' } }
+            `https://api-adresse.data.gouv.fr/reverse/?lon=${lon}&lat=${lat}`
           )
-          const data: NominatimResult = await res.json()
-          const resolved = resolveResult(data, lat, lon)
-          confirmSelection(resolved, data.display_name)
+          const data: BanResponse = await res.json()
+          const feature = data.features?.[0]
+          if (!feature) throw new Error('Aucun résultat')
+          const resolved = resolveResult(feature)
+          confirmSelection(resolved, feature.properties.label)
         } catch {
           setGeoError('Impossible de déterminer votre adresse à partir de votre position.')
         } finally {
@@ -210,14 +213,14 @@ export default function AddressAutocomplete({
       {suggestions.length > 0 && (
         <ul className="absolute top-[calc(100%-0.5rem)] mt-1 w-full bg-white rounded-xl border border-gray-200 shadow-lg z-50 overflow-hidden">
           {suggestions.map(s => (
-            <li key={s.place_id} className="border-b border-gray-50 last:border-0">
+            <li key={s.properties.label} className="border-b border-gray-50 last:border-0">
               <button
                 type="button"
                 onClick={() => handleSelect(s)}
                 className="w-full text-left px-4 py-2.5 text-sm hover:bg-brand-50 flex items-start gap-2.5 transition-colors"
               >
                 <MapPin size={13} className="mt-0.5 text-brand-500 flex-shrink-0" />
-                <span className="line-clamp-2 leading-snug">{s.display_name}</span>
+                <span className="line-clamp-2 leading-snug">{s.properties.label}</span>
               </button>
             </li>
           ))}

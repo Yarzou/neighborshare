@@ -26,7 +26,7 @@ const nextConfig = {
               "img-src 'self' data: blob: https://*.supabase.co https://*.tile.openstreetmap.org https://unpkg.com",
               "media-src 'self'",
               "font-src 'self'",
-              "connect-src 'self' https://*.supabase.co https://nominatim.openstreetmap.org wss://*.supabase.co https://*.googleapis.com https://*.firebase.com https://*.firebaseio.com",
+              "connect-src 'self' https://*.supabase.co https://api-adresse.data.gouv.fr wss://*.supabase.co https://*.googleapis.com https://*.firebase.com https://*.firebaseio.com",
               "frame-ancestors 'none'",
             ].join('; '),
           },
