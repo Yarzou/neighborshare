@@ -202,7 +202,7 @@ export function MapView() {
 
           {/* Popup détail sélectionné */}
           {selected && (
-              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-80 z-[1000] max-h-[calc(100dvh-5rem)] overflow-y-auto rounded-2xl shadow-xl">
+              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-80 z-[1200] max-h-[calc(100dvh-5rem)] overflow-y-auto rounded-2xl shadow-xl">
                 <div className="relative">
                   <button onClick={() => setSelected(null)}
                           className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md border border-gray-200 z-10">
@@ -225,8 +225,7 @@ export function MapView() {
             'w-14 h-14 rounded-full bg-brand-600 text-white shadow-xl',
             'flex items-center justify-center',
             'hover:bg-brand-700 active:scale-95 transition-all duration-150',
-            'right-4',
-            selected ? 'bottom-52' : 'bottom-6',
+            'right-4 bottom-6',
           )}
           aria-label="Publier une annonce"
         >
