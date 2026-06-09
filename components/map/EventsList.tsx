@@ -73,13 +73,9 @@ export function EventsList({
   const listRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
   const observerRef = useRef<IntersectionObserver | null>(null)
-  const scrollObserverRef = useRef<IntersectionObserver | null>(null)
   const offsetRef = useRef(0)
   const isFetchingRef = useRef(false)
   const lastScrollTriggerSeq = useRef<number>(-1)
-  // Prevents the IntersectionObserver from syncing the calendar on initial render
-  // (before the user has actually scrolled the list)
-  const hasScrolledRef = useRef(false)
 
   const fetchEvents = useCallback(async (offset: number, from: string, to: string): Promise<Event[]> => {
     if (isFetchingRef.current) return []
@@ -155,38 +151,6 @@ export function EventsList({
     if (sentinelRef.current) observerRef.current.observe(sentinelRef.current)
     return () => observerRef.current?.disconnect()
   }, [hasMore, loadingMore, fetchEvents, hasFilter, filterFrom, filterTo])
-
-  // Mark hasScrolled on first real scroll so the calendar doesn't jump on initial render
-  useEffect(() => {
-    const list = listRef.current
-    if (!list) return
-    const onScroll = () => { hasScrolledRef.current = true }
-    list.addEventListener('scroll', onScroll, { once: true })
-    return () => list.removeEventListener('scroll', onScroll)
-  }, [])
-
-  // Scroll → calendar sync
-  useEffect(() => {
-    if (scrollObserverRef.current) scrollObserverRef.current.disconnect()
-    scrollObserverRef.current = new IntersectionObserver((entries) => {
-      const visible = entries
-        .filter(e => e.isIntersecting)
-        .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)
-      if (visible.length > 0) {
-        const el = visible[0].target as HTMLElement
-        const date = el.getAttribute('data-event-date')
-        if (date && hasScrolledRef.current) {
-          setInternalActiveDate(date)
-          onActiveDateChange?.(date)
-        }
-      }
-    }, { threshold: 0.5, root: listRef.current })
-
-    const cards = listRef.current?.querySelectorAll('[data-event-date]')
-    cards?.forEach(card => scrollObserverRef.current?.observe(card))
-
-    return () => scrollObserverRef.current?.disconnect()
-  }, [events, onActiveDateChange])
 
   // External scroll trigger
   useEffect(() => {
