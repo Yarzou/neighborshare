@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import 'leaflet.markercluster'
@@ -37,7 +37,8 @@ export default function LeafletMap({ userPosition, listings, onSelectListing, se
   const searchMarkerRef = useRef<L.Marker | null>(null)
   const userMarkerRef = useRef<L.Marker | null>(null)
   const tileLayerRef = useRef<L.TileLayer | null>(null)
-  const [hasPosition, setHasPosition] = useState(false)
+  const recenterBtnRef = useRef<HTMLButtonElement | null>(null)
+  const userPositionRef = useRef<[number, number] | null>(null)
   // Timer ref to delay unspiderfy so hovering child markers doesn't collapse immediately
   const unspiderfyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -107,6 +108,25 @@ export default function LeafletMap({ userPosition, listings, onSelectListing, se
     clusterGroupRef.current = clusterGroup
     mapRef.current = map
 
+    // Bouton "Recentrer sur ma position" — contrôle Leaflet sous les +/−
+    const RecenterControl = L.Control.extend({
+      onAdd() {
+        const btn = L.DomUtil.create('button', 'leaflet-bar leaflet-control-recenter') as HTMLButtonElement
+        btn.title = 'Recentrer sur ma position'
+        btn.style.cssText = 'width:30px;height:30px;display:none;align-items:center;justify-content:center;background:white;border:none;cursor:pointer;padding:0;'
+        btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg>`
+        btn.onclick = (e) => {
+          L.DomEvent.stopPropagation(e)
+          if (mapRef.current && userPositionRef.current) {
+            mapRef.current.setView(userPositionRef.current, 16)
+          }
+        }
+        recenterBtnRef.current = btn
+        return btn
+      },
+    })
+    new RecenterControl({ position: 'topleft' }).addTo(map)
+
     // ResizeObserver : recalcule la taille dès que le conteneur change de dimensions
     // (ex : passage de hidden → visible sur mobile)
     const ro = new ResizeObserver(() => {
@@ -135,7 +155,10 @@ export default function LeafletMap({ userPosition, listings, onSelectListing, se
     const map = mapRef.current
     if (!map || !userPosition) return
 
-    setHasPosition(true)
+    userPositionRef.current = userPosition
+    if (recenterBtnRef.current) {
+      recenterBtnRef.current.style.display = 'flex'
+    }
 
     if (userMarkerRef.current) {
       userMarkerRef.current.setLatLng(userPosition)
@@ -245,23 +268,6 @@ export default function LeafletMap({ userPosition, listings, onSelectListing, se
   return (
     <div className="relative w-full h-full">
       <div ref={containerRef} className="main-map w-full h-full" />
-      {hasPosition && (
-        <button
-          onClick={() => {
-            if (mapRef.current && userPosition) {
-              mapRef.current.setView(userPosition, 16)
-            }
-          }}
-          title="Recentrer sur ma position"
-          className="absolute bottom-6 right-4 z-[1000] bg-white rounded-full p-2.5 shadow-md border border-gray-200 hover:bg-gray-50 transition-colors"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="3"/>
-            <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
-            <path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" strokeOpacity="0"/>
-          </svg>
-        </button>
-      )}
     </div>
   )
 }
