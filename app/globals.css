@@ -88,6 +88,28 @@ body {
 
 .leaflet-popup-tip { background: white; }
 
+/* User position marker pulse animation */
+@keyframes user-pulse {
+  0%   { transform: scale(1);   opacity: 0.6; }
+  70%  { transform: scale(2.4); opacity: 0; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+
+.user-location-dot {
+  position: relative;
+  width: 16px;
+  height: 16px;
+}
+
+.user-location-dot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: #2563eb;
+  animation: user-pulse 2s ease-out infinite;
+}
+
 /* Typing indicator dots */
 @keyframes typing-dot {
   0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }

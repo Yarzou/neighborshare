@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import 'leaflet.markercluster'
@@ -37,6 +37,7 @@ export default function LeafletMap({ userPosition, listings, onSelectListing, se
   const searchMarkerRef = useRef<L.Marker | null>(null)
   const userMarkerRef = useRef<L.Marker | null>(null)
   const tileLayerRef = useRef<L.TileLayer | null>(null)
+  const [hasPosition, setHasPosition] = useState(false)
   // Timer ref to delay unspiderfy so hovering child markers doesn't collapse immediately
   const unspiderfyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -134,18 +135,20 @@ export default function LeafletMap({ userPosition, listings, onSelectListing, se
     const map = mapRef.current
     if (!map || !userPosition) return
 
+    setHasPosition(true)
+
     if (userMarkerRef.current) {
       userMarkerRef.current.setLatLng(userPosition)
       return
     }
 
     const userIcon = L.divIcon({
-      html: `<div style="width:16px;height:16px;background:#2563eb;border:3px solid white;border-radius:50%;box-shadow:0 0 0 4px rgba(37,99,235,0.2)"></div>`,
+      html: `<div class="user-location-dot" style="width:16px;height:16px;background:#2563eb;border:3px solid white;border-radius:50%;box-shadow:0 0 0 2px rgba(37,99,235,0.3)"></div>`,
       iconSize: [16, 16],
       iconAnchor: [8, 8],
       className: '',
     })
-    userMarkerRef.current = L.marker(userPosition, { icon: userIcon }).addTo(map).bindPopup('Vous êtes ici')
+    userMarkerRef.current = L.marker(userPosition, { icon: userIcon }).addTo(map).bindPopup('📍 Vous êtes ici')
   }, [userPosition])
 
   // Searched address marker
@@ -239,5 +242,26 @@ export default function LeafletMap({ userPosition, listings, onSelectListing, se
     })
   }, [selectedId, listings])
 
-  return <div ref={containerRef} className="main-map w-full h-full" />
+  return (
+    <div className="relative w-full h-full">
+      <div ref={containerRef} className="main-map w-full h-full" />
+      {hasPosition && (
+        <button
+          onClick={() => {
+            if (mapRef.current && userPosition) {
+              mapRef.current.setView(userPosition, 16)
+            }
+          }}
+          title="Recentrer sur ma position"
+          className="absolute bottom-6 right-4 z-[1000] bg-white rounded-full p-2.5 shadow-md border border-gray-200 hover:bg-gray-50 transition-colors"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+            <path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" strokeOpacity="0"/>
+          </svg>
+        </button>
+      )}
+    </div>
+  )
 }

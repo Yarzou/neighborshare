@@ -61,11 +61,15 @@ export function MapView() {
     })
   }, [])
 
-  // Géolocalisation — uniquement pour le marqueur "Vous êtes ici"
+  // Géolocalisation en temps réel — marqueur "Vous êtes ici"
   useEffect(() => {
-    navigator.geolocation?.getCurrentPosition(
+    if (!navigator.geolocation) return
+    const watchId = navigator.geolocation.watchPosition(
       pos => setUserGeoLocation([pos.coords.latitude, pos.coords.longitude]),
+      () => {},
+      { enableHighAccuracy: true },
     )
+    return () => navigator.geolocation.clearWatch(watchId)
   }, [])
 
   // Détection mobile
