@@ -77,4 +77,10 @@
   <!-- Table events : événements de quartier + bucket Storage events -->
   <include file="liquibase/changelog/024-events.sql"/>
 
+  <!-- Hardening immédiat de spatial_ref_sys (réduction droits write) -->
+  <include file="liquibase/changelog/025-spatial-ref-sys-hardening.sql"/>
+
+  <!-- Déplacement PostGIS hors de public pour supprimer l'alerte Advisor -->
+  <include file="liquibase/changelog/026-postgis-schema-move.sql"/>
+
 </databaseChangeLog>
