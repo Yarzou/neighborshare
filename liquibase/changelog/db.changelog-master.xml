@@ -83,4 +83,7 @@
   <!-- Déplacement PostGIS hors de public pour supprimer l'alerte Advisor -->
   <include file="liquibase/changelog/026-postgis-schema-move.sql"/>
 
+  <!-- Activation explicite de RLS sur public.spatial_ref_sys -->
+  <include file="liquibase/changelog/027-rls-spatial-ref-sys.sql"/>
+
 </databaseChangeLog>
