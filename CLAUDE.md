@@ -14,7 +14,7 @@
 
 **« Les voisins du Cèdre »** (nom technique : `neighborshare`) — plateforme d'entraide de quartier géolocalisée : prêt d'outils, services, garde d'enfant, covoiturage, dons, jardinage, cuisine, plus des événements de quartier et une messagerie temps réel. PWA installable avec notifications push.
 
-Déploiement : Vercel (`neighborshare-liard.vercel.app`).
+Déploiement : Vercel, domaine de production **`voisinsducedre.vercel.app`** (`neighborshare-liard.vercel.app` est un ancien alias qui redirige en 307 — encore présent comme défaut d'`APP_URL` dans les Edge Functions).
 
 ---
 

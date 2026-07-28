@@ -55,8 +55,14 @@ via la variable `KEEPALIVE_URL`). Étape 2 (optionnelle) : ping PostgREST direct
 
 Vérifié : `npx tsc --noEmit` OK, `npm run build` OK (`/api/keepalive` listée en route dynamique `ƒ`).
 
-⚠️ **Reste à faire (humain)** : restaurer le projet depuis le dashboard Supabase — un keepalive ne
-réveille pas un projet déjà en pause. Puis déployer pour que le cron Vercel soit enregistré.
+Domaine de production réel : **`voisinsducedre.vercel.app`** (vérifié : `neighborshare-liard.vercel.app`
+renvoie un 307 vers lui). C'est cette URL qui sert de défaut au workflow GitHub.
+
+⚠️ **Reste à faire (humain)** :
+1. Restaurer le projet depuis le dashboard Supabase — un keepalive ne réveille pas un projet en pause.
+2. Pousser sur `main` : le cron Vercel est enregistré au déploiement **production**, et le trigger
+   `schedule` de GitHub Actions n'est actif que depuis la branche par défaut.
+3. Vérifier : onglet Cron Jobs du projet Vercel + un run manuel du workflow (`workflow_dispatch`).
 
 ### Remise en service du lint (ESLint 9 flat config)
 Diagnostic : `npm run lint` → `next lint` supprimé dans Next 16 (« Invalid project directory
