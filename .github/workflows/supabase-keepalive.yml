@@ -1,0 +1,64 @@
+# Second filet contre la mise en pause du projet Supabase (plan gratuit :
+# pause après ~7 jours sans requête API).
+#
+# Le cron Vercel (vercel.json → /api/keepalive) est le mécanisme principal.
+# Ce workflow existe parce qu'un cron Vercel peut être désactivé sans bruit
+# (dépassement de quota Hobby, projet déconnecté, déploiement en échec).
+#
+# ⚠️ Limite connue : GitHub désactive les workflows planifiés d'un dépôt resté
+# 60 jours sans activité. Il envoie un mail avant — il suffit de le réactiver.
+#
+# Configuration (Settings du dépôt) :
+#   - Variables > KEEPALIVE_URL   (optionnel) URL de la route keepalive
+#   - Secrets > CRON_SECRET       (optionnel) si vous en avez défini un sur Vercel
+#   - Secrets > SUPABASE_URL + SUPABASE_ANON_KEY (optionnel) pour le ping direct
+
+name: Supabase keepalive
+
+on:
+  schedule:
+    # Tous les 3 jours à 07:00 UTC — large marge sous le seuil de 7 jours
+    - cron: '0 7 */3 * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /api/keepalive (via Vercel)
+        env:
+          KEEPALIVE_URL: ${{ vars.KEEPALIVE_URL || 'https://neighborshare-liard.vercel.app/api/keepalive' }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          auth=()
+          if [ -n "${CRON_SECRET:-}" ]; then
+            auth=(-H "Authorization: Bearer ${CRON_SECRET}")
+          fi
+          echo "GET ${KEEPALIVE_URL}"
+          code=$(curl -sS -o /tmp/keepalive.json -w '%{http_code}' \
+                   --retry 3 --retry-delay 10 --max-time 30 \
+                   "${auth[@]}" "${KEEPALIVE_URL}")
+          cat /tmp/keepalive.json; echo
+          if [ "$code" != "200" ]; then
+            echo "::error::keepalive a répondu $code"
+            exit 1
+          fi
+
+      - name: Ping direct PostgREST (indépendant de Vercel)
+        if: ${{ secrets.SUPABASE_ANON_KEY != '' }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o /dev/null -w '%{http_code}' \
+                   --retry 3 --retry-delay 10 --max-time 30 \
+                   -H "apikey: ${SUPABASE_ANON_KEY}" \
+                   -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+                   "${SUPABASE_URL}/rest/v1/categories?select=id&limit=1")
+          echo "PostgREST → $code"
+          if [ "$code" != "200" ]; then
+            echo "::error::PostgREST a répondu $code"
+            exit 1
+          fi

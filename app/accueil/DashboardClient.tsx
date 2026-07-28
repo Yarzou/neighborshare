@@ -27,16 +27,6 @@ export default function DashboardClient({ firstName, avatarUrl, avatarColor }: P
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0)
   const [userId, setUserId] = useState<string | null>(null)
 
-  useEffect(() => {
-    const init = async () => {
-      const { data } = await supabase.auth.getUser()
-      if (!data.user) return
-      setUserId(data.user.id)
-      await Promise.all([fetchUnread(data.user.id), fetchPendingRequests(data.user.id)])
-    }
-    void init()
-  }, [])
-
   const fetchUnread = async (uid: string) => {
     const { data: parts } = await supabase
       .from('conversation_participants')
@@ -73,6 +63,18 @@ export default function DashboardClient({ firstName, avatarUrl, avatarColor }: P
     ])
     setPendingRequestsCount((asOwner ?? 0) + (asResponder ?? 0))
   }
+
+  // Déclaré après fetchUnread / fetchPendingRequests : l'effet les référence,
+  // les placer avant provoquerait une lecture en zone morte (TDZ).
+  useEffect(() => {
+    const init = async () => {
+      const { data } = await supabase.auth.getUser()
+      if (!data.user) return
+      setUserId(data.user.id)
+      await Promise.all([fetchUnread(data.user.id), fetchPendingRequests(data.user.id)])
+    }
+    void init()
+  }, [])
 
   const tiles: Tile[] = [
     {
@@ -117,7 +119,7 @@ export default function DashboardClient({ firstName, avatarUrl, avatarColor }: P
           <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
             Bonjour{firstName ? `, ${firstName}` : ''} 👋
           </h1>
-          <p className="text-gray-500 text-base">Que souhaitez-vous faire aujourd'hui ?</p>
+          <p className="text-gray-500 text-base">Que souhaitez-vous faire aujourd&apos;hui ?</p>
         </div>
 
         {/* Tiles grid: 2 cols, last tile centered */}
