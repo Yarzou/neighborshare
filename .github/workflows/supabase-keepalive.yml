@@ -27,7 +27,9 @@ jobs:
     steps:
       - name: Ping /api/keepalive (via Vercel)
         env:
-          KEEPALIVE_URL: ${{ vars.KEEPALIVE_URL || 'https://neighborshare-liard.vercel.app/api/keepalive' }}
+          # Domaine de production réel. neighborshare-liard.vercel.app est un
+          # ancien alias qui redirige (307) vers celui-ci.
+          KEEPALIVE_URL: ${{ vars.KEEPALIVE_URL || 'https://voisinsducedre.vercel.app/api/keepalive' }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           set -euo pipefail

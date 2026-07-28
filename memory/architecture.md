@@ -17,7 +17,7 @@
 - **Package manager** : **npm** (`package-lock.json` présent) — le champ `packageManager: yarn@1.22.22` du `package.json` est une incohérence non résolue
 - **Tests** : aucun. Pas de `npm test`. Vérifications : `npm run lint` + `npm run typecheck` + `npm run build`
 - **Lint** : `eslint.config.mjs` (flat config ESLint 9, `eslint-config-next/core-web-vitals`). `next lint` supprimé dans Next 16, `.eslintrc.json` supprimé (plus lu par ESLint 9). Base : 0 erreur / 40 avertissements pré-existants. `react-hooks/set-state-in-effect` rétrogradée en `warn` (16 occurrences de code pré-existant)
-- **Déploiement** : Vercel (`neighborshare-liard.vercel.app`)
+- **Déploiement** : Vercel — domaine de production **`voisinsducedre.vercel.app`**. `neighborshare-liard.vercel.app` est un ancien alias qui redirige en 307 (encore utilisé comme valeur par défaut d'`APP_URL` dans les Edge Functions)
 
 Nom public de l'app : **« Les voisins du Cèdre »** (nom technique du dépôt : `neighborshare`). PWA installable (`public/manifest.json`, thème `#16a34a`).
 
