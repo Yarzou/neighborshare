@@ -1,5 +1,37 @@
 # Historique des modifications (par session)
 
+## 2026-08-03 (7) — Notifications push « vie du quartier »
+
+Six points d'envoi choisis par l'utilisateur (A→F tous retenus) :
+diffusion au quartier pour **info ASL**, **sondage**, **événement** (trou historique : rien
+n'était envoyé), **achat groupé** ; ciblées pour **nouvelle participation** (→ créateur) et
+**objectif atteint** (→ créateur + participants).
+
+**Mécanisme** : route `POST /api/notifications/quartier` (et non des Edge Functions — aurait
+exigé une 3e duplication inline du code FCM Deno + config webhooks au dashboard), appelée
+fire-and-forget via `notifyQuartier()` (ajouté à `lib/pushNotifications.ts`) après insert
+réussi. **Push uniquement, aucun email** — le plafond SMTP Gmail (chantier écarté) n'est pas
+aggravé.
+
+- `lib/fcm-admin.ts` refactoré : cœur `sendToTokens()` (multicast par lots de 500 + nettoyage
+  des tokens invalides, partagé), + `sendPushToUsers(ids)` (respecte
+  `push_notifications_enabled`, null = activé comme les Edge Functions) et
+  `sendPushToAll(excludeUserId)`. `sendPushToUser` inchangé en surface (ne vérifie toujours pas
+  la préférence — c'est /api/notifications qui le fait, comportement historique conservé).
+- **Anti-abus** : la route re-vérifie en base que l'appelant est l'auteur du contenu notifié
+  (broadcast) ou un participant réel (ciblées) ; `gp_target_reached` recalcule le total en base
+  au lieu de croire le client. Sans ça, n'importe quel compte pouvait spammer le quartier en
+  postant des ids arbitraires.
+- Émetteurs : `AnnouncementsSection` (création seulement — inserts passés en `.select('id')`),
+  `PollsSection.handleCreate`, page achats (`handleCreate` + `participate` : franchissement
+  d'objectif détecté sur l'état local, re-vérifié serveur), `EventForm` (création seulement).
+- Écarté volontairement : notifs cron (deadlines, clôtures — chantier séparé), prestataires et
+  réactions (bruit).
+
+Aucune migration. Vérifs : lint 0 erreur / 33 warnings, typecheck, build OK.
+Test réel : deux comptes, push activé sur le second (bannière ou réglages profil), publier une
+info ASL avec le premier.
+
 ## 2026-08-03 (6) — Modèle de droits complet : créateur + référent sur tous les contenus
 
 Confirmation demandée par l'utilisateur (« le créateur modifie/supprime ses contenus, le

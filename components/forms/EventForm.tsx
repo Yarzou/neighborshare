@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import AddressAutocomplete, { type ResolvedAddress } from '@/components/forms/AddressAutocomplete'
 import { Upload, X, Loader2, CalendarDays, MapPin, Image as ImageIcon, ChevronLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { notifyQuartier } from '@/lib/pushNotifications'
 import type { Event } from '@/lib/types'
 
 const MAX_PHOTOS = 3
@@ -174,8 +175,14 @@ export default function EventForm({ initialEvent }: EventFormProps) {
         return
       }
     } else {
-      const { error } = await supabase.from('events').insert({ user_id: user.id, ...payload })
+      const { data: created, error } = await supabase
+        .from('events')
+        .insert({ user_id: user.id, ...payload })
+        .select('id')
+        .single()
       dbError = error
+      // Push à tout le quartier (fire-and-forget, jamais bloquant)
+      if (!error && created) notifyQuartier('new_event', created.id)
     }
 
     if (dbError) {

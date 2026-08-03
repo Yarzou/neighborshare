@@ -56,3 +56,25 @@ export async function deactivatePushNotifications(
   }
   await supabase.from('profiles').update({ push_notifications_enabled: false }).eq('id', userId)
 }
+
+/** Événements gérés par POST /api/notifications/quartier */
+export type QuartierNotificationEvent =
+  | 'new_announcement'
+  | 'new_poll'
+  | 'new_event'
+  | 'new_group_purchase'
+  | 'gp_participation'
+  | 'gp_target_reached'
+
+/**
+ * Déclenche une notification push « vie du quartier », en fire-and-forget :
+ * ne bloque jamais le flux métier, échoue en silence (intégrations dégradables).
+ * La route re-vérifie côté serveur que l'appelant est bien lié au contenu.
+ */
+export function notifyQuartier(event: QuartierNotificationEvent, id: string): void {
+  fetch('/api/notifications/quartier', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ event, id }),
+  }).catch(() => {})
+}

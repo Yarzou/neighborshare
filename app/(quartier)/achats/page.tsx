@@ -8,6 +8,7 @@ import { GROUP_PURCHASE_STATUS_LABELS, GROUP_PURCHASE_STATUS_COLORS } from '@/li
 import { useCurrentUser } from '@/lib/hooks'
 import { LoginRequiredNotice } from '@/components/layout/LoginRequiredNotice'
 import { formatDate, getAvatarStyle, cn } from '@/lib/utils'
+import { notifyQuartier } from '@/lib/pushNotifications'
 
 /** Quantité formatée sans décimales inutiles (500 plutôt que 500.00) */
 function fmtQty(n: number): string {
@@ -94,17 +95,25 @@ export default function GroupPurchasesPage() {
 
     // Édition (créateur ou référent, policy 038) ou création. L'update conserve
     // created_by et le statut.
-    const { error: saveErr } = editingId
+    const { data: created, error: saveErr } = editingId
       ? await supabase.from('group_purchases')
           .update({ ...values, updated_at: new Date().toISOString() })
           .eq('id', editingId)
-      : await supabase.from('group_purchases').insert({ created_by: userId, ...values })
+          .select('id')
+          .single()
+      : await supabase.from('group_purchases')
+          .insert({ created_by: userId, ...values })
+          .select('id')
+          .single()
 
     if (saveErr) {
       setError(editingId ? 'Modification impossible. Réessayez.' : 'Création impossible. Réessayez.')
       setSaving(false)
       return
     }
+
+    // Push à tout le quartier — à la création seulement, jamais à l'édition
+    if (!editingId && created) notifyQuartier('new_group_purchase', created.id)
 
     closeForm()
     setSaving(false)
@@ -126,6 +135,24 @@ export default function GroupPurchasesPage() {
       )
 
     if (upsertErr) return setError('Participation impossible. Réessayez.')
+
+    // Push au créateur (fire-and-forget ; la route ignore l'auto-participation)
+    notifyQuartier('gp_participation', purchaseId)
+
+    // Franchissement de l'objectif : détecté ici à partir de l'état local, mais
+    // re-vérifié côté serveur (la route recalcule le total en base)
+    const purchase = purchases.find(p => p.id === purchaseId)
+    if (purchase?.target_quantity != null) {
+      const participants = purchase.group_purchase_participants ?? []
+      const prevTotal = participants.reduce((sum, x) => sum + Number(x.quantity), 0)
+      const myPrev = Number(participants.find(x => x.user_id === userId)?.quantity ?? 0)
+      const newTotal = prevTotal - myPrev + qty
+      const target = Number(purchase.target_quantity)
+      if (prevTotal < target && newTotal >= target) {
+        notifyQuartier('gp_target_reached', purchaseId)
+      }
+    }
+
     setQtyInputs(q => ({ ...q, [purchaseId]: '' }))
     await load()
   }

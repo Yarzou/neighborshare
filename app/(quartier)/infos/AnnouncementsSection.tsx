@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Megaphone, Pin, Plus, Loader2, X, Trash2, Pencil } from 'lucide-react'
 import type { Announcement } from '@/lib/types'
 import { formatDate, getAvatarStyle } from '@/lib/utils'
+import { notifyQuartier } from '@/lib/pushNotifications'
 
 interface Props {
   userId: string | null
@@ -66,17 +67,25 @@ export function AnnouncementsSection({ userId, isReferent }: Props) {
 
     // Édition (tout référent, policy 038) ou création. L'update conserve
     // author_id : modifier l'annonce d'un autre référent ne se l'approprie pas.
-    const { error: saveErr } = editingId
+    const { data: created, error: saveErr } = editingId
       ? await supabase.from('announcements')
           .update({ ...values, updated_at: new Date().toISOString() })
           .eq('id', editingId)
-      : await supabase.from('announcements').insert({ author_id: userId, ...values })
+          .select('id')
+          .single()
+      : await supabase.from('announcements')
+          .insert({ author_id: userId, ...values })
+          .select('id')
+          .single()
 
     if (saveErr) {
       setError(editingId ? 'Modification impossible. Réessayez.' : 'Publication impossible. Réessayez.')
       setSaving(false)
       return
     }
+
+    // Push à tout le quartier — à la création seulement, jamais à l'édition
+    if (!editingId && created) notifyQuartier('new_announcement', created.id)
 
     closeForm()
     setSaving(false)

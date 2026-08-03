@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Vote, Plus, Loader2, X, Trash2, Check, Pencil } from 'lucide-react'
 import type { Poll, PollResult } from '@/lib/types'
 import { formatDate } from '@/lib/utils'
+import { notifyQuartier } from '@/lib/pushNotifications'
 
 interface Props {
   userId: string | null
@@ -158,6 +159,9 @@ export function PollsSection({ userId, isReferent }: Props) {
       setSaving(false)
       return
     }
+
+    // Push à tout le quartier (fire-and-forget)
+    notifyQuartier('new_poll', poll.id)
 
     closeForm()
     setSaving(false)
