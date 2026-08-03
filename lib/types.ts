@@ -41,6 +41,8 @@ export interface Profile {
   address_city?: string | null
   address_lat?: number | null
   address_lng?: number | null
+  /** Référent du lotissement : peut publier les informations officielles et les sondages */
+  is_referent?: boolean
 }
 
 export interface Listing {
@@ -142,6 +144,104 @@ export interface Event {
   created_at: string
   // Join
   profiles?: Profile
+}
+
+/** Information officielle publiée par un référent du lotissement */
+export interface Announcement {
+  id: string
+  author_id: string
+  title: string
+  body: string
+  is_pinned: boolean
+  created_at: string
+  updated_at: string
+  // Join
+  profiles?: Profile
+}
+
+/** Prestataire recommandé par un voisin */
+export interface Provider {
+  id: string
+  created_by: string
+  name: string
+  trade: string
+  phone: string | null
+  email: string | null
+  website: string | null
+  comment: string | null
+  created_at: string
+  updated_at: string
+  // Join
+  profiles?: Profile
+}
+
+export type GroupPurchaseStatus = 'ouvert' | 'cloture' | 'annule'
+
+export interface GroupPurchase {
+  id: string
+  created_by: string
+  title: string
+  description: string | null
+  /** Unité libre : « litres », « stères », « kg »… */
+  unit: string
+  target_quantity: number | null
+  unit_price: number | null
+  deadline: string | null
+  status: GroupPurchaseStatus
+  created_at: string
+  updated_at: string
+  // Joins
+  profiles?: Profile
+  group_purchase_participants?: GroupPurchaseParticipant[]
+}
+
+export interface GroupPurchaseParticipant {
+  purchase_id: string
+  user_id: string
+  quantity: number
+  comment: string | null
+  created_at: string
+  updated_at: string
+  // Join
+  profiles?: Profile
+}
+
+export interface Poll {
+  id: string
+  created_by: string
+  question: string
+  description: string | null
+  closes_at: string | null
+  created_at: string
+  // Joins
+  poll_options?: PollOption[]
+  profiles?: Profile
+}
+
+export interface PollOption {
+  id: string
+  poll_id: string
+  label: string
+  position: number
+}
+
+/** Ligne renvoyée par le RPC `poll_results` (refuse de répondre avant d'avoir voté) */
+export interface PollResult {
+  option_id: string
+  label: string
+  votes: number
+}
+
+export const GROUP_PURCHASE_STATUS_LABELS: Record<GroupPurchaseStatus, string> = {
+  ouvert: 'Ouvert',
+  cloture: 'Clôturé',
+  annule: 'Annulé',
+}
+
+export const GROUP_PURCHASE_STATUS_COLORS: Record<GroupPurchaseStatus, string> = {
+  ouvert: 'bg-emerald-100 text-emerald-700',
+  cloture: 'bg-gray-200 text-gray-500',
+  annule: 'bg-rose-100 text-rose-700',
 }
 
 export const MESSAGE_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏'] as const

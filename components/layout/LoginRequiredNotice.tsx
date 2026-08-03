@@ -26,9 +26,9 @@ interface Props {
  */
 export function LoginRequiredNotice({ what, redirectTo, className, compact = false }: Props) {
   return (
-    <div className={className ?? 'text-center py-16 px-4 text-gray-500'}>
+    <div className={className ?? 'text-center py-16 px-4 text-content-muted'}>
       <Lock size={compact ? 28 : 36} className="mx-auto mb-3 opacity-30" />
-      <p className="font-medium text-gray-700">Réservé aux voisins</p>
+      <p className="font-medium text-content-soft">Réservé aux voisins</p>
       <p className="text-sm mt-1 max-w-xs mx-auto">
         Connectez-vous pour voir {what}.
       </p>
@@ -41,7 +41,7 @@ export function LoginRequiredNotice({ what, redirectTo, className, compact = fal
         </Link>
         <Link
           href="/auth/register"
-          className="px-4 py-2 rounded-xl border border-gray-200 text-gray-700 text-sm font-medium hover:border-brand-300 transition-colors"
+          className="px-4 py-2 rounded-xl border border-edge text-content-soft text-sm font-medium hover:border-brand-300 transition-colors"
         >
           Créer un compte
         </Link>

@@ -83,14 +83,15 @@ Les **routes API** (`app/api/`) existent uniquement pour ce qui exige un secret 
 - `DELETE /api/account/delete` — suppression de compte (service role, cascade).
 - `GET /api/firebase-messaging-sw` — sert le Service Worker FCM avec la config injectée côté serveur (en-tête `Service-Worker-Allowed: /`).
 
-### 3. Géolocalisation : toujours via le RPC PostGIS
+### 3. Géolocalisation : la vue `listings_geo`
 ```ts
-supabase.rpc('listings_within_radius', { lat, lng, radius_km })
-// → champs listing + distance_m, lat_out, lng_out
+supabase.from('listings_geo').select('*')
+// → toutes les colonnes de listings + lat_out, lng_out (expirées exclues)
 ```
+Depuis la migration **032**, la carte lit la vue `listings_geo` (`security_invoker = true`, en `l.*`) : **une nouvelle colonne de `listings` remonte automatiquement**, plus de `RETURNS TABLE` à maintenir. Distance et tri par proximité se calculent côté client via `distanceMeters()` de **`lib/neighborhood.ts`** — qui centralise aussi le centre du quartier, le zoom et le rayon (surchargeables par `NEXT_PUBLIC_NEIGHBORHOOD_*`). Ne pas réintroduire de constante géo en dur dans un composant.
+L'ancien RPC `listings_within_radius` n'est **plus appelé** ; il reste en base et sera droppé dans une migration future.
 Seules les annonces avec `lat_out`/`lng_out` sont affichées sur la carte.
 Insertion de position : WKT `POINT(lng lat)` — **longitude d'abord**, SRID 4326.
-⚠️ Toute nouvelle colonne de `listings` à afficher sur la carte doit être **ajoutée au `RETURNS TABLE` du RPC** dans une nouvelle migration (cf. 006, 008).
 
 ### 4. Leaflet et le SSR
 Leaflet ne tourne pas côté serveur. Tout composant carte est chargé via `dynamic(..., { ssr: false })` — d'où les wrappers `*Dynamic.tsx` (`CarpoolMiniMapDynamic`, `EventMiniMapDynamic`).
@@ -116,8 +117,17 @@ Conséquences à connaître :
 - L'inscription reste **ouverte** : il n'y a pas de notion de membre du lotissement (choix assumé, phase de lancement).
 
 ### 6. Migrations
-- Source de vérité : `liquibase/changelog/` (**001 → 031** à ce jour) + `db.changelog-master.xml`.
+- Source de vérité : `liquibase/changelog/` (**001 → 036** à ce jour) + `db.changelog-master.xml`.
 - Ajouter une migration = créer `0NN-nom.sql` **et** l'enregistrer dans le master XML avec un commentaire descriptif.
+
+#### ⚠️ Rétrocompatibilité obligatoire (2 bases : test + prod)
+Le schéma et le code ne sont **jamais garantis synchrones** : une migration peut être passée sur test mais pas sur prod, et un déploiement Vercel peut précéder sa migration. Toute migration doit donc respecter le pattern **expand/contract** :
+1. **Phase expand (la migration elle-même) : additive uniquement.** Nouvelles tables, colonnes (nullable ou avec default), vues, fonctions. Jamais de `DROP`/`RENAME`/changement de signature d'un objet encore référencé par du code déployé quelque part — l'ancien code doit tourner tel quel sur le nouveau schéma.
+2. **Le nouveau code doit tolérer l'ancien schéma** : repli si le nouvel objet n'existe pas encore (exemple canonique : `MapView` retombe sur le RPC `listings_within_radius` tant que la vue `listings_geo` n'existe pas), ou dégradation silencieuse (les pages `/infos`, `/achats`, `/prestataires` s'affichent vides si leurs tables manquent).
+3. **Phase contract (suppression) : dans une migration ultérieure**, une fois la précédente appliquée sur **les deux** bases et l'ancien code plus déployé nulle part — et retirer le repli côté code dans le même mouvement.
+4. **Chaque changeset porte un `--rollback`** (cf. 031–036), pour que `npm run db:rollback <tag>` fonctionne. Poser un tag (`npm run db:tag`) avant chaque campagne de migrations.
+
+Contre-exemple historique à ne pas reproduire : le `DROP FUNCTION` + `CREATE` du RPC (006→029) laissait la carte cassée pendant l'exécution et exigeait de re-synchroniser code et schéma au déploiement près.
 - Les SQL de `supabase/` (`schema.sql`, `migration_*.sql`, `fix_rls_*.sql`) sont **de l'historique** — ne pas les utiliser comme référence courante.
 - `liquibase/liquibase.properties` : copier depuis `.example`, ne jamais committer.
 
@@ -136,7 +146,13 @@ Exclues du `tsconfig.json` — les erreurs de type de l'éditeur y sont normales
 
 ⚠️ La table de messagerie s'appelle **`messages`** en base, mais le type TS correspondant est **`DirectMessage`**. Le type `Message` de `lib/types.ts` est un legacy (messagerie par annonce) — ne pas l'utiliser pour du nouveau code.
 
-**RPC disponibles** : `listings_within_radius`, `contact_listing`, `validate_listing_response`, `cancel_listing_response`, `find_or_create_conversation`, `create_conversation`, `mark_conversation_read`, `is_conversation_participant`.
+**Tables** (suite, depuis 033–036) : `announcements` (infos ASL, écriture référents), `providers` (prestataires recommandés), `group_purchases` + `group_purchase_participants` (achats groupés, 1 participation/compte), `polls` / `poll_options` / `poll_votes` (sondages, création référents).
+
+**Rôle référent** : `profiles.is_referent` (033) — un rôle, **pas** un contrôle d'inscription (celle-ci reste ouverte). Vérifié en base par la fonction `is_referent()` dans les policies, et côté UI par le hook `useCurrentUser()` de `lib/hooks.ts`. Premier référent à désigner à la main en SQL Editor.
+
+**RPC disponibles** : `contact_listing`, `validate_listing_response`, `cancel_listing_response`, `find_or_create_conversation`, `create_conversation`, `mark_conversation_read`, `is_conversation_participant`, `poll_results` (refuse les totaux tant qu'on n'a pas voté), `is_referent`. Vue : `listings_geo` (remplace `listings_within_radius`, obsolète mais encore en base).
+
+**Sondages — règle appliquée en base** : `poll_votes` n'est lisible que par son auteur ; les totaux passent obligatoirement par `poll_results()`. Ne pas essayer de lire les votes des autres via PostgREST — c'est volontairement impossible.
 
 **Cycle de vie d'une annonce** (piloté uniquement par RPC, jamais en `update` direct) :
 ```
@@ -169,6 +185,8 @@ Détail complet des colonnes et de l'historique des migrations : [`memory/databa
 Classe `dark` sur `<html>`, posée par un script anti-FOUC inline dans `app/layout.tsx` + `ThemeProvider` (Context, `localStorage.theme` = `light | dark | system`).
 Les overrides sombres sont un **gros bloc de surcharges `html.dark .bg-* { … !important }` dans `app/globals.css`**, pas des variantes `dark:` Tailwind. Conséquence : une nouvelle couleur Tailwind utilisée dans un composant n'aura **pas** de rendu sombre tant qu'elle n'est pas ajoutée à ce bloc.
 
+**Tokens sémantiques (migration en cours)** : `globals.css` définit des variables (`--surface`, `--border`, `--text`…) exposées en utilitaires Tailwind — `bg-surface`, `bg-surface-raised/sunken`, `border-edge`, `border-edge-strong`, `text-content`, `text-content-soft/muted/faint`. Elles basculent seules en sombre : **tout nouveau composant doit les utiliser** (plus rien à déclarer dans le bloc `!important`). L'existant migre zone par zone ; le bloc de surcharges reste en place pour le non-migré. Pages déjà en tokens : `/infos`, `/achats`, `/prestataires`, `LoginRequiredNotice`, voile de la carte.
+
 ### CSP
 `next.config.js` définit une CSP stricte et des en-têtes de sécurité. Tout nouveau domaine externe (API, CDN, tuiles) **doit être ajouté à la directive correspondante**, sinon la requête est bloquée en prod. Domaines autorisés aujourd'hui : Supabase (+ `wss://`), tuiles OSM, `unpkg.com` (images Leaflet), `api-adresse.data.gouv.fr`, `www.gstatic.com` (scripts Firebase du SW), `*.googleapis.com`, `*.firebase*.com`.
 
@@ -188,18 +206,22 @@ app/
   messages/           # Liste · new/ · [id]/ conversation
   profile/            # Mon profil (ProfileClient, 880 lignes)
   profil/[id]/        # Profil public
+  (quartier)/         # Route group (n'affecte pas les URLs) : layout commun avec onglets (QuartierTabs)
+    infos/            # « Vie du quartier » : AnnouncementsSection + PollsSection (référents)
+    achats/           # Achats groupés (quantité + seuil, participations)
+    prestataires/     # Carnet de prestataires recommandés
   auth/               # login/ · register/
   api/                # notifications · internal/send-email · account/delete · firebase-messaging-sw
 components/
   map/        # LeafletMap, MapView, FilterBar, Event*, *MiniMap(+Dynamic), MiniCalendar
-  listings/   # ListingCard, ListingActions, ContactButton, StatusBadge, TypeBadge
+  listings/   # ListingForm, ListingCard, ListingActions, ContactButton, StatusBadge, TypeBadge
   messages/   # MessageBubble, ConversationRow, TypingIndicator
   forms/      # AddressAutocomplete, EventForm
-  layout/     # Navbar, FirebaseSWRegister, PWAInstallBanner, PushNotificationBanner
+  layout/     # Navbar, QuartierTabs, LoginRequiredNotice, FirebaseSWRegister, PWAInstallBanner, PushNotificationBanner
   profile/ profil/ theme/
-lib/          # supabase/{client,server}, types, categories, utils, firebase, fcm-admin,
-              # pushNotifications, email-notifications
-liquibase/    # changelog/001→027 + db.changelog-master.xml
+lib/          # supabase/{client,server}, types, categories, neighborhood, hooks, utils,
+              # firebase, fcm-admin, pushNotifications, email-notifications
+liquibase/    # changelog/001→036 + db.changelog-master.xml
 supabase/     # functions/ (Deno, actives) + SQL legacy (référence seulement)
 scripts/      # db-migrate.js (pilote Liquibase)
 proxy.ts      # Middleware Next 16 (refresh cookies)
@@ -215,7 +237,7 @@ Détail des composants : [`memory/components.md`](./memory/components.md) · Arc
 
 ## Variables d'environnement (`.env.local`)
 
-Client (`NEXT_PUBLIC_*`) : `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `APP_URL`, `FIREBASE_API_KEY`, `FIREBASE_AUTH_DOMAIN`, `FIREBASE_PROJECT_ID`, `FIREBASE_STORAGE_BUCKET`, `FIREBASE_MESSAGING_SENDER_ID`, `FIREBASE_APP_ID`, `FIREBASE_MEASUREMENT_ID`, `FIREBASE_VAPID_KEY`.
+Client (`NEXT_PUBLIC_*`) : `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `APP_URL`, `FIREBASE_API_KEY`, `FIREBASE_AUTH_DOMAIN`, `FIREBASE_PROJECT_ID`, `FIREBASE_STORAGE_BUCKET`, `FIREBASE_MESSAGING_SENDER_ID`, `FIREBASE_APP_ID`, `FIREBASE_MEASUREMENT_ID`, `FIREBASE_VAPID_KEY`. Optionnelles (défauts dans `lib/neighborhood.ts`) : `NEIGHBORHOOD_LAT`, `NEIGHBORHOOD_LNG`, `NEIGHBORHOOD_ZOOM`, `NEIGHBORHOOD_RADIUS_KM`.
 
 Serveur : `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_DB_PASSWORD`, `GMAIL_USER`, `GMAIL_APP_PASSWORD`, `INTERNAL_EMAIL_SECRET`, `FCM_SERVICE_ACCOUNT_JSON` (JSON brut ou base64).
 
@@ -248,7 +270,7 @@ Rappels :
 ## Points de vigilance connus
 
 - ✅ **`scripts/db-migrate.js` ne contient plus de secret** : il lit `SUPABASE_DB_PASSWORD` depuis `.env.local` (dotenv), déduit l'utilisateur du pooler depuis `NEXT_PUBLIC_SUPABASE_URL`, et redacte le mot de passe dans ses messages d'erreur. Surcharges possibles : `SUPABASE_DB_URL`, `SUPABASE_DB_USER`, `SUPABASE_POOLER_HOST`.
-- 🔴 **Alerte Advisor `spatial_ref_sys` : non réglable depuis une migration.** La table appartient à `supabase_admin` : `ENABLE ROW LEVEL SECURITY` (027), `ALTER EXTENSION postgis SET SCHEMA` (026) et `REVOKE SELECT` (031) échouent tous — le REVOKE ne lève même pas d'erreur, PostgreSQL se contente d'un `WARNING`. **Ne pas rejouer ces pistes**, cinq migrations s'y sont déjà cassé les dents (023, 025, 026, 027, 031). Il ne reste que : vivre avec (le contenu est un catalogue EPSG public, zéro donnée du quartier), réinstaller PostGIS dans `extensions` via le dashboard (destructif), ou demander l'opération à Supabase. État des lieux complet dans [`memory/database.md`](./memory/database.md).
+- 🟡 **Alerte Advisor `spatial_ref_sys` : sujet clos, on vit avec.** La table appartient à `supabase_admin` et les quatre leviers sont tous testés et fermés : `ENABLE ROW LEVEL SECURITY` (027), `ALTER EXTENSION postgis SET SCHEMA` (026), `REVOKE SELECT` (031 — ne lève même pas d'erreur, juste un `WARNING`) , `SET ROLE supabase_admin` (`42501`) et `DROP EXTENSION` + recréation dans `extensions` (l'extension elle-même a `owner = supabase_admin` et `extrelocatable = false` — PostGIS est une *trusted extension*, donc installée « comme par un superuser » même quand c'est Liquibase qui la demande). **Ne pas rejouer ces pistes** : cinq migrations et deux tests SQL s'y sont déjà cassé les dents (023, 025, 026, 027, 031). Ne pas non plus basculer PostGIS depuis la page Extensions du dashboard sans préparation : la désactivation `cascade` emporterait `listings.location`, l'index GIST et les RPC géo. Le contenu de la table est le catalogue EPSG, public par nature — zéro donnée du quartier ; la vraie fermeture des données est la migration 030. Rouvrir le sujet = réinstaller PostGIS dans `extensions` via le dashboard (destructif) ou passer par le support Supabase. Détail dans [`memory/database.md`](./memory/database.md).
 - **La base n'est pas joignable depuis la session agent** (`Connect timed out` sur le pooler 6543) : les commandes `db:status` / `db:migrate` sont à lancer par l'utilisateur.
 - **Dette de lint** : 40 avertissements pré-existants, dont 16 `react-hooks/set-state-in-effect` (règle apparue avec eslint-plugin-react-hooks 7) volontairement rétrogradée en `warn` dans `eslint.config.mjs` — voir le commentaire du fichier. À traiter progressivement, pas en bloc (aucun test pour couvrir un refactor d'effets).
 - Documentation partiellement obsolète : `README.md` et `.github/copilot-instructions.md` annoncent Next.js 14, `middleware.ts` et Nominatim. `memory/` a été réaligné le 2026-07-28 — le maintenir à jour en fin de session.

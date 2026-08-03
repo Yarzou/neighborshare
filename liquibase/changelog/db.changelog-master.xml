@@ -98,4 +98,19 @@
   <!-- spatial_ref_sys retirée de l'API (revoke select) : supprime l'alerte Advisor RLS -->
   <include file="liquibase/changelog/031-spatial-ref-sys-revoke-select.sql"/>
 
+  <!-- Vue listings_geo : remplace le RPC listings_within_radius (plus de RETURNS TABLE à maintenir) -->
+  <include file="liquibase/changelog/032-listings-geo-view.sql"/>
+
+  <!-- Rôle référent (profiles.is_referent) + canal officiel de l'ASL (announcements) -->
+  <include file="liquibase/changelog/033-referent-and-announcements.sql"/>
+
+  <!-- Carnet de prestataires recommandés -->
+  <include file="liquibase/changelog/034-providers.sql"/>
+
+  <!-- Achats groupés (quantité + seuil) et participations -->
+  <include file="liquibase/changelog/035-group-purchases.sql"/>
+
+  <!-- Sondages : création par les référents, résultats après vote (poll_results) -->
+  <include file="liquibase/changelog/036-polls.sql"/>
+
 </databaseChangeLog>

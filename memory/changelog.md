@@ -1,5 +1,93 @@
 # Historique des modifications (par session)
 
+## 2026-08-03 (4) — Évolutions : vue geo, tokens dark, canal ASL, sondages, prestataires, achats groupés
+
+Périmètre demandé : évolutions n°1-2-3-4 de l'audit (achats groupés, canal ASL, sondages,
+prestataires) + trois dettes techniques (vue à la place du RPC, config quartier, tokens dark).
+Décisions produit : achats groupés en **quantité + seuil** ; sondages **réservés aux référents,
+choix unique, résultats après vote** ; premier référent désigné **par SQL manuel** ; dark mode
+en **migration progressive** (pas de refonte).
+
+### Fondations techniques
+- **`lib/neighborhood.ts`** (nouveau) : centre/zoom/rayon du quartier (surchargeables par
+  `NEXT_PUBLIC_NEIGHBORHOOD_*`) + `distanceMeters()` (haversine). Supprime les constantes géo
+  dupliquées de `MapView.tsx` et `LeafletMap.tsx`.
+- **`liquibase/changelog/032-listings-geo-view.sql`** : vue `listings_geo` en `l.*` avec
+  **`security_invoker = true`** (sans quoi la vue contournerait le RLS de 030 — c'est LE point
+  critique de cette migration ; requiert PG 15+). `MapView` lit la vue ; distance et tri par
+  proximité recalculés côté client (`distance_m` n'était affiché nulle part — vérifié). L'ancien
+  RPC `listings_within_radius` n'est plus appelé mais **reste en base** (fenêtre
+  migration/déploiement) — à dropper plus tard.
+- **Tokens dark mode** : variables `--surface/--border/--text…` dans `globals.css` (valeurs
+  alignées sur le bloc `!important` existant → rendu identique), exposées par
+  `tailwind.config.ts` en `bg-surface`, `border-edge`, `text-content-*`. Le bloc de surcharges
+  reste pour le non-migré. Vérifié dans le bundle CSS compilé. Migré : les 3 nouvelles pages,
+  `LoginRequiredNotice`, le voile carte.
+
+### Migrations 033 → 036
+- **033** : `profiles.is_referent` (rôle, PAS un contrôle d'inscription — celle-ci reste ouverte)
+  + fonction `is_referent()` + table `announcements` (lecture authentifiée, écriture référents).
+- **034** : `providers` — CRUD par l'auteur, delete aussi par référent.
+- **035** : `group_purchases` + `group_purchase_participants` (PK composite = 1 participation par
+  compte, `quantity > 0`, unité libre, statut text `ouvert|cloture|annule`).
+- **036** : `polls` / `poll_options` / `poll_votes` + RPC `poll_results()`. « Résultats après
+  vote » appliqué **en base** : votes lisibles uniquement par leur auteur, totaux via le RPC qui
+  refuse avant vote (sauf sondage clos ou auteur) → pas de dépouillement nominatif via l'API.
+
+### Écrans
+- **`lib/hooks.ts`** : `useCurrentUser()` — session + `is_referent` + flag `resolved`.
+- **`app/infos/`** (« Vie du quartier », lien « Quartier » dans la Navbar) : annonces officielles
+  (épinglage, suppression par l'auteur) + sondages (vote = upsert, barres de résultats).
+- **`app/achats/`** : progression quantité/objectif, participation modifiable, retrait,
+  clôture/annulation/réouverture, gestion de la date limite échue (« Échu »).
+- **`app/prestataires/`** : fiches avec tél/email/site cliquables, retour d'expérience, recherche.
+- **`/accueil`** : 3 tuiles ajoutées (8 au total) ; le centrage de la dernière tuile ne
+  s'applique plus que si le compte est impair.
+
+### Pièges rencontrés
+- La règle `react-hooks/set-state-in-effect` trace les `setState` d'une fonction async appelée
+  depuis un effet même après `await` (faux positif) : directives ciblées sur la ligne du `load()`
+  avec justification, et suppression d'un `setLoading(false)` réellement synchrone mais inutile
+  (le rendu court-circuite sur `!userId` avant de consulter `loading`).
+- **Carte vide avant migration** (remonté par l'utilisateur en dev) : `MapView` lisait
+  `listings_geo` alors que la 032 n'était pas appliquée → requête en erreur avalée en silence,
+  zéro pin. Correctif : **repli automatique sur l'ancien RPC** quand la vue est indisponible
+  (+ `console.warn`), l'app fonctionne donc avant et après la migration. Le repli sera retiré
+  quand le RPC sera droppé. Leçon : un remplacement de source de données doit toujours couvrir
+  la fenêtre migration/déploiement côté client, pas seulement côté base.
+- `npm run build` lancé pendant que le `npm run dev` de l'utilisateur tournait → fichiers générés
+  `.next/dev/types/*` corrompus (écritures concurrentes), faux échec de typecheck. Supprimés
+  (régénérés par le dev server). Éviter de builder pendant qu'un dev server tourne.
+
+### Onglets « Quartier » (retour utilisateur : pages non découvrables hors dashboard)
+Les trois pages sont déplacées dans le route group **`app/(quartier)/`** (URLs inchangées) dont le
+`layout.tsx` porte le conteneur commun + **`QuartierTabs`** (Vie du quartier / Achats groupés /
+Prestataires). Conteneurs `max-w-2xl px-4` retirés des pages (fournis par le layout). Navbar :
+« Quartier » actif sur les trois routes (`matches` + `isNavLinkActive`). Piège rencontré : après
+déplacement de dossiers, `.next/types/validator.ts` référence les anciens chemins → faux échec de
+typecheck jusqu'au rebuild.
+
+### Rétrocompatibilité (exigence posée après l'incident carte vide)
+L'utilisateur a **deux bases (test + prod)** : schéma et code jamais garantis synchrones.
+Règle expand/contract formalisée dans `CLAUDE.md` §6 : migrations additives uniquement, le
+nouveau code tolère l'ancien schéma (repli `MapView` = exemple canonique ; `/infos`, `/achats`,
+`/prestataires` se dégradent en listes vides si leurs tables manquent), suppression d'objets
+seulement dans une migration ultérieure une fois les deux bases à niveau. Audit des migrations
+en attente : 032–036 sont toutes additives, conformes. **`--rollback` ajoutés sur chaque
+changeset de 032 à 036** (encore modifiables : appliquées nulle part ; 028–031 déjà appliquées,
+donc intouchables). `npm run db:tag` recommandé avant chaque campagne.
+
+### À faire côté utilisateur
+1. `npm run db:migrate` (032 → 036).
+2. Désigner le premier référent (SQL Editor) :
+   `update public.profiles set is_referent = true where id = (select id from auth.users where email = 'SON_EMAIL');`
+3. Vérifier `/map` (vue au lieu du RPC), `/infos`, `/achats`, `/prestataires` — connecté,
+   déconnecté, et en thème sombre.
+
+Vérifications : lint 0 erreur / 33 avertissements (base inchangée), typecheck OK, build OK.
+Rappel : les notifications (email par annonce, plafond Gmail) restent le prérequis écarté —
+aucune des nouvelles tables ne déclenche d'envoi pour l'instant.
+
 ## 2026-08-03 (3) — Alerte Advisor `spatial_ref_sys` : piste épuisée, alerte non levée
 
 Demande : « cette issue Supabase que tu ne règles jamais » →
@@ -45,11 +133,24 @@ inacceptable pour un simple constat. Le changeset `031-revoke-select-spatial-ref
 déjà enregistré en base : il n'a pas été touché (checksum) et reste inoffensif — il retire bien
 les grants qui, eux, appartiennent à `postgres`.
 
-**Options restantes** (aucune indolore, arbitrage utilisateur) : vivre avec l'alerte (le contenu
-de la table est le catalogue EPSG public, aucune donnée du quartier) · réinstaller PostGIS dans le
-schéma `extensions` via la page Extensions du dashboard, seule interface disposant des droits —
-destructif, impose de sauvegarder lat/lng, supprimer `listings.location` + tous les RPC dépendants
-puis tout recréer en `extensions.geography` · demander l'opération au support Supabase.
+**Dernier test, en SQL Editor** : `set role supabase_admin;` → `42501 permission denied to set
+role "supabase_admin"`. Le contournement par emprunt de rôle est donc fermé aussi.
+
+**Et la piste « recréer l'extension ailleurs »** (une seule installation d'une extension par base,
+donc drop + create dans `extensions`) : `pg_extension` donne `owner = supabase_admin` et
+`extrelocatable = false`. Explication de fond : PostGIS est une **trusted extension**, or
+PostgreSQL installe une extension « trusted » demandée par un non-superuser *comme si* elle l'était
+par un superuser — l'extension et tous ses objets appartiennent au superuser d'amorçage. Le
+`create extension` de 001, lancé par Liquibase en `postgres`, ne pouvait donc pas en donner la
+propriété au projet. Rien de tout ça n'était rattrapable côté dépôt.
+
+**Décision : on vit avec l'alerte.** Les quatre leviers du lint sont testés et tous hors de portée.
+Le contenu de `spatial_ref_sys` est le catalogue EPSG, public par nature — aucune donnée du
+quartier n'est exposée, et la vraie fermeture des données reste la migration 030. Rouvrir le sujet
+supposerait de réinstaller PostGIS dans le schéma `extensions` via la page Extensions du dashboard
+(destructif : sauvegarde lat/lng, suppression de `listings.location` + tous les RPC dépendants,
+recréation en `extensions.geography`) ou de passer par le support Supabase. Constat verrouillé dans
+`CLAUDE.md` et `memory/database.md` pour ne pas retenter ces pistes une sixième fois.
 
 ⚠️ Migrations **non applicables par l'agent** : pas d'accès réseau à la base depuis la session
 (`Connect timed out` sur le pooler 6543). `npm run db:migrate` est lancé par l'utilisateur.

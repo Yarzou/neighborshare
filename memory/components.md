@@ -85,6 +85,16 @@ Utilisé par `MapView` (liste + voile de la carte), `app/recent`, `app/evenement
 
 **Purement visuel** — ce qui protège les données est le RLS (migration 030), jamais cet encart.
 
+### `useCurrentUser()` (`lib/hooks.ts`)
+Session + rôle référent pour les pages client : `{ userId, isReferent, resolved }`. S'abonne à `onAuthStateChange` et lit `profiles.is_referent`. **Toujours attendre `resolved`** avant d'afficher un état déconnecté (même piège de clignotement que `authResolved`). Utilisé par `/infos`, `/achats`, `/prestataires`. Ne remplace pas les policies — il évite seulement de proposer une action qui échouerait.
+
+### Pages « quartier » (2026-08-03, en tokens sémantiques)
+Regroupées sous le route group **`app/(quartier)/`** (URLs inchangées) : son `layout.tsx` fournit le conteneur `max-w-2xl` et la barre d'onglets **`QuartierTabs`** (`components/layout/QuartierTabs.tsx` — pills, actif = `pathname.startsWith`). Les pages n'ont donc **pas** de conteneur propre (sinon padding doublé). Le lien « Quartier » de la Navbar reste actif sur les trois routes via `matches: ['/infos','/achats','/prestataires']` (helper `isNavLinkActive`).
+- **`app/infos/`** — « Vie du quartier » : `AnnouncementsSection` (infos ASL, publication réservée aux référents, épinglage) + `PollsSection` (sondages : création référents, vote par upsert PK `(poll_id, user_id)`, totaux via RPC `poll_results` qui échoue tant qu'on n'a pas voté → l'UI affiche « Votez pour voir les résultats »).
+- **`app/achats/`** — achats groupés : barre de progression quantité/objectif, participation par upsert (modifier = re-participer), retrait, clôture/annulation/réouverture par le créateur, suppression créateur ou référent.
+- **`app/prestataires/`** — carnet : CRUD par l'auteur, delete aussi par référent, recherche client-side `normalizeSearch`.
+- Navigation : lien « Quartier » (`/infos`) dans la Navbar ; les trois pages ont leur tuile sur `/accueil` (le centrage de la dernière tuile du dashboard ne s'applique plus que si le compte est impair).
+
 ### Voile de la carte (`.map-login-veil`)
 Overlay sur la zone `LeafletMap` de `MapView` quand `authResolved && !isLoggedIn` : la carte serait sinon rendue vide, ce qui suggère « il n'y a rien ici » au lieu de « connectez-vous ». **Indispensable en vue mobile « Carte »**, où l'encart de la liste n'est pas visible.  
 La classe vit dans `globals.css` (avec sa variante `html.dark`) et non en utilitaire Tailwind : `bg-white/80` génère `.bg-white\/80`, que le bloc d'overrides dark (qui cible `.bg-white`) ne rattraperait pas — le voile resterait blanc en thème sombre. `z-[1150]`, sous le popup de détail (`z-[1200]`).

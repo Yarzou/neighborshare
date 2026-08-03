@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { MapPin, CalendarDays, MessageCircle, ClipboardList, User } from 'lucide-react'
+import { MapPin, CalendarDays, MessageCircle, ClipboardList, User, Megaphone, ShoppingCart, Wrench } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 
@@ -90,6 +90,24 @@ export default function DashboardClient({ firstName, avatarUrl, avatarColor }: P
       href: '/evenements',
     },
     {
+      label: 'Vie du quartier',
+      description: 'Infos officielles et sondages',
+      icon: <Megaphone size={32} />,
+      href: '/infos',
+    },
+    {
+      label: 'Achats groupés',
+      description: 'Commander à plusieurs',
+      icon: <ShoppingCart size={32} />,
+      href: '/achats',
+    },
+    {
+      label: 'Prestataires',
+      description: 'Les artisans recommandés',
+      icon: <Wrench size={32} />,
+      href: '/prestataires',
+    },
+    {
       label: 'Messages',
       description: 'Vos conversations en cours',
       icon: <MessageCircle size={32} />,
@@ -125,7 +143,8 @@ export default function DashboardClient({ firstName, avatarUrl, avatarColor }: P
         {/* Tiles grid: 2 cols, last tile centered */}
         <div className="grid grid-cols-2 gap-4">
           {tiles.map((tile, i) => {
-            const isLast = i === tiles.length - 1
+            // Centre la dernière tuile seulement si elle serait orpheline (compte impair)
+            const isLast = i === tiles.length - 1 && tiles.length % 2 === 1
 
             const tileButton = (
               <button

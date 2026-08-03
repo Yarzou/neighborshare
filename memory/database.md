@@ -10,7 +10,7 @@
 - `liquibase/liquibase.properties` (gitignoré) ne porte plus que `driver` / `changeLogFile` / `outputDefaultSchema` ; les identifiants viennent du script. Template : `.example`.
 - ⚠️ Liquibase = outil Java : les commandes `db:*` échouent si `JAVA_HOME` est invalide.
 
-## Migrations (ordre chronologique — 001 → 031)
+## Migrations (ordre chronologique — 001 → 036)
 | Fichier | Contenu |
 |---|---|
 | 001 | Schéma initial (profiles, listings, categories, messages, geography, RLS de base) |
@@ -44,6 +44,11 @@
 | 029 | Update RPC avec les champs livre **et `price`** (oublié en 014 : le badge prix ne remontait pas sur la carte) + re-grant `execute` perdu par le DROP |
 | 030 | Lecture de `profiles` / `listings` / `events` réservée aux authentifiés (`to authenticated`) + `revoke execute` du RPC pour `anon`. `categories` reste public (keepalive). |
 | 031 | `revoke select` sur `public.spatial_ref_sys` (anon / authenticated / PUBLIC) — **resté sans effet**, l'alerte Advisor persiste (voir ci-dessous) |
+| 032 | Vue **`listings_geo`** (`security_invoker = true`, PG 15+) : `l.* + lat_out/lng_out`, filtre `expires_at`. Remplace le RPC côté app ; le RPC reste en base (fenêtre migration/déploiement) et pourra être droppé plus tard |
+| 033 | `profiles.is_referent` + fonction `is_referent()` (SECURITY DEFINER) + table `announcements` (lecture authentifiée, écriture référents) |
+| 034 | Table `providers` (prestataires recommandés) — CRUD par l'auteur, delete aussi par référent |
+| 035 | Tables `group_purchases` + `group_purchase_participants` (PK composite = 1 participation/compte, quantité + seuil, unité libre) |
+| 036 | Tables `polls` / `poll_options` / `poll_votes` + RPC `poll_results()`. Votes lisibles uniquement par leur auteur ; les totaux passent par le RPC, qui refuse de répondre avant d'avoir voté (sauf sondage clos ou auteur) |
 
 Ajouter une migration = créer `0NN-nom.sql` **et** l'inclure dans `db.changelog-master.xml` avec un commentaire. Ne jamais modifier un changeset déjà appliqué.
 
@@ -60,6 +65,18 @@ leviers qui lèveraient l'alerte :
 | `alter table … enable row level security` + policy | être owner | ❌ testé en 027 (`insufficient_privilege`) |
 | `alter extension postgis set schema extensions` (`extensions` est exclu du lint) | superuser | ❌ testé en 026 |
 | `revoke select` de `anon`/`authenticated`/`PUBLIC` (le lint filtre aussi sur les droits) | grant option | ❌ testé en 031 — REVOKE sans effet, PostgreSQL n'émet qu'un `WARNING` |
+| `set role supabase_admin` puis n'importe lequel des trois | appartenance au rôle | ❌ testé le 2026-08-03 en SQL Editor — `42501 permission denied to set role "supabase_admin"` |
+| `drop extension postgis` + `create … with schema extensions` | être owner de l'extension | ❌ `pg_extension` : owner = `supabase_admin`, `extrelocatable = false` |
+
+**Pourquoi `supabase_admin` possède tout ça** alors que c'est Liquibase (rôle `postgres`) qui a lancé
+`create extension if not exists postgis` en 001 : PostGIS est une **trusted extension** côté
+Supabase. PostgreSQL installe une extension « trusted » demandée par un non-superuser *comme si*
+elle l'était par un superuser — l'extension et **tous ses objets** appartiennent alors au superuser
+d'amorçage. Personne au niveau projet n'a la main dessus, et ce n'était pas un choix de migration.
+
+⚠️ **Ne pas basculer PostGIS depuis la page Extensions du dashboard « pour voir »** : la
+désactivation passe par un `cascade` qui emporterait `listings.location`, l'index GIST et tous les
+RPC géo.
 
 Le SQL du lint (`splinter/0013_rls_disabled_in_public`) est bien
 `not relrowsecurity AND (has_table_privilege('anon'|'authenticated', …, 'SELECT')) AND nspname in
@@ -70,15 +87,17 @@ Le SQL du lint (`splinter/0013_rls_disabled_in_public`) est bien
 déjà cassé les dents. 025 est même contre-productive (elle re-grant le SELECT). Ne jamais
 re-grant `select` non plus : si un jour le revoke devient possible, il ne faut pas le défaire.
 
-Options restantes, aucune indolore :
-1. **Vivre avec** — c'est un catalogue de systèmes de coordonnées, publié en clair par l'IGN et
-   l'EPSG ; aucune donnée du quartier. Risque réel ≈ nul, seul l'Advisor reste rouge.
-2. **Réinstaller PostGIS dans `extensions`** via la page Extensions du dashboard (seule interface
-   à s'exécuter avec les droits suffisants). Destructif : impose de sauvegarder lat/lng, de
-   supprimer `listings.location` et tous les RPC qui en dépendent, puis de tout recréer en
-   qualifiant les types (`extensions.geography`).
-3. **Demander à Supabase** (support / discussion GitHub) de lancer le `revoke` ou l'`enable RLS`
-   en `supabase_admin`.
+**Conclusion : l'alerte n'est pas levable depuis le dépôt.** Position retenue → **on vit avec**.
+C'est un catalogue de systèmes de coordonnées (EPSG/IGN), publié en clair partout ; il ne contient
+aucune donnée du quartier, et la vraie fermeture des données est 030. Seul l'Advisor reste rouge.
+
+Si le sujet est un jour rouvert, les deux seules voies sont :
+- **Réinstaller PostGIS dans `extensions`** via la page Extensions du dashboard (seule interface à
+  s'exécuter avec les droits suffisants). Destructif : sauvegarder lat/lng, supprimer
+  `listings.location` et tous les RPC qui en dépendent, puis tout recréer en qualifiant les types
+  (`extensions.geography`) — et PostgREST doit voir `extensions` dans son `db-extra-search-path`.
+- **Demander à Supabase** (support / discussion GitHub) de lancer `enable row level security` ou le
+  `revoke` en `supabase_admin`.
 
 Sans impact fonctionnel dans tous les cas : aucun `st_transform` dans le projet, et le SRID 4326
 de `listings.location` court-circuite la lecture du catalogue.
@@ -88,8 +107,9 @@ Les SQL de `supabase/` (`schema.sql`, `migration_*.sql`, `fix_rls_conversation_p
 ## Tables
 
 ### `profiles`
-`id, username, full_name, avatar_url, bio, rating, rating_count, created_at, email_notifications_enabled, push_notifications_enabled, avatar_color, address_display, address_road, address_city, address_lat, address_lng`  
-Créé automatiquement à l'inscription par le trigger `on_auth_user_created` → `handle_new_user()`.
+`id, username, full_name, avatar_url, bio, rating, rating_count, created_at, email_notifications_enabled, push_notifications_enabled, avatar_color, address_display, address_road, address_city, address_lat, address_lng, is_referent`  
+Créé automatiquement à l'inscription par le trigger `on_auth_user_created` → `handle_new_user()`.  
+`is_referent` (033) : rôle, pas un contrôle d'accès — autorise la publication d'`announcements` et de `polls`. Désignation du premier référent : `update` manuel en SQL Editor (aucune UI d'administration).
 
 ### `listings`
 `id, user_id, category_id, title, description, type, status, image_url, address, city`  
@@ -119,10 +139,31 @@ RLS : lecture **authentifiée** (migration 030), écriture/modif/suppression ré
 ### `fcm_tokens`
 `user_id` (→ `auth.users`, cascade), `token`. Upsert `onConflict: 'token'`. Les tokens rejetés par FCM sont supprimés automatiquement par `lib/fcm-admin.ts`.
 
+### `announcements` (033)
+`id, author_id, title, body, is_pinned, created_at, updated_at` — infos officielles de l'ASL.  
+RLS : lecture authentifiée ; insert/update/delete par l'auteur **et** `is_referent()`.
+
+### `providers` (034)
+`id, created_by, name, trade, phone, email, website, comment, created_at, updated_at`.  
+RLS : lecture authentifiée ; CRUD par l'auteur ; delete aussi par un référent (modération).
+
+### `group_purchases` + `group_purchase_participants` (035)
+Achat : `id, created_by, title, description, unit (texte libre), target_quantity, unit_price, deadline, status ('ouvert'|'cloture'|'annule' — text libre, contraint côté TS)`.  
+Participation : PK `(purchase_id, user_id)` → une par compte, `quantity > 0` (check), `comment`. Upsert `onConflict: 'purchase_id,user_id'` pour modifier.  
+RLS : lecture authentifiée (les participations sont visibles de tous — c'est l'intérêt) ; delete de l'achat par l'auteur ou un référent.
+
+### `polls` + `poll_options` + `poll_votes` (036)
+Sondage : `question, description, closes_at (date)` — création/édition **référents uniquement**. Options ordonnées par `position`.  
+Vote : PK `(poll_id, user_id)` → une voix par compte, upsert pour changer d'avis.  
+⚠️ **« Résultats après vote » est appliqué en base** : `poll_votes` n'est lisible que par son auteur, les totaux passent par le RPC `poll_results(p_poll_id)` (SECURITY DEFINER) qui lève une exception si l'appelant n'a pas voté — sauf sondage clos ou appelant auteur. Conséquence : pas de dépouillement nominatif possible via l'API.
+
 ## Fonctions / RPC
 | RPC | Rôle |
 |---|---|
-| `listings_within_radius(lat, lng, radius_km)` | Annonces dans un rayon + `distance_m`, `lat_out`, `lng_out`. ⚠️ `RETURNS TABLE` explicite (dernière définition : **029**) — toute nouvelle colonne de `listings` à afficher sur la carte doit y être ajoutée, sinon elle remonte `undefined` (piège historique : `price`, resté absent de 014 à 029). Étendre = `DROP` + `CREATE` en `splitStatements:false`, et repasser le `grant execute`. |
+| **`listings_geo` (VUE, 032)** | Remplace le RPC côté app : `listings.* + lat_out/lng_out`, filtre `expires_at`, `security_invoker = true` (respecte le RLS de 030). En `l.*` → **plus aucune colonne à déclarer** quand `listings` évolue. La distance/le tri se font côté client (`distanceMeters()` de `lib/neighborhood.ts`). |
+| `listings_within_radius(lat, lng, radius_km)` | **Obsolète depuis 032** (plus appelé par le code ; conservé en base pour la fenêtre migration/déploiement, à dropper dans une migration future). Dernière définition : 029. |
+| `poll_results(p_poll_id)` | Totaux d'un sondage — refuse de répondre si l'appelant n'a pas voté (sauf clos / auteur) |
+| `is_referent()` | Helper RLS : `profiles.is_referent` de l'appelant |
 | `contact_listing(p_listing_id, …)` | Crée la conversation, pose `responder_id` + `conversation_id`, passe le statut à `en_cours` |
 | `validate_listing_response(p_listing_id)` | `en_cours` → `validee` + message système |
 | `cancel_listing_response(p_listing_id)` | Retour à `disponible`, remet `responder_id`/`conversation_id` à `null` + message système |

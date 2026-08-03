@@ -10,6 +10,7 @@ import { FilterBar } from '@/components/map/FilterBar'
 import { LoginRequiredNotice } from '@/components/layout/LoginRequiredNotice'
 import { MapPin, Loader2, X, Map, List, Plus, LayoutGrid } from 'lucide-react'
 import { normalizeSearch, cn } from '@/lib/utils'
+import { NEIGHBORHOOD_CENTER, NEIGHBORHOOD_RADIUS_KM, distanceMeters } from '@/lib/neighborhood'
 
 // Dynamic import pour éviter SSR avec Leaflet
 const LeafletMap = dynamic(() => import('@/components/map/LeafletMap'), {
@@ -21,15 +22,13 @@ const LeafletMap = dynamic(() => import('@/components/map/LeafletMap'), {
   ),
 })
 
-const NEIGHBORHOOD: [number, number] = [47.300837, -1.560131]
-
 export function MapView() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const [listings, setListings] = useState<Listing[]>([])
   const [selected, setSelected] = useState<Listing | null>(null)
   // searchCenter: centre utilisé pour le rayon de recherche (La Chapelle par défaut)
-  const [searchCenter, setSearchCenter] = useState<[number, number]>(NEIGHBORHOOD)
+  const [searchCenter, setSearchCenter] = useState<[number, number]>(NEIGHBORHOOD_CENTER)
   // userGeoLocation: position GPS réelle (uniquement pour le marqueur bleu)
   const [userGeoLocation, setUserGeoLocation] = useState<[number, number] | null>(null)
   const [category, setCategory] = useState(searchParams.get('category') || '')
@@ -91,14 +90,43 @@ export function MapView() {
   // Fetch annonces
   const fetchListings = useCallback(async () => {
     setLoading(true)
-    const [lat, lng] = searchCenter
 
-    const { data, error } = await supabase.rpc('listings_within_radius', {
-      lat, lng, radius_km: 50,
-    })
+    // Vue `listings_geo` (migration 032) et non plus le RPC `listings_within_radius` :
+    // la vue est en `l.*`, donc toute nouvelle colonne remonte sans migration. Le
+    // filtrage par rayon, le calcul de distance et le tri par proximité — que faisait
+    // le RPC — sont refaits ici : à l'échelle d'un lotissement c'est quelques dizaines
+    // de lignes, et `distance_m` n'était de toute façon affiché nulle part.
+    const { data, error } = await supabase
+      .from('listings_geo')
+      .select('*')
 
-    if (!error && data) {
-      let filtered = data as Listing[]
+    let rows: Listing[] | null = !error && data ? (data as Listing[]) : null
+
+    // Repli : tant que la migration 032 n'a pas été appliquée, la vue n'existe
+    // pas en base — on retombe sur l'ancien RPC pour ne pas afficher une carte
+    // vide pendant la fenêtre migration/déploiement. À retirer quand le RPC
+    // sera droppé.
+    if (rows === null) {
+      console.warn('[MapView] listings_geo indisponible (migration 032 non appliquée ?) — repli sur le RPC', error?.message)
+      const [lat, lng] = searchCenter
+      const { data: rpcData } = await supabase.rpc('listings_within_radius', {
+        lat, lng, radius_km: NEIGHBORHOOD_RADIUS_KM,
+      })
+      if (rpcData) rows = rpcData as Listing[]
+    }
+
+    if (rows) {
+      const radiusM = NEIGHBORHOOD_RADIUS_KM * 1000
+      let filtered = rows
+        .map(l => ({
+          ...l,
+          distance_m: l.lat_out != null && l.lng_out != null
+            ? distanceMeters(searchCenter, [l.lat_out, l.lng_out])
+            : undefined,
+        }))
+        .filter(l => l.distance_m === undefined || l.distance_m <= radiusM)
+        .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity))
+
       if (category) {
         const catId = slugToId[category]
         if (catId !== undefined) {
@@ -228,7 +256,7 @@ export function MapView() {
               RLS (migration 030), pas ce voile. */}
           {authResolved && !isLoggedIn && (
               <div className="map-login-veil absolute inset-0 z-[1150] flex items-center justify-center p-4">
-                <div className="bg-white rounded-2xl shadow-xl border border-gray-200 max-w-sm w-full">
+                <div className="bg-surface rounded-2xl shadow-xl border border-edge max-w-sm w-full">
                   <LoginRequiredNotice what="les annonces de votre quartier" redirectTo="/map" />
                 </div>
               </div>

@@ -9,6 +9,7 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 import type { Listing } from '@/lib/types'
 import { LISTING_TYPE_MARKER_COLORS } from '@/lib/types'
 import { getCategoryEmoji } from '@/lib/categories'
+import { NEIGHBORHOOD_CENTER, NEIGHBORHOOD_DEFAULT_ZOOM } from '@/lib/neighborhood'
 
 // Fix icônes Leaflet avec Next.js
 delete (L.Icon.Default.prototype as any)._getIconUrl
@@ -17,8 +18,6 @@ L.Icon.Default.mergeOptions({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 })
-
-const NEIGHBORHOOD_CENTER: [number, number] = [47.300837, -1.560131]
 
 interface Props {
   userPosition: [number, number] | null
@@ -60,7 +59,8 @@ export default function LeafletMap({ userPosition, listings, onSelectListing, se
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
 
-    const map = L.map(containerRef.current, { maxZoom: 19 }).setView(NEIGHBORHOOD_CENTER, 15)
+    const map = L.map(containerRef.current, { maxZoom: 19 })
+      .setView(NEIGHBORHOOD_CENTER, NEIGHBORHOOD_DEFAULT_ZOOM)
     addTileLayer(map)
 
     // Cluster group with custom cluster icon

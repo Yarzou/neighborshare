@@ -29,6 +29,25 @@ const config: Config = {
           400: '#facc15',
           500: '#eab308',
         },
+        // Tokens sémantiques adossés aux variables CSS de globals.css.
+        // Ils basculent seuls en thème sombre : un composant qui les utilise n'a
+        // rien à déclarer dans le bloc d'overrides `!important`.
+        // À privilégier pour tout nouveau composant — voir globals.css.
+        surface: {
+          DEFAULT: 'var(--surface)',
+          raised: 'var(--surface-raised)',
+          sunken: 'var(--surface-sunken)',
+        },
+        edge: {
+          DEFAULT: 'var(--border)',
+          strong: 'var(--border-strong)',
+        },
+        content: {
+          DEFAULT: 'var(--text)',
+          soft: 'var(--text-soft)',
+          muted: 'var(--text-muted)',
+          faint: 'var(--text-faint)',
+        },
       },
       fontFamily: {
         sans: ['var(--font-geist-sans)', 'system-ui', 'sans-serif'],

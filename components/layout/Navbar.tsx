@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
-import { MapPin, MessageCircle, User, LogOut, Menu, X, ClipboardList, CalendarDays, Home } from 'lucide-react'
+import { MapPin, MessageCircle, User, LogOut, Menu, X, ClipboardList, CalendarDays, Home, Megaphone } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
@@ -107,7 +107,14 @@ export function Navbar() {
   const navLinks = [
     { href: '/map', label: 'Carte', icon: <MapPin size={16} /> },
     { href: '/evenements', label: 'Événements', icon: <CalendarDays size={16} /> },
+    // Section « Quartier » = 3 pages sous onglets (layout du route group (quartier)) :
+    // le lien reste actif sur chacune d'elles, pas seulement sur /infos.
+    { href: '/infos', label: 'Quartier', icon: <Megaphone size={16} />,
+      matches: ['/infos', '/achats', '/prestataires'] },
   ]
+
+  const isNavLinkActive = (link: { href: string; matches?: string[] }) =>
+    (link.matches ?? [link.href]).some(p => pathname?.startsWith(p))
 
   const handleProfile = () => {
     if (user) {
@@ -148,7 +155,7 @@ export function Navbar() {
             <Link key={link.href} href={link.href}
               className={cn(
                 'flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-colors',
-                pathname?.startsWith(link.href)
+                isNavLinkActive(link)
                   ? 'bg-brand-50 text-brand-700'
                   : 'text-gray-600 hover:bg-gray-100'
               )}>

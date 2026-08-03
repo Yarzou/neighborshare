@@ -5,6 +5,48 @@
 :root {
   --foreground: #111827;
   --background: #f9fafb;
+
+  /* ─── Tokens sémantiques ──────────────────────────────────────────────────
+   * Exposés en utilitaires Tailwind par tailwind.config.ts :
+   *   bg-surface / bg-surface-raised / bg-surface-sunken
+   *   border-edge / border-edge-strong
+   *   text-content / text-content-soft / text-content-muted / text-content-faint
+   *
+   * POURQUOI : le thème sombre de ce projet repose sur un gros bloc de
+   * surcharges `html.dark .bg-* { … !important }` (plus bas). Conséquence, une
+   * couleur Tailwind employée dans un composant n'a AUCUN rendu sombre tant
+   * qu'elle n'a pas été ajoutée à la main dans ce bloc — piège rencontré deux
+   * fois (l'ambre de la catégorie Livres, puis le voile de la carte).
+   *
+   * Ces tokens basculent seuls : un composant qui les utilise n'a plus rien à
+   * déclarer. Les valeurs sont alignées sur celles du bloc de surcharges, donc
+   * un écran migré rend exactement comme avant.
+   *
+   * ⚠️ Migration volontairement progressive : le bloc `!important` reste en
+   * place pour tout ce qui n'est pas encore migré. À utiliser d'office dans les
+   * nouveaux composants, et à substituer zone par zone dans l'existant.
+   * ───────────────────────────────────────────────────────────────────────── */
+  --surface: #ffffff;         /* cartes, panneaux            (≈ bg-white)    */
+  --surface-raised: #f9fafb;  /* fond de page                (≈ bg-gray-50)  */
+  --surface-sunken: #f3f4f6;  /* zones en retrait            (≈ bg-gray-100) */
+  --border: #e5e7eb;          /*                             (≈ border-gray-200) */
+  --border-strong: #d1d5db;   /*                             (≈ border-gray-300) */
+  --text: #111827;            /* titres                      (≈ text-gray-900) */
+  --text-soft: #374151;       /* corps de texte              (≈ text-gray-700) */
+  --text-muted: #6b7280;      /* secondaire                  (≈ text-gray-500) */
+  --text-faint: #9ca3af;      /* tertiaire, placeholders     (≈ text-gray-400) */
+}
+
+html.dark {
+  --surface: #1e293b;
+  --surface-raised: #0f172a;
+  --surface-sunken: #0f172a;
+  --border: #334155;
+  --border-strong: #475569;
+  --text: #f1f5f9;
+  --text-soft: #cbd5e1;
+  --text-muted: #64748b;
+  --text-faint: #475569;
 }
 
 body {
