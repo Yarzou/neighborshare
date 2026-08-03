@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Megaphone, Pin, Plus, Loader2, X, Trash2 } from 'lucide-react'
+import { Megaphone, Pin, Plus, Loader2, X, Trash2, Pencil } from 'lucide-react'
 import type { Announcement } from '@/lib/types'
 import { formatDate, getAvatarStyle } from '@/lib/utils'
 
@@ -16,9 +16,25 @@ export function AnnouncementsSection({ userId, isReferent }: Props) {
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
+  /** id de l'annonce en cours d'édition — le formulaire sert aux deux modes */
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState({ title: '', body: '', is_pinned: false })
+
+  const startEdit = (a: Announcement) => {
+    setForm({ title: a.title, body: a.body, is_pinned: a.is_pinned })
+    setEditingId(a.id)
+    setCreating(true)
+    setError(null)
+  }
+
+  const closeForm = () => {
+    setCreating(false)
+    setEditingId(null)
+    setForm({ title: '', body: '', is_pinned: false })
+    setError(null)
+  }
 
   const load = async () => {
     const { data } = await supabase
@@ -42,21 +58,27 @@ export function AnnouncementsSection({ userId, isReferent }: Props) {
     setSaving(true)
     setError(null)
 
-    const { error: insertErr } = await supabase.from('announcements').insert({
-      author_id: userId,
+    const values = {
       title: form.title.trim(),
       body: form.body.trim(),
       is_pinned: form.is_pinned,
-    })
+    }
 
-    if (insertErr) {
-      setError('Publication impossible. Réessayez.')
+    // Édition (tout référent, policy 038) ou création. L'update conserve
+    // author_id : modifier l'annonce d'un autre référent ne se l'approprie pas.
+    const { error: saveErr } = editingId
+      ? await supabase.from('announcements')
+          .update({ ...values, updated_at: new Date().toISOString() })
+          .eq('id', editingId)
+      : await supabase.from('announcements').insert({ author_id: userId, ...values })
+
+    if (saveErr) {
+      setError(editingId ? 'Modification impossible. Réessayez.' : 'Publication impossible. Réessayez.')
       setSaving(false)
       return
     }
 
-    setForm({ title: '', body: '', is_pinned: false })
-    setCreating(false)
+    closeForm()
     setSaving(false)
     await load()
   }
@@ -85,8 +107,10 @@ export function AnnouncementsSection({ userId, isReferent }: Props) {
         <form onSubmit={handleSubmit}
           className="bg-surface border border-edge rounded-2xl p-4 flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-content-soft">Nouvelle information</p>
-            <button type="button" onClick={() => { setCreating(false); setError(null) }}
+            <p className="text-sm font-semibold text-content-soft">
+              {editingId ? 'Modifier l\'information' : 'Nouvelle information'}
+            </p>
+            <button type="button" onClick={closeForm}
               className="text-content-faint hover:text-content-soft">
               <X size={16} />
             </button>
@@ -116,7 +140,9 @@ export function AnnouncementsSection({ userId, isReferent }: Props) {
 
           <button type="submit" disabled={saving}
             className="w-full py-2.5 bg-brand-600 text-white font-semibold rounded-xl hover:bg-brand-700 transition-colors disabled:opacity-60 flex items-center justify-center gap-2 text-sm">
-            {saving ? <><Loader2 size={16} className="animate-spin" /> Publication…</> : 'Publier'}
+            {saving
+              ? <><Loader2 size={16} className="animate-spin" /> {editingId ? 'Enregistrement…' : 'Publication…'}</>
+              : editingId ? 'Enregistrer' : 'Publier'}
           </button>
         </form>
       )}
@@ -140,12 +166,20 @@ export function AnnouncementsSection({ userId, isReferent }: Props) {
                   {a.is_pinned && <Pin size={14} className="text-brand-600 shrink-0" />}
                   {a.title}
                 </h3>
-                {isReferent && a.author_id === userId && (
-                  <button onClick={() => handleDelete(a.id)}
-                    className="text-content-faint hover:text-red-500 transition-colors shrink-0"
-                    aria-label="Supprimer">
-                    <Trash2 size={15} />
-                  </button>
+                {/* Tout référent gère toutes les annonces (policy 038), pas seulement les siennes */}
+                {isReferent && (
+                  <span className="flex items-center gap-2 shrink-0">
+                    <button onClick={() => startEdit(a)}
+                      className="text-content-faint hover:text-brand-600 transition-colors"
+                      aria-label="Modifier">
+                      <Pencil size={15} />
+                    </button>
+                    <button onClick={() => handleDelete(a.id)}
+                      className="text-content-faint hover:text-red-500 transition-colors"
+                      aria-label="Supprimer">
+                      <Trash2 size={15} />
+                    </button>
+                  </span>
                 )}
               </div>
 

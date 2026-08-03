@@ -1,5 +1,34 @@
 # Historique des modifications (par session)
 
+## 2026-08-03 (6) — Modèle de droits complet : créateur + référent sur tous les contenus
+
+Confirmation demandée par l'utilisateur (« le créateur modifie/supprime ses contenus, le
+référent modifie/supprime tout, y compris infos et sondages ») — l'audit a montré deux écarts :
+les policies limitaient le référent à SES annonces/sondages (`author_id AND is_referent()`),
+et **aucune UI d'édition n'existait** pour prestataires, achats, infos et sondages (seulement
+création + suppression, + statut pour les achats).
+
+### Migration `038-referent-full-rights.sql` (fichier séparé : 033-036 déjà appliquées)
+- `providers_update`, `group_purchases_update` : créateur **ou** référent.
+- `announcements_update/delete`, `polls_update/delete`, `poll_options_insert/delete` :
+  **tout** référent (plus d'exigence d'être l'auteur).
+- `--rollback` restaurant les policies 033-036 à l'identique. Élargissement pur → rétrocompatible.
+
+### UI d'édition (pattern commun : le formulaire de création passe en mode édition)
+`editingId` + `startEdit(item)` (pré-remplissage) + `closeForm()` ; submit branche update/insert ;
+l'update conserve `author_id`/`created_by` (pas d'appropriation) et pose `updated_at`.
+- **Infos** (`AnnouncementsSection`) : crayon + corbeille pour tout référent (plus seulement l'auteur).
+- **Sondages** (`PollsSection`) : idem ; l'édition ne porte que question/description/clôture —
+  **les options sont volontairement non éditables** (des voisins ont pu voter), message explicite
+  dans le formulaire, builder d'options masqué en mode édition.
+- **Prestataires** : crayon pour créateur ou référent.
+- **Achats groupés** : crayon (titre/description/unité/objectif/prix/date limite) pour créateur ou
+  référent ; les boutons de statut (clôturer/annuler/rouvrir) passent de `isOwner` à `canManage`.
+
+Modèle de droits résumé dans `CLAUDE.md` (section Modèle de données). Vérifs : lint 0 erreur /
+33 warnings, typecheck, build OK. **`npm run db:migrate` (038) à lancer** — avant ça, les
+nouveaux crayons référent sur le contenu d'autrui échoueront proprement (« impossible »).
+
 ## 2026-08-03 (5) — Événements : modifier/supprimer (créateur + référent) · zoom carte quartier
 
 Précision utilisateur en cours de route : le cas nominal (seul le créateur modifie et supprime

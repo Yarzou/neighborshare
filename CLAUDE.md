@@ -117,7 +117,7 @@ Conséquences à connaître :
 - L'inscription reste **ouverte** : il n'y a pas de notion de membre du lotissement (choix assumé, phase de lancement).
 
 ### 6. Migrations
-- Source de vérité : `liquibase/changelog/` (**001 → 037** à ce jour) + `db.changelog-master.xml`.
+- Source de vérité : `liquibase/changelog/` (**001 → 038** à ce jour) + `db.changelog-master.xml`.
 - Ajouter une migration = créer `0NN-nom.sql` **et** l'enregistrer dans le master XML avec un commentaire descriptif.
 
 #### ⚠️ Rétrocompatibilité obligatoire (2 bases : test + prod)
@@ -149,6 +149,8 @@ Exclues du `tsconfig.json` — les erreurs de type de l'éditeur y sont normales
 **Tables** (suite, depuis 033–036) : `announcements` (infos ASL, écriture référents), `providers` (prestataires recommandés), `group_purchases` + `group_purchase_participants` (achats groupés, 1 participation/compte), `polls` / `poll_options` / `poll_votes` (sondages, création référents).
 
 **Rôle référent** : `profiles.is_referent` (033) — un rôle, **pas** un contrôle d'inscription (celle-ci reste ouverte). Vérifié en base par la fonction `is_referent()` dans les policies, et côté UI par le hook `useCurrentUser()` de `lib/hooks.ts`. Premier référent à désigner à la main en SQL Editor.
+
+**Modèle de droits (confirmé utilisateur, migrations 037-038)** : le **créateur** modifie et supprime SES contenus (annonce, événement, prestataire, achat groupé) ; un **référent** modifie et supprime TOUT — y compris les infos du lotissement et les sondages d'un autre référent, le statut des achats, et les images d'événements du bucket. Les updates conservent `author_id`/`created_by` (pas d'appropriation). Exception UI volontaire : les **options d'un sondage ne sont pas éditables** après création (des voisins ont pu voter) — seules question/description/clôture le sont. Un référent qui gère le contenu d'un autre voit des libellés suffixés « (référent) » (événements).
 
 **RPC disponibles** : `contact_listing`, `validate_listing_response`, `cancel_listing_response`, `find_or_create_conversation`, `create_conversation`, `mark_conversation_read`, `is_conversation_participant`, `poll_results` (refuse les totaux tant qu'on n'a pas voté), `is_referent`. Vue : `listings_geo` (remplace `listings_within_radius`, obsolète mais encore en base).
 

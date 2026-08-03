@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Vote, Plus, Loader2, X, Trash2, Check } from 'lucide-react'
+import { Vote, Plus, Loader2, X, Trash2, Check, Pencil } from 'lucide-react'
 import type { Poll, PollResult } from '@/lib/types'
 import { formatDate } from '@/lib/utils'
 
@@ -23,10 +23,28 @@ export function PollsSection({ userId, isReferent }: Props) {
   const [states, setStates] = useState<Record<string, PollState>>({})
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
+  /** id du sondage en cours d'édition — seules les métadonnées sont éditables,
+   *  pas les options : modifier les réponses d'un sondage déjà voté corromprait le vote. */
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState({ question: '', description: '', closes_at: '' })
   const [options, setOptions] = useState<string[]>(['', ''])
+
+  const startEdit = (p: Poll) => {
+    setForm({ question: p.question, description: p.description ?? '', closes_at: p.closes_at ?? '' })
+    setEditingId(p.id)
+    setCreating(true)
+    setError(null)
+  }
+
+  const closeForm = () => {
+    setCreating(false)
+    setEditingId(null)
+    setForm({ question: '', description: '', closes_at: '' })
+    setOptions(['', ''])
+    setError(null)
+  }
 
   /** Résultats : le RPC lève une exception si l'utilisateur n'a pas encore voté. */
   const loadResults = async (pollId: string) => {
@@ -84,11 +102,33 @@ export function PollsSection({ userId, isReferent }: Props) {
     e.preventDefault()
     const labels = options.map(o => o.trim()).filter(Boolean)
     if (!form.question.trim()) return setError('La question est obligatoire.')
-    if (labels.length < 2) return setError('Il faut au moins deux réponses possibles.')
+    if (!editingId && labels.length < 2) return setError('Il faut au moins deux réponses possibles.')
     if (!userId) return
 
     setSaving(true)
     setError(null)
+
+    // Édition : métadonnées uniquement (tout référent, policy 038)
+    if (editingId) {
+      const { error: updErr } = await supabase
+        .from('polls')
+        .update({
+          question: form.question.trim(),
+          description: form.description.trim() || null,
+          closes_at: form.closes_at || null,
+        })
+        .eq('id', editingId)
+
+      if (updErr) {
+        setError('Modification impossible. Réessayez.')
+        setSaving(false)
+        return
+      }
+      closeForm()
+      setSaving(false)
+      await load()
+      return
+    }
 
     const { data: poll, error: pollErr } = await supabase
       .from('polls')
@@ -119,9 +159,7 @@ export function PollsSection({ userId, isReferent }: Props) {
       return
     }
 
-    setForm({ question: '', description: '', closes_at: '' })
-    setOptions(['', ''])
-    setCreating(false)
+    closeForm()
     setSaving(false)
     await load()
   }
@@ -152,12 +190,20 @@ export function PollsSection({ userId, isReferent }: Props) {
         <form onSubmit={handleCreate}
           className="bg-surface border border-edge rounded-2xl p-4 flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-content-soft">Nouveau sondage</p>
-            <button type="button" onClick={() => { setCreating(false); setError(null) }}
+            <p className="text-sm font-semibold text-content-soft">
+              {editingId ? 'Modifier le sondage' : 'Nouveau sondage'}
+            </p>
+            <button type="button" onClick={closeForm}
               className="text-content-faint hover:text-content-soft">
               <X size={16} />
             </button>
           </div>
+
+          {editingId && (
+            <p className="text-xs text-content-faint">
+              Les réponses possibles ne sont pas modifiables : des voisins ont pu déjà voter.
+            </p>
+          )}
 
           {error && <p className="text-sm text-red-600">{error}</p>}
 
@@ -175,6 +221,7 @@ export function PollsSection({ userId, isReferent }: Props) {
             className="w-full px-4 py-2.5 rounded-xl border border-edge bg-surface text-sm resize-none focus:outline-none focus:ring-2 focus:ring-brand-500"
           />
 
+          {!editingId && (
           <div className="flex flex-col gap-2">
             <p className="text-xs font-medium text-content-muted">Réponses possibles</p>
             {options.map((opt, i) => (
@@ -198,6 +245,7 @@ export function PollsSection({ userId, isReferent }: Props) {
               + Ajouter une réponse
             </button>
           </div>
+          )}
 
           <div>
             <label className="block text-xs font-medium text-content-muted mb-1.5">
@@ -211,7 +259,9 @@ export function PollsSection({ userId, isReferent }: Props) {
 
           <button type="submit" disabled={saving}
             className="w-full py-2.5 bg-brand-600 text-white font-semibold rounded-xl hover:bg-brand-700 transition-colors disabled:opacity-60 flex items-center justify-center gap-2 text-sm">
-            {saving ? <><Loader2 size={16} className="animate-spin" /> Création…</> : 'Créer le sondage'}
+            {saving
+              ? <><Loader2 size={16} className="animate-spin" /> {editingId ? 'Enregistrement…' : 'Création…'}</>
+              : editingId ? 'Enregistrer' : 'Créer le sondage'}
           </button>
         </form>
       )}
@@ -243,12 +293,20 @@ export function PollsSection({ userId, isReferent }: Props) {
                       <p className="text-sm text-content-muted mt-1">{p.description}</p>
                     )}
                   </div>
-                  {isReferent && p.created_by === userId && (
-                    <button onClick={() => handleDelete(p.id)}
-                      className="text-content-faint hover:text-red-500 transition-colors shrink-0"
-                      aria-label="Supprimer">
-                      <Trash2 size={15} />
-                    </button>
+                  {/* Tout référent gère tous les sondages (policy 038), pas seulement les siens */}
+                  {isReferent && (
+                    <span className="flex items-center gap-2 shrink-0">
+                      <button onClick={() => startEdit(p)}
+                        className="text-content-faint hover:text-brand-600 transition-colors"
+                        aria-label="Modifier">
+                        <Pencil size={15} />
+                      </button>
+                      <button onClick={() => handleDelete(p.id)}
+                        className="text-content-faint hover:text-red-500 transition-colors"
+                        aria-label="Supprimer">
+                        <Trash2 size={15} />
+                      </button>
+                    </span>
                   )}
                 </div>
 

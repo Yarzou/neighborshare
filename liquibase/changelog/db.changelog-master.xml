@@ -116,4 +116,7 @@
   <!-- Suppression et modification d'événement élargies au référent (table + images du bucket events) -->
   <include file="liquibase/changelog/037-events-referent-delete.sql"/>
 
+  <!-- Droits complets du référent : update providers/achats, update+delete annonces/sondages de tout auteur -->
+  <include file="liquibase/changelog/038-referent-full-rights.sql"/>
+
 </databaseChangeLog>

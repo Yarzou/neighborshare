@@ -10,7 +10,7 @@
 - `liquibase/liquibase.properties` (gitignoré) ne porte plus que `driver` / `changeLogFile` / `outputDefaultSchema` ; les identifiants viennent du script. Template : `.example`.
 - ⚠️ Liquibase = outil Java : les commandes `db:*` échouent si `JAVA_HOME` est invalide.
 
-## Migrations (ordre chronologique — 001 → 037)
+## Migrations (ordre chronologique — 001 → 038)
 | Fichier | Contenu |
 |---|---|
 | 001 | Schéma initial (profiles, listings, categories, messages, geography, RLS de base) |
@@ -50,6 +50,7 @@
 | 035 | Tables `group_purchases` + `group_purchase_participants` (PK composite = 1 participation/compte, quantité + seuil, unité libre) |
 | 036 | Tables `polls` / `poll_options` / `poll_votes` + RPC `poll_results()`. Votes lisibles uniquement par leur auteur ; les totaux passent par le RPC, qui refuse de répondre avant d'avoir voté (sauf sondage clos ou auteur) |
 | 037 | Delete **et update** d'événement élargis au référent : `events_delete_own` → `events_delete`, `events_update_own` → `events_update` (`user_id = auth.uid() OR is_referent()`), idem pour `events_storage_delete` (images du bucket) |
+| 038 | **Modèle de droits complet** : update `providers`/`group_purchases` = créateur ou référent ; update/delete `announcements`/`polls` (+ gestion `poll_options`) = **tout** référent (plus seulement l'auteur) |
 
 Ajouter une migration = créer `0NN-nom.sql` **et** l'inclure dans `db.changelog-master.xml` avec un commentaire. Ne jamais modifier un changeset déjà appliqué.
 
@@ -140,21 +141,21 @@ RLS : lecture **authentifiée** (030) ; insert réservé au créateur ; **update
 ### `fcm_tokens`
 `user_id` (→ `auth.users`, cascade), `token`. Upsert `onConflict: 'token'`. Les tokens rejetés par FCM sont supprimés automatiquement par `lib/fcm-admin.ts`.
 
-### `announcements` (033)
+### `announcements` (033, droits 038)
 `id, author_id, title, body, is_pinned, created_at, updated_at` — infos officielles de l'ASL.  
-RLS : lecture authentifiée ; insert/update/delete par l'auteur **et** `is_referent()`.
+RLS : lecture authentifiée ; insert par l'auteur référent ; **update/delete par tout référent** (`author_id` conservé à l'update : pas d'appropriation).
 
-### `providers` (034)
+### `providers` (034, droits 038)
 `id, created_by, name, trade, phone, email, website, comment, created_at, updated_at`.  
-RLS : lecture authentifiée ; CRUD par l'auteur ; delete aussi par un référent (modération).
+RLS : lecture authentifiée ; insert par l'auteur ; **update/delete par l'auteur ou un référent**.
 
-### `group_purchases` + `group_purchase_participants` (035)
+### `group_purchases` + `group_purchase_participants` (035, droits 038)
 Achat : `id, created_by, title, description, unit (texte libre), target_quantity, unit_price, deadline, status ('ouvert'|'cloture'|'annule' — text libre, contraint côté TS)`.  
 Participation : PK `(purchase_id, user_id)` → une par compte, `quantity > 0` (check), `comment`. Upsert `onConflict: 'purchase_id,user_id'` pour modifier.  
-RLS : lecture authentifiée (les participations sont visibles de tous — c'est l'intérêt) ; delete de l'achat par l'auteur ou un référent.
+RLS : lecture authentifiée (les participations sont visibles de tous — c'est l'intérêt) ; **update/delete de l'achat (y compris statut) par l'auteur ou un référent**.
 
-### `polls` + `poll_options` + `poll_votes` (036)
-Sondage : `question, description, closes_at (date)` — création/édition **référents uniquement**. Options ordonnées par `position`.  
+### `polls` + `poll_options` + `poll_votes` (036, droits 038)
+Sondage : `question, description, closes_at (date)` — création **référents uniquement** ; **update/delete par tout référent**. Côté UI, l'édition ne porte que les métadonnées (question/description/clôture) : **les options ne sont pas éditables une fois le sondage créé** (des voisins ont pu voter). Options ordonnées par `position`.  
 Vote : PK `(poll_id, user_id)` → une voix par compte, upsert pour changer d'avis.  
 ⚠️ **« Résultats après vote » est appliqué en base** : `poll_votes` n'est lisible que par son auteur, les totaux passent par le RPC `poll_results(p_poll_id)` (SECURITY DEFINER) qui lève une exception si l'appelant n'a pas voté — sauf sondage clos ou appelant auteur. Conséquence : pas de dépouillement nominatif possible via l'API.
 

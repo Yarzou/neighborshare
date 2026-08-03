@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { ShoppingCart, Plus, Loader2, X, Trash2, Users, CalendarDays } from 'lucide-react'
+import { ShoppingCart, Plus, Loader2, X, Trash2, Users, CalendarDays, Pencil } from 'lucide-react'
 import type { GroupPurchase } from '@/lib/types'
 import { GROUP_PURCHASE_STATUS_LABELS, GROUP_PURCHASE_STATUS_COLORS } from '@/lib/types'
 import { useCurrentUser } from '@/lib/hooks'
@@ -21,11 +21,34 @@ export default function GroupPurchasesPage() {
   const [purchases, setPurchases] = useState<GroupPurchase[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
+  /** id de l'achat en cours d'édition — le formulaire sert aux deux modes */
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState({
     title: '', description: '', unit: '', target_quantity: '', unit_price: '', deadline: '',
   })
+
+  const startEdit = (p: GroupPurchase) => {
+    setForm({
+      title: p.title,
+      description: p.description ?? '',
+      unit: p.unit,
+      target_quantity: p.target_quantity != null ? String(p.target_quantity) : '',
+      unit_price: p.unit_price != null ? String(p.unit_price) : '',
+      deadline: p.deadline ?? '',
+    })
+    setEditingId(p.id)
+    setCreating(true)
+    setError(null)
+  }
+
+  const closeForm = () => {
+    setCreating(false)
+    setEditingId(null)
+    setForm({ title: '', description: '', unit: '', target_quantity: '', unit_price: '', deadline: '' })
+    setError(null)
+  }
   /** Saisie de quantité par achat (participation en cours d'édition) */
   const [qtyInputs, setQtyInputs] = useState<Record<string, string>>({})
 
@@ -60,24 +83,30 @@ export default function GroupPurchasesPage() {
     setSaving(true)
     setError(null)
 
-    const { error: insertErr } = await supabase.from('group_purchases').insert({
-      created_by: userId,
+    const values = {
       title: form.title.trim(),
       description: form.description.trim() || null,
       unit: form.unit.trim(),
       target_quantity: form.target_quantity ? parseFloat(form.target_quantity) : null,
       unit_price: form.unit_price ? parseFloat(form.unit_price) : null,
       deadline: form.deadline || null,
-    })
+    }
 
-    if (insertErr) {
-      setError('Création impossible. Réessayez.')
+    // Édition (créateur ou référent, policy 038) ou création. L'update conserve
+    // created_by et le statut.
+    const { error: saveErr } = editingId
+      ? await supabase.from('group_purchases')
+          .update({ ...values, updated_at: new Date().toISOString() })
+          .eq('id', editingId)
+      : await supabase.from('group_purchases').insert({ created_by: userId, ...values })
+
+    if (saveErr) {
+      setError(editingId ? 'Modification impossible. Réessayez.' : 'Création impossible. Réessayez.')
       setSaving(false)
       return
     }
 
-    setForm({ title: '', description: '', unit: '', target_quantity: '', unit_price: '', deadline: '' })
-    setCreating(false)
+    closeForm()
     setSaving(false)
     await load()
   }
@@ -164,8 +193,10 @@ export default function GroupPurchasesPage() {
             <form onSubmit={handleCreate}
               className="bg-surface border border-edge rounded-2xl p-4 flex flex-col gap-3">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-content-soft">Nouvel achat groupé</p>
-                <button type="button" onClick={() => { setCreating(false); setError(null) }}
+                <p className="text-sm font-semibold text-content-soft">
+                  {editingId ? 'Modifier l\'achat groupé' : 'Nouvel achat groupé'}
+                </p>
+                <button type="button" onClick={closeForm}
                   className="text-content-faint hover:text-content-soft">
                   <X size={16} />
                 </button>
@@ -214,7 +245,9 @@ export default function GroupPurchasesPage() {
 
               <button type="submit" disabled={saving}
                 className="w-full py-2.5 bg-brand-600 text-white font-semibold rounded-xl hover:bg-brand-700 transition-colors disabled:opacity-60 flex items-center justify-center gap-2 text-sm">
-                {saving ? <><Loader2 size={16} className="animate-spin" /> Création…</> : 'Proposer l\'achat groupé'}
+                {saving
+                  ? <><Loader2 size={16} className="animate-spin" /> {editingId ? 'Enregistrement…' : 'Création…'}</>
+                  : editingId ? 'Enregistrer' : 'Proposer l\'achat groupé'}
               </button>
             </form>
           )}
@@ -239,6 +272,8 @@ export default function GroupPurchasesPage() {
                   : null
                 const mine = participants.find(x => x.user_id === userId)
                 const isOwner = p.created_by === userId
+                // Créateur ou référent : modifier, supprimer, gérer le statut (policy 038)
+                const canManage = isOwner || isReferent
                 const deadlinePassed = Boolean(p.deadline && p.deadline < new Date().toISOString().slice(0, 10))
                 const isOpen = p.status === 'ouvert' && !deadlinePassed
 
@@ -259,12 +294,19 @@ export default function GroupPurchasesPage() {
                             : GROUP_PURCHASE_STATUS_COLORS[p.status])}>
                           {deadlinePassed && p.status === 'ouvert' ? 'Échu' : GROUP_PURCHASE_STATUS_LABELS[p.status]}
                         </span>
-                        {(isOwner || isReferent) && (
-                          <button onClick={() => handleDelete(p.id)}
-                            className="text-content-faint hover:text-red-500 transition-colors"
-                            aria-label="Supprimer">
-                            <Trash2 size={15} />
-                          </button>
+                        {canManage && (
+                          <span className="flex items-center gap-2">
+                            <button onClick={() => startEdit(p)}
+                              className="text-content-faint hover:text-brand-600 transition-colors"
+                              aria-label="Modifier">
+                              <Pencil size={15} />
+                            </button>
+                            <button onClick={() => handleDelete(p.id)}
+                              className="text-content-faint hover:text-red-500 transition-colors"
+                              aria-label="Supprimer">
+                              <Trash2 size={15} />
+                            </button>
+                          </span>
                         )}
                       </div>
                     </div>
@@ -346,8 +388,8 @@ export default function GroupPurchasesPage() {
                       </div>
                     )}
 
-                    {/* Gestion (créateur) */}
-                    {isOwner && p.status === 'ouvert' && (
+                    {/* Gestion du statut (créateur ou référent) */}
+                    {canManage && p.status === 'ouvert' && (
                       <div className="flex items-center gap-2 pt-1">
                         <button onClick={() => setStatus(p.id, 'cloture')}
                           className="text-xs px-2.5 py-1.5 rounded-lg border border-edge text-content-muted hover:border-brand-300 hover:text-brand-700 transition-colors">
@@ -359,7 +401,7 @@ export default function GroupPurchasesPage() {
                         </button>
                       </div>
                     )}
-                    {isOwner && p.status !== 'ouvert' && (
+                    {canManage && p.status !== 'ouvert' && (
                       <button onClick={() => setStatus(p.id, 'ouvert')}
                         className="self-start text-xs px-2.5 py-1.5 rounded-lg border border-edge text-content-muted hover:border-brand-300 hover:text-brand-700 transition-colors">
                         Rouvrir

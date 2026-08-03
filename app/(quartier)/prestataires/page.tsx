@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Wrench, Plus, Loader2, X, Trash2, Phone, Mail, Globe, Search } from 'lucide-react'
+import { Wrench, Plus, Loader2, X, Trash2, Phone, Mail, Globe, Search, Pencil } from 'lucide-react'
 import type { Provider } from '@/lib/types'
 import { useCurrentUser } from '@/lib/hooks'
 import { LoginRequiredNotice } from '@/components/layout/LoginRequiredNotice'
@@ -16,11 +16,31 @@ export default function ProvidersPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [creating, setCreating] = useState(false)
+  /** id de la fiche en cours d'édition — le formulaire sert aux deux modes */
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState({
     name: '', trade: '', phone: '', email: '', website: '', comment: '',
   })
+
+  const startEdit = (p: Provider) => {
+    setForm({
+      name: p.name, trade: p.trade,
+      phone: p.phone ?? '', email: p.email ?? '',
+      website: p.website ?? '', comment: p.comment ?? '',
+    })
+    setEditingId(p.id)
+    setCreating(true)
+    setError(null)
+  }
+
+  const closeForm = () => {
+    setCreating(false)
+    setEditingId(null)
+    setForm({ name: '', trade: '', phone: '', email: '', website: '', comment: '' })
+    setError(null)
+  }
 
   const load = async () => {
     const { data } = await supabase
@@ -52,24 +72,30 @@ export default function ProvidersPage() {
     setSaving(true)
     setError(null)
 
-    const { error: insertErr } = await supabase.from('providers').insert({
-      created_by: userId,
+    const values = {
       name: form.name.trim(),
       trade: form.trade.trim(),
       phone: form.phone.trim() || null,
       email: form.email.trim() || null,
       website: form.website.trim() || null,
       comment: form.comment.trim() || null,
-    })
+    }
 
-    if (insertErr) {
+    // Édition (créateur ou référent, policy 038) ou création. L'update conserve
+    // created_by : la fiche reste attribuée à celui qui l'a recommandée.
+    const { error: saveErr } = editingId
+      ? await supabase.from('providers')
+          .update({ ...values, updated_at: new Date().toISOString() })
+          .eq('id', editingId)
+      : await supabase.from('providers').insert({ created_by: userId, ...values })
+
+    if (saveErr) {
       setError('Enregistrement impossible. Réessayez.')
       setSaving(false)
       return
     }
 
-    setForm({ name: '', trade: '', phone: '', email: '', website: '', comment: '' })
-    setCreating(false)
+    closeForm()
     setSaving(false)
     await load()
   }
@@ -128,8 +154,10 @@ export default function ProvidersPage() {
             <form onSubmit={handleSubmit}
               className="bg-surface border border-edge rounded-2xl p-4 flex flex-col gap-3">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-content-soft">Nouveau prestataire</p>
-                <button type="button" onClick={() => { setCreating(false); setError(null) }}
+                <p className="text-sm font-semibold text-content-soft">
+                  {editingId ? 'Modifier le prestataire' : 'Nouveau prestataire'}
+                </p>
+                <button type="button" onClick={closeForm}
                   className="text-content-faint hover:text-content-soft">
                   <X size={16} />
                 </button>
@@ -182,7 +210,9 @@ export default function ProvidersPage() {
 
               <button type="submit" disabled={saving}
                 className="w-full py-2.5 bg-brand-600 text-white font-semibold rounded-xl hover:bg-brand-700 transition-colors disabled:opacity-60 flex items-center justify-center gap-2 text-sm">
-                {saving ? <><Loader2 size={16} className="animate-spin" /> Enregistrement…</> : 'Ajouter le prestataire'}
+                {saving
+                  ? <><Loader2 size={16} className="animate-spin" /> Enregistrement…</>
+                  : editingId ? 'Enregistrer' : 'Ajouter le prestataire'}
               </button>
             </form>
           )}
@@ -229,12 +259,20 @@ export default function ProvidersPage() {
                       <h2 className="font-semibold text-content">{p.name}</h2>
                       <p className="text-xs font-medium text-brand-700 mt-0.5">{p.trade}</p>
                     </div>
+                    {/* Créateur ou référent : modifier et supprimer (policy 038) */}
                     {(p.created_by === userId || isReferent) && (
-                      <button onClick={() => handleDelete(p.id)}
-                        className="text-content-faint hover:text-red-500 transition-colors shrink-0"
-                        aria-label="Supprimer">
-                        <Trash2 size={15} />
-                      </button>
+                      <span className="flex items-center gap-2 shrink-0">
+                        <button onClick={() => startEdit(p)}
+                          className="text-content-faint hover:text-brand-600 transition-colors"
+                          aria-label="Modifier">
+                          <Pencil size={15} />
+                        </button>
+                        <button onClick={() => handleDelete(p.id)}
+                          className="text-content-faint hover:text-red-500 transition-colors"
+                          aria-label="Supprimer">
+                          <Trash2 size={15} />
+                        </button>
+                      </span>
                     )}
                   </div>
 
