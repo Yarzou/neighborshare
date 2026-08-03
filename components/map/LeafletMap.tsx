@@ -118,7 +118,7 @@ export default function LeafletMap({ userPosition, listings, onSelectListing, se
         btn.onclick = (e) => {
           L.DomEvent.stopPropagation(e)
           if (mapRef.current && userPositionRef.current) {
-            mapRef.current.setView(userPositionRef.current, 16)
+            mapRef.current.setView(userPositionRef.current, NEIGHBORHOOD_DEFAULT_ZOOM)
           }
         }
         recenterBtnRef.current = btn

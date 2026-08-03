@@ -10,7 +10,7 @@
 - `liquibase/liquibase.properties` (gitignoré) ne porte plus que `driver` / `changeLogFile` / `outputDefaultSchema` ; les identifiants viennent du script. Template : `.example`.
 - ⚠️ Liquibase = outil Java : les commandes `db:*` échouent si `JAVA_HOME` est invalide.
 
-## Migrations (ordre chronologique — 001 → 036)
+## Migrations (ordre chronologique — 001 → 037)
 | Fichier | Contenu |
 |---|---|
 | 001 | Schéma initial (profiles, listings, categories, messages, geography, RLS de base) |
@@ -49,6 +49,7 @@
 | 034 | Table `providers` (prestataires recommandés) — CRUD par l'auteur, delete aussi par référent |
 | 035 | Tables `group_purchases` + `group_purchase_participants` (PK composite = 1 participation/compte, quantité + seuil, unité libre) |
 | 036 | Tables `polls` / `poll_options` / `poll_votes` + RPC `poll_results()`. Votes lisibles uniquement par leur auteur ; les totaux passent par le RPC, qui refuse de répondre avant d'avoir voté (sauf sondage clos ou auteur) |
+| 037 | Delete **et update** d'événement élargis au référent : `events_delete_own` → `events_delete`, `events_update_own` → `events_update` (`user_id = auth.uid() OR is_referent()`), idem pour `events_storage_delete` (images du bucket) |
 
 Ajouter une migration = créer `0NN-nom.sql` **et** l'inclure dans `db.changelog-master.xml` avec un commentaire. Ne jamais modifier un changeset déjà appliqué.
 
@@ -134,7 +135,7 @@ Trigger `messages_update_conversation_ts` (met à jour `conversations.updated_at
 
 ### `events`
 `id, user_id, title, description, event_date, event_end_date, location_text, location_lat, location_lng, image_urls (text[]), created_at`  
-RLS : lecture **authentifiée** (migration 030), écriture/modif/suppression réservées au créateur.
+RLS : lecture **authentifiée** (030) ; insert réservé au créateur ; **update et delete = créateur ou référent** (037, delete aussi sur les images du bucket `events`).
 
 ### `fcm_tokens`
 `user_id` (→ `auth.users`, cascade), `token`. Upsert `onConflict: 'token'`. Les tokens rejetés par FCM sont supprimés automatiquement par `lib/fcm-admin.ts`.

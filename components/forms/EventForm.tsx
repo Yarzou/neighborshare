@@ -158,12 +158,21 @@ export default function EventForm({ initialEvent }: EventFormProps) {
 
     let dbError
     if (isEdit) {
-      const { error } = await supabase
+      // Pas de .eq('user_id') : un référent peut éditer l'événement d'un autre
+      // (policy 037), c'est le RLS qui arbitre. Le .select() détecte le 0-ligne
+      // (un update refusé par RLS ne renvoie pas d'erreur) — cas d'une base pas
+      // encore migrée en 037.
+      const { data: updated, error } = await supabase
         .from('events')
         .update(payload)
         .eq('id', initialEvent!.id)
-        .eq('user_id', user.id)
+        .select('id')
       dbError = error
+      if (!error && (!updated || updated.length === 0)) {
+        setError('Modification impossible. Réessayez.')
+        setLoading(false)
+        return
+      }
     } else {
       const { error } = await supabase.from('events').insert({ user_id: user.id, ...payload })
       dbError = error

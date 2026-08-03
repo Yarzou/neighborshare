@@ -18,10 +18,19 @@ export default async function EditEventPage({ params }: Props) {
     .from('events')
     .select('*')
     .eq('id', id)
-    .eq('user_id', user.id)
     .single()
 
   if (error || !event) notFound()
+
+  // Édition réservée au créateur — ou à un référent (modération, policy 037)
+  if (event.user_id !== user.id) {
+    const { data: me } = await supabase
+      .from('profiles')
+      .select('is_referent')
+      .eq('id', user.id)
+      .single()
+    if (!me?.is_referent) notFound()
+  }
 
   return <EventForm initialEvent={event as Event} />
 }

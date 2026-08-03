@@ -1,5 +1,45 @@
 # Historique des modifications (par session)
 
+## 2026-08-03 (5) — Événements : modifier/supprimer (créateur + référent) · zoom carte quartier
+
+Précision utilisateur en cours de route : le cas nominal (seul le créateur modifie et supprime
+son événement) reste inchangé ; **en plus**, le référent peut **modifier et supprimer** n'importe
+quel événement. Le volet « modifier » a donc été ajouté après coup :
+- changeset `037-events-update-referent` **ajouté** au fichier 037 (ajouter un changeset ne casse
+  pas les checksums des existants, même sur une base déjà migrée) : `events_update_own` →
+  `events_update` (créateur ou référent).
+- `app/evenements/[id]/edit/page.tsx` : le fetch ne filtre plus sur `user_id` (404 pour le
+  référent sinon) — contrôle owner-ou-référent côté serveur.
+- `EventForm` (update) : `.eq('user_id')` retiré (RLS arbitre) + `.select('id')` et contrôle
+  0-ligne → « Modification impossible » sur base non migrée. Le payload ne contient pas
+  `user_id` : pas d'appropriation par le référent.
+- `EventDetailClient` : « Modifier (référent) » visible aussi pour le référent (`canManage`).
+
+### Suppression d'événement
+La suppression de ses propres événements n'existait que depuis `/profile` — rien sur la page de
+l'événement. Et le référent ne pouvait rien supprimer (policy `events_delete_own` stricte).
+- **`liquibase/changelog/037-events-referent-delete.sql`** : `events_delete_own` → `events_delete`
+  (`user_id = auth.uid() OR is_referent()`), même élargissement pour `events_storage_delete`
+  (images du bucket). `--rollback` restaurant les policies d'origine. Rétrocompatible :
+  élargissement de droits pur.
+- **`components/map/EventDetailClient.tsx`** : bouton « Supprimer » (créateur ou référent,
+  confirmation en deux temps), `useCurrentUser()` remplace le `getUser()` manuel. Delete sans
+  `.eq('user_id')` (RLS arbitre) + **`.select('id')` pour détecter le 0-ligne** (un delete refusé
+  par RLS ne renvoie pas d'erreur !) → « Suppression impossible » sur base non migrée. Ligne
+  supprimée d'abord, images ensuite.
+
+### Zoom carte (demande : « centrée sur le quartier, quasi zoomé au max »)
+- `NEIGHBORHOOD_DEFAULT_ZOOM` : **15 → 17** (niveau rues/numéros du lotissement au lieu de la
+  ville entière ; estimé depuis les captures fournies ; max 19). Ajustable sans code via
+  `NEXT_PUBLIC_NEIGHBORHOOD_ZOOM` (ex. 18 si encore trop large).
+- Bouton « recentrer » de `LeafletMap` aligné sur la même constante (était 16 en dur).
+- Le `setView(searchedLocation, 14)` de la recherche d'adresse est volontairement conservé
+  (une adresse cherchée peut être hors quartier).
+
+### À faire côté utilisateur
+`npm run db:migrate` (037) sur test puis prod. Avant migration, le bouton référent sur
+l'événement d'autrui affiche « Suppression impossible » (comportement prévu).
+
 ## 2026-08-03 (4) — Évolutions : vue geo, tokens dark, canal ASL, sondages, prestataires, achats groupés
 
 Périmètre demandé : évolutions n°1-2-3-4 de l'audit (achats groupés, canal ASL, sondages,

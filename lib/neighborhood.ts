@@ -14,9 +14,13 @@ export const NEIGHBORHOOD_CENTER: [number, number] = [
   Number(process.env.NEXT_PUBLIC_NEIGHBORHOOD_LNG ?? -1.560131),
 ]
 
-/** Zoom initial de la carte */
+/**
+ * Zoom initial de la carte — au niveau du lotissement (rues + numéros), pas de
+ * la ville : l'utilisateur ne doit pas avoir à rezoomer à chaque ouverture.
+ * Max Leaflet/OSM du projet : 19. Ajustable sans code via NEXT_PUBLIC_NEIGHBORHOOD_ZOOM.
+ */
 export const NEIGHBORHOOD_DEFAULT_ZOOM = Number(
-  process.env.NEXT_PUBLIC_NEIGHBORHOOD_ZOOM ?? 15
+  process.env.NEXT_PUBLIC_NEIGHBORHOOD_ZOOM ?? 17
 )
 
 /**

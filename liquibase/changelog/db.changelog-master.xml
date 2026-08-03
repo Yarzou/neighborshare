@@ -113,4 +113,7 @@
   <!-- Sondages : création par les référents, résultats après vote (poll_results) -->
   <include file="liquibase/changelog/036-polls.sql"/>
 
+  <!-- Suppression et modification d'événement élargies au référent (table + images du bucket events) -->
+  <include file="liquibase/changelog/037-events-referent-delete.sql"/>
+
 </databaseChangeLog>

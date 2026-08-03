@@ -95,6 +95,11 @@ Regroupées sous le route group **`app/(quartier)/`** (URLs inchangées) : son `
 - **`app/prestataires/`** — carnet : CRUD par l'auteur, delete aussi par référent, recherche client-side `normalizeSearch`.
 - Navigation : lien « Quartier » (`/infos`) dans la Navbar ; les trois pages ont leur tuile sur `/accueil` (le centrage de la dernière tuile du dashboard ne s'applique plus que si le compte est impair).
 
+### `EventDetailClient.tsx` — modifier / supprimer un événement
+Boutons « Modifier » et « Supprimer » sur la page détail, visibles pour le **créateur ou un référent** (libellés suffixés « (référent) » pour un non-créateur), suppression avec confirmation en deux temps inline. `useCurrentUser()` remplace l'ancien `getUser()` manuel.  
+Chaîne référent-édition complète : policy `events_update` (037) + la page `evenements/[id]/edit` ne filtre plus sur `user_id` (contrôle owner-ou-référent côté serveur) + l'update d'`EventForm` sans `.eq('user_id')` avec contrôle 0-ligne (`.select('id')`). Le payload d'update ne contient pas `user_id` : un référent qui édite ne s'approprie pas l'événement.  
+⚠️ Le delete se fait **sans** `.eq('user_id')` (le RLS arbitre) et avec **`.select('id')`** : un delete refusé par RLS ne renvoie pas d'erreur, juste 0 ligne — c'est ce qui affiche « Suppression impossible » sur une base pas encore migrée en 037. Ordre : ligne d'abord, images du bucket ensuite (orphelins acceptés en cas d'échec storage). La suppression de ses propres événements depuis `/profile` (`handleDeleteEvent`) est inchangée.
+
 ### Voile de la carte (`.map-login-veil`)
 Overlay sur la zone `LeafletMap` de `MapView` quand `authResolved && !isLoggedIn` : la carte serait sinon rendue vide, ce qui suggère « il n'y a rien ici » au lieu de « connectez-vous ». **Indispensable en vue mobile « Carte »**, où l'encart de la liste n'est pas visible.  
 La classe vit dans `globals.css` (avec sa variante `html.dark`) et non en utilitaire Tailwind : `bg-white/80` génère `.bg-white\/80`, que le bloc d'overrides dark (qui cible `.bg-white`) ne rattraperait pas — le voile resterait blanc en thème sombre. `z-[1150]`, sous le popup de détail (`z-[1200]`).

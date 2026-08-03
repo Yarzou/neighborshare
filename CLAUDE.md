@@ -117,7 +117,7 @@ Conséquences à connaître :
 - L'inscription reste **ouverte** : il n'y a pas de notion de membre du lotissement (choix assumé, phase de lancement).
 
 ### 6. Migrations
-- Source de vérité : `liquibase/changelog/` (**001 → 036** à ce jour) + `db.changelog-master.xml`.
+- Source de vérité : `liquibase/changelog/` (**001 → 037** à ce jour) + `db.changelog-master.xml`.
 - Ajouter une migration = créer `0NN-nom.sql` **et** l'enregistrer dans le master XML avec un commentaire descriptif.
 
 #### ⚠️ Rétrocompatibilité obligatoire (2 bases : test + prod)
