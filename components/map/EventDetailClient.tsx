@@ -7,6 +7,7 @@ import { ArrowLeft, CalendarDays, MapPin, Clock, ChevronLeft, ChevronRight, Penc
 import type { Event, Profile } from '@/lib/types'
 import { cn, getAvatarStyle } from '@/lib/utils'
 import { useCurrentUser } from '@/lib/hooks'
+import { deleteEventWithImages } from '@/lib/events'
 import EventMiniMap from '@/components/map/EventMiniMapDynamic'
 import { createClient } from '@/lib/supabase/client'
 
@@ -54,33 +55,16 @@ export default function EventDetailClient({ event }: Props) {
   const handleDelete = async () => {
     setDeleting(true)
     setDeleteError(null)
-    const supabase = createClient()
 
-    // Pas de .eq('user_id') : le référent n'est pas le créateur, c'est le RLS qui
-    // arbitre. ⚠️ Un delete refusé par RLS ne renvoie PAS d'erreur, juste 0 ligne —
-    // le .select() permet de le détecter (cas notamment d'une base pas encore
-    // migrée en 037 pour un référent).
-    const { data, error } = await supabase
-      .from('events')
-      .delete()
-      .eq('id', event.id)
-      .select('id')
+    // RLS arbitre (créateur ou référent) ; false = 0 ligne supprimée
+    // (droits insuffisants ou base pas encore migrée en 037) — cf. lib/events.ts
+    const ok = await deleteEventWithImages(createClient(), event)
 
-    if (error || !data || data.length === 0) {
+    if (!ok) {
       setDeleteError('Suppression impossible. Réessayez.')
       setDeleting(false)
       setConfirmDelete(false)
       return
-    }
-
-    // La ligne est supprimée : on nettoie les images ensuite seulement, pour ne
-    // jamais laisser un événement amputé de ses photos si le delete échouait.
-    // Un échec ici laisse des orphelins dans le bucket — non bloquant.
-    if (photos.length > 0) {
-      const paths = photos.map(url => url.split('/events/')[1] || '').filter(Boolean)
-      if (paths.length > 0) {
-        await supabase.storage.from('events').remove(paths)
-      }
     }
 
     router.push('/evenements')

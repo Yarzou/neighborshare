@@ -319,6 +319,7 @@ export function EventsList({
             setSelectedEvent(null)
             onEventSelect?.(null)
           }}
+          onDeleted={id => setEvents(prev => prev.filter(e => e.id !== id))}
         />
       )}
     </div>

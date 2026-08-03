@@ -15,6 +15,21 @@ quel événement. Le volet « modifier » a donc été ajouté après coup :
   `user_id` : pas d'appropriation par le référent.
 - `EventDetailClient` : « Modifier (référent) » visible aussi pour le référent (`canManage`).
 
+### Correctif : le popup de la liste n'avait pas les boutons (remonté par l'utilisateur)
+« Je peux modifier mais pas supprimer » : l'utilisateur était sur **`EventDetailPopup`** (panneau
+ouvert depuis la liste `/evenements` en desktop), un **troisième écran** d'événement oublié — il
+n'avait que « Modifier » (créateur). Correctifs :
+- **`lib/events.ts`** (nouveau) : `deleteEventWithImages()` — suppression + nettoyage bucket +
+  contrôle 0-ligne, partagé entre `EventDetailClient` et `EventDetailPopup` (la 3e copie de cette
+  logique, dans `ProfileClient`, est antérieure et laissée telle quelle).
+- `EventDetailPopup` : modifier + supprimer pour créateur/référent (mêmes libellés que la page
+  détail), prop `onDeleted` → `EventsList` retire l'événement de sa liste sans rechargement.
+  Les pastilles du mini-calendrier peuvent rester une session en retard après suppression
+  (re-chargées au prochain affichage) — assumé.
+- Rappel des 3 écrans d'événement : page détail (`EventDetailClient`), popup liste
+  (`EventDetailPopup`), profil (`ProfileClient`) — toute évolution des actions doit couvrir les
+  trois.
+
 ### Suppression d'événement
 La suppression de ses propres événements n'existait que depuis `/profile` — rien sur la page de
 l'événement. Et le référent ne pouvait rien supprimer (policy `events_delete_own` stricte).

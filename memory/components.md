@@ -95,6 +95,9 @@ Regroupées sous le route group **`app/(quartier)/`** (URLs inchangées) : son `
 - **`app/prestataires/`** — carnet : CRUD par l'auteur, delete aussi par référent, recherche client-side `normalizeSearch`.
 - Navigation : lien « Quartier » (`/infos`) dans la Navbar ; les trois pages ont leur tuile sur `/accueil` (le centrage de la dernière tuile du dashboard ne s'applique plus que si le compte est impair).
 
+### Événements — ⚠️ TROIS écrans portent les actions modifier/supprimer
+1. **`EventDetailClient`** (page `/evenements/[id]`), 2. **`EventDetailPopup`** (panneau ouvert depuis la liste `/evenements` en desktop), 3. **`ProfileClient`** (« mes événements »). Toute évolution des actions doit couvrir les trois — le popup avait été oublié lors de l'ajout de la suppression (bug remonté par l'utilisateur). La logique de suppression est partagée via **`deleteEventWithImages()` de `lib/events.ts`** (RLS arbitre, contrôle 0-ligne, ligne puis images) pour les écrans 1 et 2 ; `ProfileClient` garde sa copie antérieure. Le popup remonte `onDeleted(id)` à `EventsList` qui filtre sa liste locale.
+
 ### `EventDetailClient.tsx` — modifier / supprimer un événement
 Boutons « Modifier » et « Supprimer » sur la page détail, visibles pour le **créateur ou un référent** (libellés suffixés « (référent) » pour un non-créateur), suppression avec confirmation en deux temps inline. `useCurrentUser()` remplace l'ancien `getUser()` manuel.  
 Chaîne référent-édition complète : policy `events_update` (037) + la page `evenements/[id]/edit` ne filtre plus sur `user_id` (contrôle owner-ou-référent côté serveur) + l'update d'`EventForm` sans `.eq('user_id')` avec contrôle 0-ligne (`.select('id')`). Le payload d'update ne contient pas `user_id` : un référent qui édite ne s'approprie pas l'événement.  
