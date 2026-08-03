@@ -10,7 +10,7 @@
 - `liquibase/liquibase.properties` (gitignoré) ne porte plus que `driver` / `changeLogFile` / `outputDefaultSchema` ; les identifiants viennent du script. Template : `.example`.
 - ⚠️ Liquibase = outil Java : les commandes `db:*` échouent si `JAVA_HOME` est invalide.
 
-## Migrations (ordre chronologique — 001 → 030)
+## Migrations (ordre chronologique — 001 → 031)
 | Fichier | Contenu |
 |---|---|
 | 001 | Schéma initial (profiles, listings, categories, messages, geography, RLS de base) |
@@ -43,8 +43,45 @@
 | 028 | Catégorie `livre` (id = 8, ID posé explicitement + `setval` de la séquence) + colonnes `book_author`, `book_condition`, `book_genre` |
 | 029 | Update RPC avec les champs livre **et `price`** (oublié en 014 : le badge prix ne remontait pas sur la carte) + re-grant `execute` perdu par le DROP |
 | 030 | Lecture de `profiles` / `listings` / `events` réservée aux authentifiés (`to authenticated`) + `revoke execute` du RPC pour `anon`. `categories` reste public (keepalive). |
+| 031 | `revoke select` sur `public.spatial_ref_sys` (anon / authenticated / PUBLIC) — **resté sans effet**, l'alerte Advisor persiste (voir ci-dessous) |
 
 Ajouter une migration = créer `0NN-nom.sql` **et** l'inclure dans `db.changelog-master.xml` avec un commentaire. Ne jamais modifier un changeset déjà appliqué.
+
+### `spatial_ref_sys` et l'alerte Advisor — NON RÉGLÉE (état 2026-08-03)
+
+> `Table public.spatial_ref_sys is public, but RLS has not been enabled.`
+
+PostGIS est installé **dans `public`** (001) et sa table `spatial_ref_sys` appartient à
+`supabase_admin`. Le rôle applicatif (`postgres.<ref>`) ne peut donc **rien** faire des trois
+leviers qui lèveraient l'alerte :
+
+| Levier | Ce qu'il faut | Verdict |
+|---|---|---|
+| `alter table … enable row level security` + policy | être owner | ❌ testé en 027 (`insufficient_privilege`) |
+| `alter extension postgis set schema extensions` (`extensions` est exclu du lint) | superuser | ❌ testé en 026 |
+| `revoke select` de `anon`/`authenticated`/`PUBLIC` (le lint filtre aussi sur les droits) | grant option | ❌ testé en 031 — REVOKE sans effet, PostgreSQL n'émet qu'un `WARNING` |
+
+Le SQL du lint (`splinter/0013_rls_disabled_in_public`) est bien
+`not relrowsecurity AND (has_table_privilege('anon'|'authenticated', …, 'SELECT')) AND nspname in
+<schémas exposés>` — le levier « droits » était le bon raisonnement, mais le droit vient de
+`supabase_admin`, hors de portée de `postgres`.
+
+⚠️ **Ne pas rejouer ces trois pistes** : quatre migrations (023, 025, 026, 027) plus 031 s'y sont
+déjà cassé les dents. 025 est même contre-productive (elle re-grant le SELECT). Ne jamais
+re-grant `select` non plus : si un jour le revoke devient possible, il ne faut pas le défaire.
+
+Options restantes, aucune indolore :
+1. **Vivre avec** — c'est un catalogue de systèmes de coordonnées, publié en clair par l'IGN et
+   l'EPSG ; aucune donnée du quartier. Risque réel ≈ nul, seul l'Advisor reste rouge.
+2. **Réinstaller PostGIS dans `extensions`** via la page Extensions du dashboard (seule interface
+   à s'exécuter avec les droits suffisants). Destructif : impose de sauvegarder lat/lng, de
+   supprimer `listings.location` et tous les RPC qui en dépendent, puis de tout recréer en
+   qualifiant les types (`extensions.geography`).
+3. **Demander à Supabase** (support / discussion GitHub) de lancer le `revoke` ou l'`enable RLS`
+   en `supabase_admin`.
+
+Sans impact fonctionnel dans tous les cas : aucun `st_transform` dans le projet, et le SRID 4326
+de `listings.location` court-circuite la lecture du catalogue.
 
 Les SQL de `supabase/` (`schema.sql`, `migration_*.sql`, `fix_rls_conversation_participants.sql`) sont **de l'historique** — pas la source de vérité.
 

@@ -1,5 +1,59 @@
 # Historique des modifications (par session)
 
+## 2026-08-03 (3) — Alerte Advisor `spatial_ref_sys` : piste épuisée, alerte non levée
+
+Demande : « cette issue Supabase que tu ne règles jamais » →
+`Table public.spatial_ref_sys is public, but RLS has not been enabled.`
+
+**Pourquoi les 4 tentatives précédentes ont échoué.** `spatial_ref_sys` est créée par PostGIS
+(installé dans `public` en 001) et appartient à `supabase_admin` : le rôle applicatif
+(`postgres.<ref>`) ne peut ni l'`ALTER`, ni y créer une policy, ni faire
+`alter extension postgis set schema extensions`. Donc 023 (no-op), 026 (`RAISE NOTICE`) et 027
+(`insufficient_privilege` avalé en `NOTICE`) n'ont rien fait, et **025 a re-grant le SELECT à
+`anon`/`authenticated`** — c'est-à-dire exactement la condition qui déclenche l'alerte.
+
+**Ce qui débloque.** Lecture du SQL réel du lint (`supabase/splinter`,
+`0013_rls_disabled_in_public`) : son `WHERE` ne teste pas que `not relrowsecurity`, il exige aussi
+`has_table_privilege('anon', …, 'SELECT') or has_table_privilege('authenticated', …, 'SELECT')`.
+Retirer le SELECT suffit donc à faire tomber l'alerte — sans activer un RLS interdit. Bénéfice
+réel au passage : la table cesse d'être interrogeable avec la clé anon publique (même esprit que
+030).
+
+**`liquibase/changelog/031-spatial-ref-sys-revoke-select.sql`** (nouveau)
+- `revoke select … from anon, authenticated` **et `from public`** : sans le revoke sur le
+  pseudo-rôle `PUBLIC`, `has_table_privilege('anon', …)` resterait vrai par héritage.
+- Changeset de contrôle `031-verify-revoke` : `RAISE EXCEPTION` si le privilège est encore là
+  après le revoke. En PostgreSQL un REVOKE sans droit suffisant n'échoue pas, il émet un simple
+  `WARNING` — sans cette vérification on reproduirait le faux positif de 027. La migration doit
+  échouer bruyamment plutôt que laisser croire que c'est fait.
+- `--rollback grant select … to anon, authenticated` pour `npm run db:rollback`.
+- `pg_notify('pgrst', 'reload schema')` en fin de fichier (comme 030).
+- Innocuité vérifiée sur tout le changelog : aucun `st_transform`, uniquement `st_dwithin` /
+  `st_distance` sur `geography`, `st_makepoint`, `st_x`/`st_y` ; `listings.location` est en
+  `geography(Point, 4326)` et PostGIS court-circuite la lecture du catalogue pour ce SRID.
+- `db.changelog-master.xml` : `<include>` de 031.
+
+**❌ Résultat de l'exécution : le REVOKE est sans effet.** Le changeset de contrôle a levé son
+exception (`le role courant (postgres) n'a pas le grant option`). Le SELECT n'a pas été accordé par
+`postgres` mais par `supabase_admin` / le script d'installation PostGIS : sans grant option,
+`postgres` ne peut pas le retirer, et PostgreSQL se contente d'un `WARNING`. Les trois leviers du
+lint (RLS, schéma de l'extension, droits) sont donc **tous** hors de portée d'une migration.
+
+**Correctif du correctif** : le changeset `031-verify-revoke` (EXCEPTION) a été remplacé par
+`031-report-privileges` (WARNING). Un changeset en échec bloque toutes les migrations suivantes —
+inacceptable pour un simple constat. Le changeset `031-revoke-select-spatial-ref-sys`, lui, est
+déjà enregistré en base : il n'a pas été touché (checksum) et reste inoffensif — il retire bien
+les grants qui, eux, appartiennent à `postgres`.
+
+**Options restantes** (aucune indolore, arbitrage utilisateur) : vivre avec l'alerte (le contenu
+de la table est le catalogue EPSG public, aucune donnée du quartier) · réinstaller PostGIS dans le
+schéma `extensions` via la page Extensions du dashboard, seule interface disposant des droits —
+destructif, impose de sauvegarder lat/lng, supprimer `listings.location` + tous les RPC dépendants
+puis tout recréer en `extensions.geography` · demander l'opération au support Supabase.
+
+⚠️ Migrations **non applicables par l'agent** : pas d'accès réseau à la base depuis la session
+(`Connect timed out` sur le pooler 6543). `npm run db:migrate` est lancé par l'utilisateur.
+
 ## 2026-08-03 (2) — Fermeture de la lecture aux authentifiés + ListingForm partagé
 
 Suite à un audit demandé sur « ce qui peut être optimisé ». Deux des trois priorités

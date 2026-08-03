@@ -95,4 +95,7 @@
   <!-- Lecture de profiles / listings / events réservée aux authentifiés -->
   <include file="liquibase/changelog/030-restrict-read-to-authenticated.sql"/>
 
+  <!-- spatial_ref_sys retirée de l'API (revoke select) : supprime l'alerte Advisor RLS -->
+  <include file="liquibase/changelog/031-spatial-ref-sys-revoke-select.sql"/>
+
 </databaseChangeLog>

@@ -116,7 +116,7 @@ Conséquences à connaître :
 - L'inscription reste **ouverte** : il n'y a pas de notion de membre du lotissement (choix assumé, phase de lancement).
 
 ### 6. Migrations
-- Source de vérité : `liquibase/changelog/` (**001 → 030** à ce jour) + `db.changelog-master.xml`.
+- Source de vérité : `liquibase/changelog/` (**001 → 031** à ce jour) + `db.changelog-master.xml`.
 - Ajouter une migration = créer `0NN-nom.sql` **et** l'enregistrer dans le master XML avec un commentaire descriptif.
 - Les SQL de `supabase/` (`schema.sql`, `migration_*.sql`, `fix_rls_*.sql`) sont **de l'historique** — ne pas les utiliser comme référence courante.
 - `liquibase/liquibase.properties` : copier depuis `.example`, ne jamais committer.
@@ -247,7 +247,9 @@ Rappels :
 
 ## Points de vigilance connus
 
-- 🔴 **`scripts/db-migrate.js` contient un mot de passe de base en dur** (et l'URL du pooler + l'identifiant du projet Supabase), alors que le script prétend lire `SUPABASE_DB_PASSWORD`. À basculer sur la variable d'environnement. En attendant : **ne pas dupliquer ce secret ailleurs, ne pas l'afficher dans une réponse, ne pas le committer dans un autre fichier.**
+- ✅ **`scripts/db-migrate.js` ne contient plus de secret** : il lit `SUPABASE_DB_PASSWORD` depuis `.env.local` (dotenv), déduit l'utilisateur du pooler depuis `NEXT_PUBLIC_SUPABASE_URL`, et redacte le mot de passe dans ses messages d'erreur. Surcharges possibles : `SUPABASE_DB_URL`, `SUPABASE_DB_USER`, `SUPABASE_POOLER_HOST`.
+- 🔴 **Alerte Advisor `spatial_ref_sys` : non réglable depuis une migration.** La table appartient à `supabase_admin` : `ENABLE ROW LEVEL SECURITY` (027), `ALTER EXTENSION postgis SET SCHEMA` (026) et `REVOKE SELECT` (031) échouent tous — le REVOKE ne lève même pas d'erreur, PostgreSQL se contente d'un `WARNING`. **Ne pas rejouer ces pistes**, cinq migrations s'y sont déjà cassé les dents (023, 025, 026, 027, 031). Il ne reste que : vivre avec (le contenu est un catalogue EPSG public, zéro donnée du quartier), réinstaller PostGIS dans `extensions` via le dashboard (destructif), ou demander l'opération à Supabase. État des lieux complet dans [`memory/database.md`](./memory/database.md).
+- **La base n'est pas joignable depuis la session agent** (`Connect timed out` sur le pooler 6543) : les commandes `db:status` / `db:migrate` sont à lancer par l'utilisateur.
 - **Dette de lint** : 40 avertissements pré-existants, dont 16 `react-hooks/set-state-in-effect` (règle apparue avec eslint-plugin-react-hooks 7) volontairement rétrogradée en `warn` dans `eslint.config.mjs` — voir le commentaire du fichier. À traiter progressivement, pas en bloc (aucun test pour couvrir un refactor d'effets).
 - Documentation partiellement obsolète : `README.md` et `.github/copilot-instructions.md` annoncent Next.js 14, `middleware.ts` et Nominatim. `memory/` a été réaligné le 2026-07-28 — le maintenir à jour en fin de session.
 - `JAVA_HOME` doit pointer vers un JDK existant pour les commandes `db:*` (Liquibase est un outil Java).
