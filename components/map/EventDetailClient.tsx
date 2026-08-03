@@ -3,11 +3,10 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, CalendarDays, MapPin, Clock, ChevronLeft, ChevronRight, Pencil, Trash2, Loader2, AlertCircle } from 'lucide-react'
+import { ArrowLeft, CalendarDays, MapPin, Clock, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { Event, Profile } from '@/lib/types'
 import { cn, getAvatarStyle } from '@/lib/utils'
-import { useCurrentUser } from '@/lib/hooks'
-import { deleteEventWithImages } from '@/lib/events'
+import { EventActions } from '@/components/map/EventActions'
 import EventMiniMap from '@/components/map/EventMiniMapDynamic'
 import { createClient } from '@/lib/supabase/client'
 
@@ -27,20 +26,11 @@ interface Props {
 
 export default function EventDetailClient({ event }: Props) {
   const router = useRouter()
-  const { userId, isReferent } = useCurrentUser()
   const [photoIndex, setPhotoIndex] = useState(0)
   const [creator, setCreator] = useState<Profile | null>(null)
-  const [confirmDelete, setConfirmDelete] = useState(false)
-  const [deleting, setDeleting] = useState(false)
-  const [deleteError, setDeleteError] = useState<string | null>(null)
   const photos = event.image_urls ?? []
   const isPast = new Date(event.event_date) < new Date()
   const hasCoords = event.location_lat != null && event.location_lng != null
-
-  const isOwner = userId === event.user_id
-  // Cas nominal : le créateur modifie et supprime son événement.
-  // En plus, un référent peut modifier et supprimer n'importe quel événement (policy 037).
-  const canManage = isOwner || isReferent
 
   useEffect(() => {
     const supabase = createClient()
@@ -51,24 +41,6 @@ export default function EventDetailClient({ event }: Props) {
       .single()
       .then(({ data }) => { if (data) setCreator(data as Profile) })
   }, [event.user_id])
-
-  const handleDelete = async () => {
-    setDeleting(true)
-    setDeleteError(null)
-
-    // RLS arbitre (créateur ou référent) ; false = 0 ligne supprimée
-    // (droits insuffisants ou base pas encore migrée en 037) — cf. lib/events.ts
-    const ok = await deleteEventWithImages(createClient(), event)
-
-    if (!ok) {
-      setDeleteError('Suppression impossible. Réessayez.')
-      setDeleting(false)
-      setConfirmDelete(false)
-      return
-    }
-
-    router.push('/evenements')
-  }
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
@@ -223,53 +195,13 @@ export default function EventDetailClient({ event }: Props) {
             </>
           )}
 
-          {/* Actions : modifier et supprimer — créateur, ou référent (modération) */}
-          {canManage && (
-            <>
-              <div className="border-t border-gray-100" />
-
-              <Link
-                href={`/evenements/${event.id}/edit`}
-                className="w-full py-3 text-center bg-gray-100 text-gray-700 font-medium rounded-xl hover:bg-gray-200 transition-colors text-sm flex items-center justify-center gap-2"
-              >
-                <Pencil size={14} /> {isOwner ? 'Modifier l\'événement' : 'Modifier (référent)'}
-              </Link>
-
-              {deleteError && (
-                <p className="flex items-center gap-2 text-sm text-red-600">
-                  <AlertCircle size={14} /> {deleteError}
-                </p>
-              )}
-              {confirmDelete ? (
-                <div className="flex items-center justify-center gap-3 py-1">
-                  <span className="text-sm text-gray-600">Supprimer définitivement ?</span>
-                  <button
-                    onClick={handleDelete}
-                    disabled={deleting}
-                    className="flex items-center gap-1.5 text-sm font-semibold text-red-600 hover:text-red-700 disabled:opacity-60"
-                  >
-                    {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                    Confirmer
-                  </button>
-                  <button
-                    onClick={() => setConfirmDelete(false)}
-                    disabled={deleting}
-                    className="text-sm text-gray-500 hover:text-gray-700"
-                  >
-                    Annuler
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setConfirmDelete(true)}
-                  className="w-full py-3 text-center text-red-600 font-medium rounded-xl border border-red-200 hover:bg-red-50 transition-colors text-sm flex items-center justify-center gap-2"
-                >
-                  <Trash2 size={14} />
-                  {isOwner ? 'Supprimer l\'événement' : 'Supprimer (référent)'}
-                </button>
-              )}
-            </>
-          )}
+          {/* Actions modifier/supprimer : UN SEUL composant, partagé avec le popup
+              et le profil — ne rien rajouter en dur ici (cf. EventActions) */}
+          <EventActions
+            variant="stacked"
+            event={event}
+            onDeleted={() => router.push('/evenements')}
+          />
         </div>
       </div>
     </div>

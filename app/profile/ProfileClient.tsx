@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile, Listing, Event } from '@/lib/types'
 import { getCategoryEmoji } from '@/lib/categories'
+import { EventActions } from '@/components/map/EventActions'
 import { formatDate } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { getAvatarStyle, DEFAULT_AVATAR_COLOR } from '@/lib/utils'
@@ -69,9 +70,6 @@ export default function ProfileClient() {
   const [listingsOpen, setListingsOpen] = useState(false)
   // Events accordion
   const [eventsOpen, setEventsOpen] = useState(false)
-  const [confirmDeleteEventId, setConfirmDeleteEventId] = useState<string | null>(null)
-  const [deletingEventId, setDeletingEventId] = useState<string | null>(null)
-  const [deleteEventError, setDeleteEventError] = useState<string | null>(null)
 
   // Password change
   const [pwdOpen, setPwdOpen] = useState(false)
@@ -198,37 +196,6 @@ export default function ProfileClient() {
       setConfirmDeleteId(null)
     }
     setDeletingId(null)
-  }
-
-  const handleDeleteEvent = async (id: string, imageUrls: string[]) => {
-    if (!userId) return
-    setDeletingEventId(id)
-    setDeleteEventError(null)
-
-    // Delete images from storage
-    if (imageUrls.length > 0) {
-      const paths = imageUrls.map(url => {
-        const parts = url.split('/events/')
-        return parts[1] || ''
-      }).filter(Boolean)
-      if (paths.length > 0) {
-        await supabase.storage.from('events').remove(paths)
-      }
-    }
-
-    const { error } = await supabase
-      .from('events')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', userId)
-
-    if (error) {
-      setDeleteEventError('Erreur lors de la suppression.')
-    } else {
-      setEvents(l => l.filter(x => x.id !== id))
-      setConfirmDeleteEventId(null)
-    }
-    setDeletingEventId(null)
   }
 
   const handleChangePassword = async () => {
@@ -590,12 +557,6 @@ export default function ProfileClient() {
 
         {eventsOpen && (
           <div className="p-4 flex flex-col gap-3">
-            {deleteEventError && (
-              <div className="flex items-center gap-2 text-sm text-red-500 bg-red-50 rounded-xl px-4 py-2">
-                <AlertCircle size={14} /> {deleteEventError}
-              </div>
-            )}
-
             {events.length === 0 ? (
               <div className="text-center py-10 text-gray-400">
                 <CalendarDays size={36} className="mx-auto mb-2 opacity-20" />
@@ -625,38 +586,13 @@ export default function ProfileClient() {
                       </div>
                     </div>
 
-                    <div className="border-t border-gray-100 flex">
-                      {confirmDeleteEventId === event.id ? (
-                        <div className="flex-1 flex items-center justify-center gap-3 py-2.5 bg-red-50">
-                          <button onClick={() => setConfirmDeleteEventId(null)} className="text-xs text-gray-500 hover:text-gray-700 font-medium">
-                            Annuler
-                          </button>
-                          <button
-                            onClick={() => handleDeleteEvent(event.id, event.image_urls || [])}
-                            disabled={deletingEventId === event.id}
-                            className="flex items-center gap-1 text-xs font-semibold text-red-600 hover:text-red-700"
-                          >
-                            {deletingEventId === event.id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
-                            Confirmer
-                          </button>
-                        </div>
-                      ) : (
-                        <>
-                          <button
-                            onClick={() => router.push(`/evenements/${event.id}/edit`)}
-                            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium text-brand-600 hover:bg-brand-50 transition-colors border-r border-gray-100"
-                          >
-                            <Pencil size={14} /> Modifier
-                          </button>
-                          <button
-                            onClick={() => setConfirmDeleteEventId(event.id)}
-                            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium text-red-500 hover:bg-red-50 transition-colors"
-                          >
-                            <Trash2 size={14} /> Supprimer
-                          </button>
-                        </>
-                      )}
-                    </div>
+                    {/* Actions modifier/supprimer : UN SEUL composant, partagé avec la
+                        page détail et le popup — ne rien rajouter en dur ici (cf. EventActions) */}
+                    <EventActions
+                      variant="row"
+                      event={event}
+                      onDeleted={id => setEvents(l => l.filter(x => x.id !== id))}
+                    />
                   </div>
                 )
               })

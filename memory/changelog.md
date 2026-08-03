@@ -15,6 +15,19 @@ quel événement. Le volet « modifier » a donc été ajouté après coup :
   `user_id` : pas d'appropriation par le référent.
 - `EventDetailClient` : « Modifier (référent) » visible aussi pour le référent (`canManage`).
 
+### Refactor : `EventActions`, composant unique (demandé par l'utilisateur après le bug du popup)
+Les actions modifier/supprimer étaient dupliquées en 3 exemplaires (page détail, popup, profil).
+**`components/map/EventActions.tsx`** (nouveau) les centralise : `useCurrentUser` + `canManage`
+en interne (rend `null` sans droits), libellés « (référent) », confirmation deux temps,
+`deleteEventWithImages()`, prop `onDeleted(id)` laissée au parent (navigation / filtre de liste),
+deux variantes `stacked` (page + popup) et `row` (barre scindée du profil, styles repris à
+l'identique). Les trois écrans sont réduits à un appel ; `ProfileClient` perd `handleDeleteEvent`
+et ses 3 états — sa copie faisait images-d'abord + `.eq('user_id')` sans contrôle 0-ligne, elle
+hérite du bon ordre et de la détection d'échec via le helper. L'erreur de suppression s'affiche
+désormais dans la ligne concernée (bloc global retiré). Hors périmètre assumé : le corps
+informatif page vs popup (aperçu volontairement allégé) et les actions des annonces (déjà
+centralisées via `ListingActions`/`ListingForm`).
+
 ### Correctif : le popup de la liste n'avait pas les boutons (remonté par l'utilisateur)
 « Je peux modifier mais pas supprimer » : l'utilisateur était sur **`EventDetailPopup`** (panneau
 ouvert depuis la liste `/evenements` en desktop), un **troisième écran** d'événement oublié — il
