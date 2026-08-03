@@ -10,7 +10,7 @@
 - `liquibase/liquibase.properties` (gitignoré) ne porte plus que `driver` / `changeLogFile` / `outputDefaultSchema` ; les identifiants viennent du script. Template : `.example`.
 - ⚠️ Liquibase = outil Java : les commandes `db:*` échouent si `JAVA_HOME` est invalide.
 
-## Migrations (ordre chronologique — 001 → 027)
+## Migrations (ordre chronologique — 001 → 030)
 | Fichier | Contenu |
 |---|---|
 | 001 | Schéma initial (profiles, listings, categories, messages, geography, RLS de base) |
@@ -40,6 +40,9 @@
 | 025 | Hardening `spatial_ref_sys` (réduction des droits d'écriture) |
 | 026 | Déplacement de PostGIS hors du schéma `public` (alerte Supabase Advisor) |
 | 027 | Activation explicite de RLS sur `public.spatial_ref_sys` |
+| 028 | Catégorie `livre` (id = 8, ID posé explicitement + `setval` de la séquence) + colonnes `book_author`, `book_condition`, `book_genre` |
+| 029 | Update RPC avec les champs livre **et `price`** (oublié en 014 : le badge prix ne remontait pas sur la carte) + re-grant `execute` perdu par le DROP |
+| 030 | Lecture de `profiles` / `listings` / `events` réservée aux authentifiés (`to authenticated`) + `revoke execute` du RPC pour `anon`. `categories` reste public (keepalive). |
 
 Ajouter une migration = créer `0NN-nom.sql` **et** l'inclure dans `db.changelog-master.xml` avec un commentaire. Ne jamais modifier un changeset déjà appliqué.
 
@@ -55,12 +58,13 @@ Créé automatiquement à l'inscription par le trigger `on_auth_user_created` �
 `id, user_id, category_id, title, description, type, status, image_url, address, city`  
 `carpool_departure_address/lat/lng, carpool_arrival_address/lat/lng`  
 `childcare_start_at, childcare_end_at, childcare_mode, childcare_slots (JSONB)`  
+`book_author, book_condition, book_genre` (text libre ; valeurs de `book_condition` contraintes côté TS par `BookCondition`)  
 `listing_intent, expires_at, price, created_at, responder_id, conversation_id`  
 Colonne géo : `geography(Point, 4326)` — insert en WKT `POINT(lng lat)` (**longitude d'abord**).  
 ⚠️ `responder_id` n'a **pas** de CASCADE : la suppression de compte doit d'abord le remettre à `null` (fait par `/api/account/delete`).
 
 ### `categories`
-`id (serial), slug, label, icon` — IDs stables 1–7.
+`id (serial), slug, label, icon` — IDs stables 1–8 (8 = `livre`, ajouté en 028).
 
 ### Messagerie : `conversations` + `conversation_participants` + `messages`
 ⚠️ La table s'appelle **`messages`** en base ; le type TS correspondant est **`DirectMessage`**.  
@@ -73,7 +77,7 @@ Trigger `messages_update_conversation_ts` (met à jour `conversations.updated_at
 
 ### `events`
 `id, user_id, title, description, event_date, event_end_date, location_text, location_lat, location_lng, image_urls (text[]), created_at`  
-RLS : lecture publique, écriture/modif/suppression réservées au créateur.
+RLS : lecture **authentifiée** (migration 030), écriture/modif/suppression réservées au créateur.
 
 ### `fcm_tokens`
 `user_id` (→ `auth.users`, cascade), `token`. Upsert `onConflict: 'token'`. Les tokens rejetés par FCM sont supprimés automatiquement par `lib/fcm-admin.ts`.
@@ -81,7 +85,7 @@ RLS : lecture publique, écriture/modif/suppression réservées au créateur.
 ## Fonctions / RPC
 | RPC | Rôle |
 |---|---|
-| `listings_within_radius(lat, lng, radius_km)` | Annonces dans un rayon + `distance_m`, `lat_out`, `lng_out` |
+| `listings_within_radius(lat, lng, radius_km)` | Annonces dans un rayon + `distance_m`, `lat_out`, `lng_out`. ⚠️ `RETURNS TABLE` explicite (dernière définition : **029**) — toute nouvelle colonne de `listings` à afficher sur la carte doit y être ajoutée, sinon elle remonte `undefined` (piège historique : `price`, resté absent de 014 à 029). Étendre = `DROP` + `CREATE` en `splitStatements:false`, et repasser le `grant execute`. |
 | `contact_listing(p_listing_id, …)` | Crée la conversation, pose `responder_id` + `conversation_id`, passe le statut à `en_cours` |
 | `validate_listing_response(p_listing_id)` | `en_cours` → `validee` + message système |
 | `cancel_listing_response(p_listing_id)` | Retour à `disponible`, remet `responder_id`/`conversation_id` à `null` + message système |
@@ -105,6 +109,13 @@ Toujours passer par ces RPC — jamais d'`update` direct sur `status`.
 - Buckets publics : **`listings`** (migration 004) et **`events`** (migration 024)
 - Chemin : `{userId}/{timestamp}.{ext}` — les policies delete s'appuient sur `(storage.foldername(name))[1] = auth.uid()`
 - URL publique stockée dans `listings.image_url` / `events.image_urls[]`
+- ⚠️ Ces buckets restent **publics** après la migration 030 (nécessaire pour `getPublicUrl`) : une image est donc accessible par son URL directe même sans compte. URL non devinable, limite assumée — passer aux signed URLs si ça devient un enjeu.
+
+## Visibilité des données (migration 030)
+`profiles`, `listings`, `events` : `for select **to authenticated**` (avant : `using (true)`, donc lisibles par le rôle `anon` avec la clé publique).  
+`categories` : **reste en lecture publique** — `/api/keepalive` l'interroge avec la clé anon.  
+Messagerie (`conversations`, `conversation_participants`, `messages`, `message_reactions`) et `fcm_tokens` : déjà cloisonnés par utilisateur, non touchés.  
+Pas de notion de membre du lotissement : l'inscription reste ouverte (choix assumé).
 
 ## Realtime
 Activé sur `messages` et `conversation_participants` (migration 017), + `message_reactions` (022).  

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { ListingCard } from '@/components/listings/ListingCard'
+import { LoginRequiredNotice } from '@/components/layout/LoginRequiredNotice'
 import type { Listing } from '@/lib/types'
 import { Loader2, Sparkles, ChevronLeft, ChevronRight, Search, X } from 'lucide-react'
 import { cn, normalizeSearch } from '@/lib/utils'
@@ -19,13 +20,19 @@ export default function RecentPage() {
   const [page, setPage] = useState(0)
   const [total, setTotal] = useState(0)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  // Distingue « pas encore su » de « déconnecté », pour ne pas faire clignoter
+  // l'encart de connexion le temps que getUser() réponde.
+  const [authResolved, setAuthResolved] = useState(false)
 
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('')
   const [slugToId, setSlugToId] = useState<Record<string, number>>({})
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => setIsLoggedIn(!!user))
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setIsLoggedIn(!!user)
+      setAuthResolved(true)
+    })
     supabase.from('categories').select('id, slug').then(({ data }) => {
       if (data) {
         const map: Record<string, number> = {}
@@ -164,6 +171,8 @@ export default function RecentPage() {
         <div className="flex items-center justify-center py-24">
           <Loader2 className="animate-spin text-brand-600" size={32} />
         </div>
+      ) : authResolved && !isLoggedIn ? (
+        <LoginRequiredNotice what="les derniers ajouts de votre quartier" redirectTo="/recent" />
       ) : listings.length === 0 ? (
         <div className="text-center py-20 text-gray-400">
           <Sparkles size={40} className="mx-auto mb-3 opacity-20" />

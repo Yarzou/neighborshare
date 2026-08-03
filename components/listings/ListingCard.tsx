@@ -122,6 +122,10 @@ export function ListingCard({ listing, compact = false, onClick, active, outline
           </div>
         </div>
 
+        {listing.book_author && (
+          <p className="text-xs text-gray-500 italic truncate">{listing.book_author}</p>
+        )}
+
         {!compact && listing.description && (
           <p className="text-sm text-gray-500 line-clamp-2">{listing.description}</p>
         )}

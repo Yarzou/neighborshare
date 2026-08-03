@@ -6,6 +6,7 @@ import type { Event } from '@/lib/types'
 import { EventCard } from './EventCard'
 import { EventDetailPopup } from './EventDetailPopup'
 import { MiniCalendar } from './MiniCalendar'
+import { LoginRequiredNotice } from '@/components/layout/LoginRequiredNotice'
 import { CalendarDays, Loader2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -58,6 +59,9 @@ export function EventsList({
   const [showCalendar, setShowCalendar] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  // Distingue « pas encore su » de « déconnecté », pour ne pas faire clignoter
+  // l'encart de connexion le temps que getUser() réponde.
+  const [authResolved, setAuthResolved] = useState(false)
 
   // Internal filter state (mobile) — controlled by parent on desktop
   const [internalFilterFrom, setInternalFilterFrom] = useState(`${new Date().getFullYear()}-01-01`)
@@ -131,7 +135,10 @@ export function EventsList({
       onMarkedDatesReady?.(dates)
     }
     loadMarked()
-    supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id ?? null))
+    supabase.auth.getUser().then(({ data }) => {
+      setCurrentUserId(data.user?.id ?? null)
+      setAuthResolved(true)
+    })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Infinite scroll sentinel
@@ -258,6 +265,12 @@ export function EventsList({
           <div className={cn('flex items-center justify-center py-12', layout === 'grid' && 'col-span-3')}>
             <Loader2 className="animate-spin text-brand-600" size={28} />
           </div>
+        ) : authResolved && !currentUserId ? (
+          <LoginRequiredNotice
+            what="les événements du quartier"
+            redirectTo="/evenements"
+            className={cn('text-center py-12 px-4 text-gray-500', layout === 'grid' && 'col-span-3')}
+          />
         ) : events.length === 0 ? (
           <div className={cn('text-center py-12 text-gray-400', layout === 'grid' && 'col-span-3')}>
             <CalendarDays size={40} className="mx-auto mb-3 opacity-30" />

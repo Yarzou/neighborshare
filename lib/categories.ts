@@ -4,7 +4,7 @@
  */
 
 export interface CategoryDef {
-  /** ID stable en base (serial, 1–7) */
+  /** ID stable en base (serial, 1–8) */
   id: number
   slug: string
   /** Label complet affiché sur la page d'accueil et dans les formulaires */
@@ -28,6 +28,7 @@ export const CATEGORY_LIST: CategoryDef[] = [
   { id: 5, slug: 'dons',         label: 'Dons / Objets',    filterLabel: 'Dons',     icon: '📦', color: 'bg-purple-50 border-purple-200',   hoverColor: 'hover:bg-purple-100 hover:border-purple-300', borderOnly: 'bg-white border-purple-300 hover:border-purple-400' },
   { id: 6, slug: 'jardinage',    label: 'Jardinage',        filterLabel: 'Jardin',   icon: '🌿', color: 'bg-emerald-50 border-emerald-200', hoverColor: 'hover:bg-emerald-100 hover:border-emerald-300', borderOnly: 'bg-white border-emerald-300 hover:border-emerald-400' },
   { id: 7, slug: 'cuisine',      label: 'Cuisine',          filterLabel: 'Cuisine',  icon: '🍳', color: 'bg-orange-50 border-orange-200',   hoverColor: 'hover:bg-orange-100 hover:border-orange-300', borderOnly: 'bg-white border-orange-300 hover:border-orange-400' },
+  { id: 8, slug: 'livre',        label: 'Livres',           filterLabel: 'Livres',   icon: '📚', color: 'bg-amber-50 border-amber-200',     hoverColor: 'hover:bg-amber-100 hover:border-amber-300',   borderOnly: 'bg-white border-amber-300 hover:border-amber-400' },
 ]
 
 /** Slugs de catégories incompatibles avec le type "vente" */

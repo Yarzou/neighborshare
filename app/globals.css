@@ -250,6 +250,7 @@ html.dark .bg-yellow-50  { background-color: rgba(113,63,18,0.30) !important; }
 html.dark .bg-purple-50  { background-color: rgba(88,28,135,0.30) !important; }
 html.dark .bg-emerald-50 { background-color: rgba(6,78,59,0.25)   !important; }
 html.dark .bg-orange-50  { background-color: rgba(124,45,18,0.25) !important; }
+html.dark .bg-amber-50   { background-color: rgba(120,53,15,0.28) !important; }
 html.dark .bg-indigo-50  { background-color: rgba(49,46,129,0.30) !important; }
 html.dark .bg-rose-50    { background-color: rgba(136,19,55,0.25) !important; }
 
@@ -261,6 +262,7 @@ html.dark .border-yellow-200 { border-color: #713f12 !important; }
 html.dark .border-purple-200 { border-color: #581c87 !important; }
 html.dark .border-emerald-200 { border-color: #064e3b !important; }
 html.dark .border-orange-200 { border-color: #7c2d12 !important; }
+html.dark .border-amber-200  { border-color: #78350f !important; }
 
 /* Hover des filtres inactifs */
 html.dark .hover\:bg-blue-100:hover    { background-color: rgba(30,58,138,0.45)  !important; }
@@ -270,6 +272,7 @@ html.dark .hover\:bg-yellow-100:hover  { background-color: rgba(113,63,18,0.45) 
 html.dark .hover\:bg-purple-100:hover  { background-color: rgba(88,28,135,0.45)  !important; }
 html.dark .hover\:bg-emerald-100:hover { background-color: rgba(6,78,59,0.40)    !important; }
 html.dark .hover\:bg-orange-100:hover  { background-color: rgba(124,45,18,0.40)  !important; }
+html.dark .hover\:bg-amber-100:hover   { background-color: rgba(120,53,15,0.45)  !important; }
 
 /* ─── Gradients (ListingCard, home) ─────────────────────────────────────── */
 html.dark .from-brand-50  { --tw-gradient-from: rgba(20,83,45,0.3) !important; }
@@ -296,6 +299,18 @@ html.dark .cluster-bubble {
   box-shadow: 0 2px 10px rgba(0,0,0,0.6) !important;
 }
 html.dark .cluster-bubble:hover { background: #14532d !important; }
+
+/* ─── Voile « connexion requise » sur la carte ───────────────────────────── */
+/* Classe dédiée : `bg-white/80` génère `.bg-white\/80`, que le bloc d'overrides
+   dark ci-dessus (qui cible `.bg-white`) ne rattraperait pas — le voile resterait
+   blanc en thème sombre. */
+.map-login-veil {
+  background-color: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(3px);
+}
+html.dark .map-login-veil {
+  background-color: rgba(15, 23, 42, 0.82) !important;
+}
 
 /* ─── Marqueurs personnalisés (carte) ────────────────────────────────────── */
 html.dark .custom-marker {

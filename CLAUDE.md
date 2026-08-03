@@ -101,8 +101,22 @@ Leaflet ne tourne pas côté serveur. Tout composant carte est chargé via `dyna
 - **`proxy.ts` à la racine** est le middleware (Next 16 a renommé `middleware.ts` → `proxy.ts`). Il rafraîchit les cookies de session via `getSession()` ; `protectedPaths` est **volontairement vide** — la protection des routes est faite dans les composants.
 - Dans une page qui crée de la donnée : appeler `supabase.auth.getUser()` **après** avoir posé l'abonnement `onAuthStateChange`, sinon faux `null` juste après login.
 
+#### Visibilité des données (migration 030)
+La lecture de **`profiles`, `listings` et `events` est réservée aux comptes authentifiés** (`for select to authenticated`). Avant, ces tables étaient en `using (true)`, donc lisibles par le rôle `anon` — et la clé anon étant publique par conception, les adresses et coordonnées des foyers étaient accessibles sans compte.
+
+> ⛔ **Le RLS est le seul verrou. L'UI n'est qu'un habillage.**
+> Le voile sur la carte et les encarts « Réservé aux voisins » sont purement visuels — ils se contournent avec l'inspecteur ou en désactivant JS. Ils ne masquent rien : derrière, la base ne renvoie aucune ligne. Ne **jamais** afficher une donnée sensible en se reposant sur eux ; toute donnée se protège par une policy.
+
+Conséquences à connaître :
+- **`categories` reste volontairement en lecture publique** : `/api/keepalive` l'interroge avec la clé anon. Ne pas la fermer.
+- Un Server Component qui lit `listings` / `profiles` / `events` doit poser `getUser()` **avant** son fetch et rediriger vers `/auth/login?redirect=…`, sinon la donnée est `null` et la page plante (le cas existait déjà sur `listings/[id]`). Même règle pour une page qui rend un formulaire d'écriture (cf. `evenements/new`).
+- Les pages client restent navigables sans compte mais afficheraient une liste vide : elles utilisent **`components/layout/LoginRequiredNotice.tsx`** à la place. Toujours l'afficher derrière un flag « auth résolue » (et non `!isLoggedIn` seul), sinon l'encart clignote pour un utilisateur connecté.
+- Sur `/map`, la carte reste rendue (sans marqueur) : elle est couverte par un **voile** (`.map-login-veil` dans `globals.css`, classe dédiée car `bg-white/80` échappe au bloc d'overrides dark). Sans lui, la vue mobile « Carte » n'afficherait aucune explication.
+- **Limite assumée** : les buckets Storage `listings` et `events` restent publics (nécessaire pour `getPublicUrl`) — une image reste donc accessible par son URL directe, non devinable (`{userId}/{timestamp}.{ext}`). Passer aux signed URLs si ça devient un enjeu.
+- L'inscription reste **ouverte** : il n'y a pas de notion de membre du lotissement (choix assumé, phase de lancement).
+
 ### 6. Migrations
-- Source de vérité : `liquibase/changelog/` (**001 → 027** à ce jour) + `db.changelog-master.xml`.
+- Source de vérité : `liquibase/changelog/` (**001 → 030** à ce jour) + `db.changelog-master.xml`.
 - Ajouter une migration = créer `0NN-nom.sql` **et** l'enregistrer dans le master XML avec un commentaire descriptif.
 - Les SQL de `supabase/` (`schema.sql`, `migration_*.sql`, `fix_rls_*.sql`) sont **de l'historique** — ne pas les utiliser comme référence courante.
 - `liquibase/liquibase.properties` : copier depuis `.example`, ne jamais committer.
@@ -143,13 +157,13 @@ Détail complet des colonnes et de l'historique des migrations : [`memory/databa
 
 - **Valeurs métier en slugs français** : `ListingType` = `pret | don | echange | service | vente` · `ListingStatus` = `disponible | reserve | termine | en_cours | validee` · `ListingIntent` = `offre | demande`. Les labels et couleurs d'affichage sont des `Record<...>` exportés depuis `lib/types.ts` (`LISTING_TYPE_LABELS`, `LISTING_STATUS_COLORS`, `LISTING_TYPE_MARKER_COLORS`…) — ne pas redéfinir de mapping ailleurs.
 - **Types partagés** : tout dans `lib/types.ts`.
-- **Catégories** : source de vérité unique `lib/categories.ts` (`CATEGORY_LIST`, IDs stables 1–7, helpers `getCategoryEmoji`, `getCategoryCardClasses`, `getCategoryBorderOnlyClasses`, `FILTER_CATEGORIES`). Ne jamais coder en dur un emoji ou une couleur de catégorie.
+- **Catégories** : source de vérité unique `lib/categories.ts` (`CATEGORY_LIST`, IDs stables 1–8, helpers `getCategoryEmoji`, `getCategoryCardClasses`, `getCategoryBorderOnlyClasses`, `FILTER_CATEGORIES`). Ne jamais coder en dur un emoji ou une couleur de catégorie.
 - **Classes conditionnelles** : `cn()` de `lib/utils.ts` (clsx + tailwind-merge).
 - **Palette** : `brand-*` (vert) pour les actions primaires — `brand-600` boutons, `brand-500` focus ring ; `warm-*` en accent secondaire. Éviter les hex en dur côté UI (exception assumée : couleurs de marqueurs Leaflet et templates email, qui ne passent pas par Tailwind).
 - **Formatage** : helpers de `lib/utils.ts` (`formatDistance`, `formatDate`, `formatDateTime`, `formatChildcarePeriod`, `formatChildcareSlots`, `getAvatarStyle`) — locale `fr-FR`.
 - **Recherche texte** : `normalizeSearch()` (insensible casse + accents), filtrage client-side.
 - **Autocomplétion d'adresse** : `components/forms/AddressAutocomplete.tsx` utilise l'**API BAN** (`api-adresse.data.gouv.fr`) — Nominatim a été retiré. Retourne `ResolvedAddress { displayName, lat, lon, road, city }`. ⚠️ `memory/components.md` mentionne encore Nominatim.
-- **Champs conditionnels du formulaire d'annonce** (par slug de catégorie) : `covoiturage` → adresses départ/arrivée + mini-carte (masque photo et adresse standard) ; `garde-enfant` → créneaux récurrents/ponctuels (`childcare_slots` JSONB, `day` 0=dimanche convention JS, heures `"HH:mm"`) et masque la photo. `VENTE_EXCLUDED_SLUGS` interdit le type `vente` sur `covoiturage` et `garde-enfant`.
+- **Champs conditionnels du formulaire d'annonce** (par slug de catégorie) : `covoiturage` → adresses départ/arrivée + mini-carte (masque photo et adresse standard) ; `garde-enfant` → créneaux récurrents/ponctuels (`childcare_slots` JSONB, `day` 0=dimanche convention JS, heures `"HH:mm"`) et masque la photo ; `livre` → auteur / état / genre (`book_author`, `book_condition`, `book_genre` — tous optionnels) et **conserve la photo**, qui sert de couverture. `VENTE_EXCLUDED_SLUGS` interdit le type `vente` sur `covoiturage` et `garde-enfant` (mais pas sur `livre`).
 
 ### Dark mode
 Classe `dark` sur `<html>`, posée par un script anti-FOUC inline dans `app/layout.tsx` + `ThemeProvider` (Context, `localStorage.theme` = `light | dark | system`).
@@ -191,7 +205,9 @@ scripts/      # db-migrate.js (pilote Liquibase)
 proxy.ts      # Middleware Next 16 (refresh cookies)
 ```
 
-Fichiers les plus lourds (attention aux gros refactors) : `app/profile/ProfileClient.tsx` (879 l.), `app/listings/new/page.tsx` (597 l.), `app/messages/[id]/page.tsx` (497 l.), `app/listings/[id]/edit/page.tsx` (478 l.).
+Fichiers les plus lourds (attention aux gros refactors) : `app/profile/ProfileClient.tsx` (879 l.), `components/listings/ListingForm.tsx` (~620 l.), `app/messages/[id]/page.tsx` (497 l.).
+
+⚠️ **Formulaire d'annonce** : toute la logique vit dans **`components/listings/ListingForm.tsx`** (`mode="create" | "edit"`). `app/listings/new/page.tsx` et `app/listings/[id]/edit/page.tsx` ne sont plus que des coquilles qui chargent les données et posent les gardes. Ne pas dupliquer de champ dans une des deux pages — les deux modes doivent rester alignés (c'est précisément la divergence qui faisait perdre `childcare_mode` / `childcare_slots` à l'édition avant le 2026-08-03).
 
 Détail des composants : [`memory/components.md`](./memory/components.md) · Architecture : [`memory/architecture.md`](./memory/architecture.md).
 

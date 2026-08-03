@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { EventsList } from '@/components/map/EventsList'
+import { LoginRequiredNotice } from '@/components/layout/LoginRequiredNotice'
 import { EventCard } from '@/components/map/EventCard'
 import { MiniCalendar } from '@/components/map/MiniCalendar'
 import EventMiniMap from '@/components/map/EventMiniMapDynamic'
@@ -154,6 +155,10 @@ export default function EvenementsPage() {
         {mobileLoading ? (
           <div className="flex items-center justify-center py-16">
             <Loader2 className="animate-spin text-brand-600" size={32} />
+          </div>
+        ) : !isLoggedIn ? (
+          <div className="bg-white rounded-2xl border border-gray-200">
+            <LoginRequiredNotice what="les événements du quartier" redirectTo="/evenements" />
           </div>
         ) : mobileEvents.length === 0 ? (
           <div className="text-center py-16 text-gray-400 bg-white rounded-2xl border border-gray-200">

@@ -1,9 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
-import { MapPin, Clock, ArrowLeft, CalendarDays, MessageCircle, RefreshCw } from 'lucide-react'
-import { isListingType, type Listing } from '@/lib/types'
+import { MapPin, Clock, ArrowLeft, CalendarDays, RefreshCw } from 'lucide-react'
+import { isListingType, BOOK_CONDITION_LABELS, type Listing } from '@/lib/types'
 import { formatDate, formatChildcarePeriod, formatChildcareSlots, getAvatarStyle } from '@/lib/utils'
 import { ContactButton } from '@/components/listings/ContactButton'
 import { ListingActions } from '@/components/listings/ListingActions'
@@ -17,18 +17,25 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
   const supabase = await createClient()
   const { id } = await params
 
+  // La lecture des annonces est réservée aux authentifiés (migration 030) : sans
+  // cette garde, un lien d'annonce partagé à quelqu'un de déconnecté planterait.
+  // On l'envoie au login avec retour sur l'annonce.
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect(`/auth/login?redirect=/listings/${id}`)
+
   const { data: listing, error: listingError } = await supabase
     .from('listings')
     .select('*, profiles!user_id(*), categories(*)')
     .eq('id', id)
     .single()
 
+  if (listingError || !listing) notFound()
+
   const typedListing = listing as unknown as ListingWithJoins
   const listingType = isListingType(typedListing.type) ? typedListing.type : 'pret'
 
-  const { data: { user } } = await supabase.auth.getUser()
-  const isOwner = user?.id === typedListing.user_id
-  const isResponder = user?.id === typedListing.responder_id
+  const isOwner = user.id === typedListing.user_id
+  const isResponder = user.id === typedListing.responder_id
 
   // Profil du répondant (si existant)
   let responderProfile = null
@@ -181,6 +188,37 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
             <p className="text-gray-600 leading-relaxed">{typedListing.description}</p>
           )}
 
+          {/* Fiche livre */}
+          {(typedListing.book_author || typedListing.book_condition || typedListing.book_genre) && (
+            <div className="bg-amber-50 rounded-2xl p-4 flex flex-col gap-2">
+              <p className="text-xs font-medium text-amber-800 uppercase tracking-wide">
+                📚 Le livre
+              </p>
+              <dl className="flex flex-col gap-1.5 text-sm">
+                {typedListing.book_author && (
+                  <div className="flex gap-2">
+                    <dt className="text-gray-500 w-16 flex-shrink-0">Auteur</dt>
+                    <dd className="text-gray-700 font-medium">{typedListing.book_author}</dd>
+                  </div>
+                )}
+                {typedListing.book_condition && (
+                  <div className="flex gap-2">
+                    <dt className="text-gray-500 w-16 flex-shrink-0">État</dt>
+                    <dd className="text-gray-700 font-medium">
+                      {BOOK_CONDITION_LABELS[typedListing.book_condition] ?? typedListing.book_condition}
+                    </dd>
+                  </div>
+                )}
+                {typedListing.book_genre && (
+                  <div className="flex gap-2">
+                    <dt className="text-gray-500 w-16 flex-shrink-0">Genre</dt>
+                    <dd className="text-gray-700 font-medium">{typedListing.book_genre}</dd>
+                  </div>
+                )}
+              </dl>
+            </div>
+          )}
+
           <div className="border-t border-gray-100" />
 
           {/* Profil du propriétaire */}
@@ -247,13 +285,6 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
             </Link>
           )}
 
-          {/* Non connecté */}
-          {!user && (
-            <Link href={`/auth/login?redirect=/listings/${typedListing.id}`}
-              className="w-full py-3 text-center bg-brand-600 text-white font-medium rounded-xl hover:bg-brand-700 transition-colors text-sm flex items-center justify-center gap-2">
-              <MessageCircle size={16} /> Connectez-vous pour contacter
-            </Link>
-          )}
         </div>
       </div>
     </div>

@@ -86,4 +86,13 @@
   <!-- Activation explicite de RLS sur public.spatial_ref_sys -->
   <include file="liquibase/changelog/027-rls-spatial-ref-sys.sql"/>
 
+  <!-- Nouvelle catégorie Livres + champs auteur / état / genre -->
+  <include file="liquibase/changelog/028-livre-category.sql"/>
+
+  <!-- RPC carte : remontée des champs livre (+ price, oublié en 014) -->
+  <include file="liquibase/changelog/029-rpc-book-fields.sql"/>
+
+  <!-- Lecture de profiles / listings / events réservée aux authentifiés -->
+  <include file="liquibase/changelog/030-restrict-read-to-authenticated.sql"/>
+
 </databaseChangeLog>

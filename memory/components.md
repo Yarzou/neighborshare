@@ -74,11 +74,27 @@ Bannière d'installation PWA — gère `beforeinstallprompt` (Android) **et** le
 ### `PushNotificationBanner.tsx`
 Demande de permission notifications push.
 
+### `LoginRequiredNotice.tsx`
+Encart « Réservé aux voisins » affiché **à la place d'une liste vide** quand le visiteur n'est pas connecté — depuis la migration 030, `listings` / `profiles` / `events` ne sont plus lisibles par `anon`, donc sans ça on croirait le quartier vide.  
+Props : `what` (ce qu'il verrait s'il était connecté), `redirectTo`, `className`, `compact` (masque les boutons, quand un autre encart porte déjà l'appel à l'action au même écran).  
+Utilisé par `MapView` (liste + voile de la carte), `app/recent`, `app/evenements` et `EventsList`.
+
+⚠️ Deux pièges :
+1. Toujours le conditionner à un flag **`authResolved`** et pas au seul `!isLoggedIn` : ce dernier démarre à `false`, donc l'encart clignoterait pour un connecté le temps que `getUser()` réponde.
+2. Sur `/map` il apparaît **deux fois** (liste latérale + voile de la carte) : la liste passe en `compact={!isMobile}` pour ne pas répéter les boutons côte à côte en desktop.
+
+**Purement visuel** — ce qui protège les données est le RLS (migration 030), jamais cet encart.
+
+### Voile de la carte (`.map-login-veil`)
+Overlay sur la zone `LeafletMap` de `MapView` quand `authResolved && !isLoggedIn` : la carte serait sinon rendue vide, ce qui suggère « il n'y a rien ici » au lieu de « connectez-vous ». **Indispensable en vue mobile « Carte »**, où l'encart de la liste n'est pas visible.  
+La classe vit dans `globals.css` (avec sa variante `html.dark`) et non en utilitaire Tailwind : `bg-white/80` génère `.bg-white\/80`, que le bloc d'overrides dark (qui cible `.bg-white`) ne rattraperait pas — le voile resterait blanc en thème sombre. `z-[1150]`, sous le popup de détail (`z-[1200]`).
+
 ---
 
 ## Listings — `components/listings/`
 
-- `ListingCard.tsx` — carte d'annonce. Props notables : `compact`, `outlineOnly`, `onClick`, `active`. Affiche emoji catégorie, badges type/statut, distance, image.
+- **`ListingForm.tsx`** — **le** formulaire d'annonce, partagé création/édition via `mode="create" | "edit"`. Porte tout : state, catégories, champs conditionnels par catégorie, validation, upload, insert/update, redirect. Props : `mode`, `listingId?` (edit), `initial?: Listing` (edit), `defaultAddress?` + `profileHadAddress?` (create). `app/listings/new` et `app/listings/[id]/edit` ne sont plus que des coquilles qui chargent les données et posent les gardes (auth, notFound, unauthorized). **Ne jamais rajouter un champ dans une seule des deux pages** — c'est cette divergence qui faisait perdre `childcare_mode` / `childcare_slots` à l'édition avant le 2026-08-03.
+- `ListingCard.tsx` — carte d'annonce. Props notables : `compact`, `outlineOnly`, `onClick`, `active`. Affiche emoji catégorie, badges type/statut, distance, image, auteur si `book_author`.
 - `ListingActions.tsx` — actions du cycle de vie sur la page détail. Appelle les RPC `validate_listing_response` / `cancel_listing_response`, puis notifie `/api/notifications` en fire-and-forget et fait un `router.refresh()`. Retourne `null` si `status === 'disponible'`.
 - `ContactButton.tsx` — appelle le RPC `contact_listing`, redirige vers la conversation créée. Props : `listingId, receiverId, listingStatus`.
 - `StatusBadge.tsx` — rend `LISTING_STATUS_LABELS/COLORS` ; **n'affiche rien pour `disponible`** sauf `showAll`.
@@ -143,14 +159,19 @@ import { cn } from '@/lib/utils'
 | 5 | `dons` | Dons / Objets | Dons | 📦 |
 | 6 | `jardinage` | Jardinage | Jardin | 🌿 |
 | 7 | `cuisine` | Cuisine | Cuisine | 🍳 |
+| 8 | `livre` | Livres | Livres | 📚 |
 
 Helpers : `getCategoryEmoji(id)`, `getCategoryCardClasses(id)`, `getCategoryBorderOnlyClasses(id)` (fond blanc + bordure, utilisé sur la carte), `FILTER_CATEGORIES` (avec « Tout » 🗺️ en tête).  
 `VENTE_EXCLUDED_SLUGS = ['covoiturage', 'garde-enfant']`
 
-### Champs conditionnels dans `listings/new`
+### Champs conditionnels dans `ListingForm` (création **et** édition)
 - `covoiturage` → adresses départ/arrivée + CarpoolMiniMap (cache photo + adresse standard)
 - `garde-enfant` → plage datetime garde + slots récurrents/ponctuels `childcare_slots` (cache photo).  
   `day` : 0 = dimanche … 6 = samedi (convention JS) ; heures au format `"HH:mm"`
+- `livre` → auteur / état / genre (`book_author`, `book_condition`, `book_genre`), **tous optionnels**, bloc ambre placé entre la catégorie et la photo. Contrairement aux deux autres, la photo est **conservée** (couverture).  
+  Labels : `BOOK_CONDITION_LABELS` et `BOOK_GENRES` de `lib/types.ts`. Affichage : fiche `<dl>` ambre sous la description sur la page détail, auteur en italique sous le titre dans `ListingCard`.
+
+> `FilterBar` : grille en `grid-cols-3` depuis l'ajout de « Livres » (9 tuiles = 3 lignes pleines ; c'était `grid-cols-4` à 8 tuiles).
 
 ---
 

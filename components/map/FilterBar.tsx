@@ -47,7 +47,7 @@ export function FilterBar({ category, onCategoryChange, count, loading, search, 
       </div>
 
       {/* Categories */}
-      <div className="grid grid-cols-4 gap-1.5">
+      <div className="grid grid-cols-3 gap-1.5">
         {FILTER_CATEGORIES.map(cat => (
           <button key={cat.slug} onClick={() => onCategoryChange(cat.slug)}
             className={cn(

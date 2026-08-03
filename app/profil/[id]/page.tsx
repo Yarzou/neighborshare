@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { getAvatarStyle } from '@/lib/utils'
@@ -8,6 +8,11 @@ import PublicProfileAccordion from '@/components/profil/PublicProfileAccordion'
 export default async function PublicProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const supabase = await createClient()
   const { id } = await params
+
+  // Lecture réservée aux authentifiés (migration 030) : sans cette garde un
+  // visiteur déconnecté verrait un 404 trompeur au lieu d'être invité à se connecter.
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect(`/auth/login?redirect=/profil/${id}`)
 
   const { data: profile } = await supabase
     .from('profiles')

@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { Listing } from '@/lib/types'
 import { ListingCard } from '@/components/listings/ListingCard'
 import { FilterBar } from '@/components/map/FilterBar'
+import { LoginRequiredNotice } from '@/components/layout/LoginRequiredNotice'
 import { MapPin, Loader2, X, Map, List, Plus, LayoutGrid } from 'lucide-react'
 import { normalizeSearch, cn } from '@/lib/utils'
 
@@ -39,13 +40,20 @@ export function MapView() {
   const [mobileView, setMobileView] = useState<'list' | 'map'>('list')
   const [isMobile, setIsMobile] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  // Distingue « pas encore su » de « déconnecté », pour ne pas faire clignoter
+  // l'encart de connexion le temps que getUser() réponde.
+  const [authResolved, setAuthResolved] = useState(false)
   const supabase = createClient()
 
   // Suivi de la session
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setIsLoggedIn(!!data.user))
+    supabase.auth.getUser().then(({ data }) => {
+      setIsLoggedIn(!!data.user)
+      setAuthResolved(true)
+    })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
       setIsLoggedIn(!!session?.user)
+      setAuthResolved(true)
     })
     return () => subscription.unsubscribe()
   }, [])
@@ -172,6 +180,14 @@ export function MapView() {
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="animate-spin text-brand-600" size={28} />
                 </div>
+            ) : authResolved && !isLoggedIn ? (
+                // En desktop le voile sur la carte porte déjà les boutons, on évite
+                // de répéter le même appel à l'action côte à côte.
+                <LoginRequiredNotice
+                  what="les annonces de votre quartier"
+                  redirectTo="/map"
+                  compact={!isMobile}
+                />
             ) : listings.length === 0 ? (
                 <div className="text-center py-12 text-gray-400">
                   <MapPin size={40} className="mx-auto mb-3 opacity-30" />
@@ -203,6 +219,20 @@ export function MapView() {
               searchedLocation={searchedLocation}
               visible={mobileView === 'map'}
           />
+
+          {/* Voile visiteur non connecté : la carte serait sinon affichée vide,
+              ce qui suggère « il n'y a rien ici » au lieu de « connectez-vous ».
+              Indispensable en vue mobile « Carte », où l'encart de la liste
+              latérale n'est pas visible.
+              ⚠️ Purement visuel : ce qui protège réellement les annonces est le
+              RLS (migration 030), pas ce voile. */}
+          {authResolved && !isLoggedIn && (
+              <div className="map-login-veil absolute inset-0 z-[1150] flex items-center justify-center p-4">
+                <div className="bg-white rounded-2xl shadow-xl border border-gray-200 max-w-sm w-full">
+                  <LoginRequiredNotice what="les annonces de votre quartier" redirectTo="/map" />
+                </div>
+              </div>
+          )}
 
           {/* Popup détail sélectionné */}
           {selected && (

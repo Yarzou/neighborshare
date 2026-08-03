@@ -9,6 +9,8 @@ export type ChildcareSlot =
 // recurring.day: 0=Dimanche, 1=Lundi, ..., 6=Samedi (convention JS)
 // times: format "HH:mm"
 
+export type BookCondition = 'neuf' | 'tres_bon' | 'bon' | 'acceptable' | 'abime'
+
 export const LISTING_TYPES = ['pret', 'don', 'echange', 'service', 'vente'] as const
 
 export function isListingType(value: unknown): value is ListingType {
@@ -62,6 +64,9 @@ export interface Listing {
   childcare_end_at: string | null
   childcare_mode: ChildcareMode | null
   childcare_slots: ChildcareSlot[] | null
+  book_author: string | null
+  book_condition: BookCondition | null
+  book_genre: string | null
   listing_intent: ListingIntent
   expires_at: string | null
   price: number | null
@@ -188,3 +193,28 @@ export const LISTING_TYPE_MARKER_COLORS: Record<ListingType, string> = {
   service: '#d97706',
   vente: '#e11d48',
 }
+
+export const BOOK_CONDITION_LABELS: Record<BookCondition, string> = {
+  neuf: 'Neuf',
+  tres_bon: 'Très bon état',
+  bon: 'Bon état',
+  acceptable: 'État acceptable',
+  abime: 'Abîmé',
+}
+
+/** Genres proposés pour une annonce de la catégorie "Livres" */
+export const BOOK_GENRES = [
+  'Roman',
+  'Policier / Thriller',
+  'Science-fiction / Fantasy',
+  'Jeunesse',
+  'Bande dessinée / Manga',
+  'Biographie / Récit',
+  'Histoire',
+  'Sciences / Technique',
+  'Développement personnel',
+  'Cuisine',
+  'Art / Beau livre',
+  'Scolaire / Études',
+  'Autre',
+] as const

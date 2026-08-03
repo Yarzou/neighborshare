@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { MapPin, ArrowRight, LogIn, CalendarDays } from 'lucide-react'
-import { CATEGORY_LIST } from '@/lib/categories'
 import { createClient } from '@/lib/supabase/server'
 
 export default async function HomePage() {
@@ -26,26 +25,32 @@ export default async function HomePage() {
       </p>
 
       {/* CTAs */}
-      <div className="flex flex-col sm:flex-row items-center gap-3 mb-10">
+      <div className="flex flex-col sm:flex-row items-center gap-3 mb-5">
         <Link
           href="/evenements"
           className="inline-flex items-center gap-2 bg-white border border-brand-300 text-brand-700 font-semibold px-7 py-3.5 rounded-2xl hover:bg-brand-50 transition-colors shadow-sm">
           <CalendarDays size={18} />
-          Voir les événements
+          Les événements
         </Link>
         <Link
           href="/map"
-          className="inline-flex items-center gap-2 bg-brand-600 text-white font-semibold px-7 py-3.5 rounded-2xl hover:bg-brand-700 transition-colors shadow-md">
+          className="inline-flex items-center gap-2 bg-white border border-brand-300 text-brand-700 font-semibold px-7 py-3.5 rounded-2xl hover:bg-brand-50 transition-colors shadow-sm">
           <MapPin size={18} />
-          Explorer les annonces
+          La carte du quartier
         </Link>
         <Link
           href="/auth/login"
-          className="inline-flex items-center gap-2 border border-gray-300 text-gray-700 font-semibold px-7 py-3.5 rounded-2xl hover:bg-gray-50 transition-colors">
+          className="inline-flex items-center gap-2 bg-brand-600 text-white font-semibold px-7 py-3.5 rounded-2xl hover:bg-brand-700 transition-colors shadow-md">
           <LogIn size={18} />
           Se connecter
         </Link>
       </div>
+
+      {/* Les annonces ne sont plus lisibles sans compte (migration 030) : on l'annonce
+          ici plutôt que de laisser le visiteur le découvrir en cliquant. */}
+      <p className="text-sm text-gray-400 text-center max-w-sm mb-8">
+        Les annonces et les événements sont réservés aux habitants du lotissement.
+      </p>
       <Link
         href="/auth/register"
         className="text-brand-600 text-sm font-medium hover:underline underline-offset-4 mb-12">

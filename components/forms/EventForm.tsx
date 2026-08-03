@@ -118,7 +118,10 @@ export default function EventForm({ initialEvent }: EventFormProps) {
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
-      router.push('/auth/login')
+      // Filet de sécurité si la session a expiré pendant la saisie : on renvoie sur
+      // la page courante après connexion plutôt que de perdre le formulaire.
+      const back = isEdit ? `/evenements/${initialEvent!.id}/edit` : '/evenements/new'
+      router.push(`/auth/login?redirect=${encodeURIComponent(back)}`)
       return
     }
 
