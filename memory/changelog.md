@@ -1,5 +1,31 @@
 # Historique des modifications (par session)
 
+## 2026-08-04 (3) — Push à la création d'un prestataire (`new_provider`)
+
+Un voisin a créé des fiches prestataires et personne n'a été notifié. Ce n'était **pas un bug** :
+l'exclusion était explicite (session du 2026-08-03, « écarté volontairement : prestataires et
+réactions (bruit) ») — la page ne contenait aucun appel de notification, et la route n'aurait de
+toute façon pas accepté l'événement. Décision de l'utilisateur, sollicitée avant de coder : **on
+notifie**, l'argument du bruit ne tient pas pour un carnet qui se remplit de quelques fiches par
+an (même profil de volume qu'une info ASL, qui notifie déjà).
+
+- `lib/pushNotifications.ts` : `'new_provider'` ajouté à `QuartierNotificationEvent`.
+- `app/api/notifications/quartier/route.ts` : nouveau `case 'new_provider'` — même contrat que les
+  autres diffusions (`sendPushToAll(user.id, …)`, donc l'auteur est exclu) et **même anti-abus** :
+  relecture serveur de `providers` et refus si `created_by !== user.id`. Titre
+  « 🔧 Nouveau prestataire recommandé », corps `nom — métier`, lien `/prestataires`. Placé avec les
+  autres `new_*`, avant les `gp_*` ciblés.
+- `app/(quartier)/prestataires/page.tsx` : insert passé en `.select('id').single()` pour récupérer
+  l'id, puis `if (!editingId && created) notifyQuartier('new_provider', created.id)` — **création
+  seulement, jamais l'édition**, conformément à la règle du projet. Le `.select('id').single()` a
+  aussi été mis sur la branche update pour aligner les deux branches (même forme que
+  `AnnouncementsSection`) : effet de bord utile, un update bloqué par RLS remonte désormais en
+  erreur visible au lieu de passer inaperçu.
+- `CLAUDE.md` : `new_provider` ajouté à la liste des événements de la route.
+
+Vérifs : `npx tsc --noEmit` OK, `npm run lint` → 0 erreur, 33 avertissements (inchangé). **Non
+testé en runtime** : l'envoi réel dépend de FCM et d'un second compte pour recevoir le push.
+
 ## 2026-08-04 (2) — Onglets « Quartier » : fin du scroll horizontal sur mobile
 
 Signalé par l'utilisateur : sur mobile il fallait **faire défiler vers la droite** pour atteindre

@@ -6,6 +6,7 @@ import { Wrench, Plus, Loader2, X, Trash2, Phone, Mail, Globe, Search, Pencil } 
 import type { Provider } from '@/lib/types'
 import { useCurrentUser } from '@/lib/hooks'
 import { LoginRequiredNotice } from '@/components/layout/LoginRequiredNotice'
+import { notifyQuartier } from '@/lib/pushNotifications'
 import { formatDate, normalizeSearch, getAvatarStyle } from '@/lib/utils'
 
 export default function ProvidersPage() {
@@ -83,17 +84,25 @@ export default function ProvidersPage() {
 
     // Édition (créateur ou référent, policy 038) ou création. L'update conserve
     // created_by : la fiche reste attribuée à celui qui l'a recommandée.
-    const { error: saveErr } = editingId
+    const { data: created, error: saveErr } = editingId
       ? await supabase.from('providers')
           .update({ ...values, updated_at: new Date().toISOString() })
           .eq('id', editingId)
-      : await supabase.from('providers').insert({ created_by: userId, ...values })
+          .select('id')
+          .single()
+      : await supabase.from('providers')
+          .insert({ created_by: userId, ...values })
+          .select('id')
+          .single()
 
     if (saveErr) {
       setError('Enregistrement impossible. Réessayez.')
       setSaving(false)
       return
     }
+
+    // Push à tout le quartier — à la création seulement, jamais à l'édition
+    if (!editingId && created) notifyQuartier('new_provider', created.id)
 
     closeForm()
     setSaving(false)

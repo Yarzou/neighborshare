@@ -18,6 +18,7 @@ import { sendPushToAll, sendPushToUsers } from '@/lib/fcm-admin'
  *   new_poll            → tout le quartier (sauf l'auteur)      · id = polls.id
  *   new_event           → tout le quartier (sauf l'auteur)      · id = events.id
  *   new_group_purchase  → tout le quartier (sauf l'auteur)      · id = group_purchases.id
+ *   new_provider        → tout le quartier (sauf l'auteur)      · id = providers.id
  *   gp_participation    → créateur de l'achat                   · id = group_purchases.id
  *   gp_target_reached   → créateur + participants (sauf acteur) · id = group_purchases.id
  */
@@ -27,6 +28,7 @@ type QuartierEvent =
   | 'new_poll'
   | 'new_event'
   | 'new_group_purchase'
+  | 'new_provider'
   | 'gp_participation'
   | 'gp_target_reached'
 
@@ -131,6 +133,22 @@ export async function POST(req: NextRequest) {
         title: '🛒 Nouvel achat groupé',
         body: data.title,
         url: `${APP_URL}/achats`,
+      })
+      break
+    }
+
+    case 'new_provider': {
+      const { data } = await admin
+        .from('providers')
+        .select('name, trade, created_by')
+        .eq('id', id)
+        .single()
+      if (!data || data.created_by !== user.id) break
+
+      await sendPushToAll(user.id, {
+        title: '🔧 Nouveau prestataire recommandé',
+        body: `${data.name} — ${data.trade}`,
+        url: `${APP_URL}/prestataires`,
       })
       break
     }

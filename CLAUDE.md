@@ -78,7 +78,7 @@ Pas de Server Actions. Les Server Components ne font que du fetch de lecture pon
 
 Les **routes API** (`app/api/`) existent uniquement pour ce qui exige un secret serveur :
 - `POST /api/notifications` — envoi push + email sur les événements de demande (`new_request` | `accepted` | `refused` | `cancelled`). Vérifie la session puis utilise la `SUPABASE_SERVICE_ROLE_KEY`.
-- `POST /api/notifications/quartier` — push « vie du quartier » (`new_announcement` | `new_poll` | `new_event` | `new_group_purchase` | `gp_participation` | `gp_target_reached`). **Push uniquement, jamais d'email** (plafond SMTP Gmail). Appelée fire-and-forget via `notifyQuartier()` de `lib/pushNotifications.ts` après un insert réussi — à la **création** seulement, jamais à l'édition. Anti-abus : chaque événement re-vérifie en base que l'appelant est l'auteur du contenu (ou un participant réel), et `gp_target_reached` recalcule le total serveur.
+- `POST /api/notifications/quartier` — push « vie du quartier » (`new_announcement` | `new_poll` | `new_event` | `new_group_purchase` | `new_provider` | `gp_participation` | `gp_target_reached`). **Push uniquement, jamais d'email** (plafond SMTP Gmail). Appelée fire-and-forget via `notifyQuartier()` de `lib/pushNotifications.ts` après un insert réussi — à la **création** seulement, jamais à l'édition. Anti-abus : chaque événement re-vérifie en base que l'appelant est l'auteur du contenu (ou un participant réel), et `gp_target_reached` recalcule le total serveur.
 - `GET /api/keepalive` — ping anti-mise-en-pause de Supabase (voir plus bas).
 - `POST /api/internal/send-email` — proxy email appelé par les Edge Functions, protégé par l'en-tête `x-internal-secret`.
 - `DELETE /api/account/delete` — suppression de compte (service role, cascade).

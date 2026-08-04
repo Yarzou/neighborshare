@@ -63,6 +63,7 @@ export type QuartierNotificationEvent =
   | 'new_poll'
   | 'new_event'
   | 'new_group_purchase'
+  | 'new_provider'
   | 'gp_participation'
   | 'gp_target_reached'
 
