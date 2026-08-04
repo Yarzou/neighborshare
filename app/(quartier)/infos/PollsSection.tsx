@@ -297,16 +297,19 @@ export function PollsSection({ userId, isReferent }: Props) {
                       <p className="text-sm text-content-muted mt-1">{p.description}</p>
                     )}
                   </div>
-                  {/* Tout référent gère tous les sondages (policy 038), pas seulement les siens */}
+                  {/* Tout référent gère tous les sondages (policy 038), pas seulement les siens.
+                      Cibles tactiles de 44 × 44 px, icônes à 15 px ; `-my-3` annule la hauteur
+                      ajoutée par le padding, `-mr-3` récupère de la largeur sur le `p-4`.
+                      Boutons jointifs sans recouvrement : `supprimer` est destructif. */}
                   {isReferent && (
-                    <span className="flex items-center gap-2 shrink-0">
+                    <span className="flex items-center shrink-0 -my-3 -mr-3">
                       <button onClick={() => startEdit(p)}
-                        className="text-content-faint hover:text-brand-600 transition-colors"
+                        className="w-11 h-11 flex items-center justify-center rounded-xl text-content-faint hover:text-brand-600 hover:bg-surface-sunken transition-colors"
                         aria-label="Modifier">
                         <Pencil size={15} />
                       </button>
                       <button onClick={() => handleDelete(p.id)}
-                        className="text-content-faint hover:text-red-500 transition-colors"
+                        className="w-11 h-11 flex items-center justify-center rounded-xl text-content-faint hover:text-red-500 hover:bg-surface-sunken transition-colors"
                         aria-label="Supprimer">
                         <Trash2 size={15} />
                       </button>

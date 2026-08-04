@@ -29,11 +29,87 @@ bloc d'overrides `!important` — vignette en `rgba(20,83,45,.25)` + icône `gre
   La ligne du mode d'emploi qui recommandait `resize_page` pour 360/320 px a été corrigée en
   conséquence.
 
-Points mineurs relevés, **non corrigés** (à arbitrer) : cibles tactiles modifier/supprimer à
-31 × 31 px (contre 44 px recommandés, mais déjà bien mieux que les 15 px d'icône nue d'avant) ; le
-`-mr-1.5` fait dépasser la rangée d'en-tête de 6 px hors de son content box, absorbés par le `p-4`
-de la carte (effet voulu, sans conséquence visuelle) ; `grid` + `items-start` laisse un blanc sous
-une carte courte voisine d'une carte longue (inhérent, ce n'est pas de la maçonnerie).
+- `app/(quartier)/prestataires/page.tsx` — **cibles tactiles portées à 44 × 44 px** (demande
+  utilisateur dans la même session) : `p-2` → `w-11 h-11 flex items-center justify-center`, icônes
+  laissées à 15 px (c'est la surface cliquable qui grandit, pas le dessin), et marges négatives du
+  conteneur passées de `-mt-1.5 -mr-1.5` à `-mt-3 -mr-3` pour compenser le padding — l'icône reste
+  optiquement au même endroit et une partie de la largeur est récupérée sur le `p-4` de la carte.
+  Mesuré : 44 × 44 px, **recouvrement de 0 px** entre les deux boutons (volontaire : `supprimer` est
+  destructif, une zone de recouvrement provoquerait des faux appuis — c'est pourquoi la piste du
+  `::before` en `-inset-2`, qui aurait préservé la largeur du nom, a été écartée), boutons à 5 px à
+  l'intérieur du bord de carte, aucun débordement de page de 320 à 1280 px.
+  **Contrepartie assumée** : les 88 px de boutons rognent la colonne du nom (114 px à 320 px, 140 px
+  à 768 px, 154 px à 360 px). Conséquence unique et mesurée : « GCE TOITURES » passe sur 2 lignes
+  **à 320 px seulement** — à 360 px et au-delà, aucun nom ne se comporte différemment d'avant. Le
+  métier long d'« Aery » gagne en revanche une 3ᵉ ligne à 1280 px. Jugé préférable à une cible sous
+  les 44 px, 320 px étant l'extrême bas de gamme.
+
+Piège JSX rencontré au passage : un `{/* … */}` inséré **à l'intérieur** d'un
+`{condition && ( … )}` casse le build (`Expected '</', got 'ident'`) — l'expression n'accepte qu'un
+seul enfant. Le commentaire doit être remonté au-dessus de la condition. Détecté immédiatement grâce
+à l'overlay d'erreur Turbopack visible dans le navigateur piloté, pas au build.
+
+Points mineurs relevés, **non corrigés** (à arbitrer) : le `-mr-3` fait dépasser la rangée d'en-tête
+hors de son content box, absorbé par le `p-4` de la carte (effet voulu, sans conséquence visuelle) ;
+`grid` + `items-start` laisse un blanc sous une carte courte voisine d'une carte longue (inhérent,
+ce n'est pas de la maçonnerie).
+
+### Généralisation des cibles de 44 px aux quatre autres fichiers (même session)
+
+- `app/(quartier)/infos/AnnouncementsSection.tsx` et `app/(quartier)/infos/PollsSection.tsx` —
+  icônes nues (aucun padding du tout) → `w-11 h-11`, conteneur en `flex items-center -my-3 -mr-3`,
+  `gap-2` retiré pour supprimer tout recouvrement.
+- `app/(quartier)/achats/page.tsx` — même traitement, mais **`-mb-3` seul, pas `-my-3`** : les
+  boutons sont sous le badge de statut dans une colonne `items-end`, et un `-mt` négatif ferait
+  remonter la zone cliquable sous le badge — un appui sur le badge déclencherait « Modifier ».
+- `components/messages/MessageBubble.tsx` — cas différent, tranché sur mesures :
+  - le bouton révélé au **swipe mobile** faisait **déjà 44 px de large** sur la hauteur de la bulle
+    (mesuré : 44 × 43 à 44 × 157). **Non modifié**, il était déjà conforme.
+  - en revanche, au-dessus de `md:` ce bouton de swipe passe en `display: none` et les deux
+    contrôles restants (supprimer 25 × 25, réaction 31 × 26) deviennent les **seules** cibles — donc
+    sous-dimensionnés sur une **tablette tactile**, où il n'y a pas de survol. Les deux passent en
+    `w-11 h-11`. Coût nul sur mobile : ils n'y sont pas rendus.
+
+Vérifié dans le navigateur : 44 × 44 px partout, **0 px de recouvrement** entre modifier et
+supprimer, boutons à 5 px à l'intérieur du bord de carte, aucun débordement de page, 0 message de
+console, bulles de conversation non déplacées à 1024 px.
+
+⚠️ **`/infos` et `/achats` sont vides en base** (aucune annonce, aucun sondage, aucun achat groupé) :
+leurs cartes ne peuvent pas être vérifiées avec des données réelles. Géométrie validée par
+**injection DOM d'une réplique aux classes exactes** du source — fiable ici parce que Tailwind
+compile les classes trouvées dans les fichiers, donc `w-11`, `-my-3` et `hover:bg-surface-sunken`
+existent bien dans le CSS servi. Contrôle utile obtenu au passage : rangée d'en-tête à **24 px avec**
+les boutons contre **24 px pour un témoin sans boutons** → `-my-3` compense exactement le padding,
+la carte ne grandit pas. Et pour la variante achats, `badge.bottom − bouton.top = −6 px` → aucun
+chevauchement avec le badge, ce qui valide le choix du `-mb-3` seul.
+
+⚠️ **Reste un 5ᵉ emplacement, non traité** (hors de la liste des quatre validée par l'utilisateur) :
+`components/messages/ConversationRow.tsx:150`, bouton « Supprimer la conversation » en `p-1.5`
+`hidden md:flex` — exactement le même cas tablette que `MessageBubble`. À arbitrer.
+
+### Réactions et horodatage recollés à la bulle (`MessageBubble.tsx`)
+
+Signalé par l'utilisateur : la pastille de réaction s'affichait sous le bouton poubelle et non sous
+le message. Cause : horodatage, nom d'expéditeur et réactions sont des **frères** de la rangée
+`[réaction][bulle][supprimer]` dans la colonne `items-end`/`items-start`, donc alignés sur le bord de
+cette rangée — boutons de survol compris. Défaut **pré-existant** (29 px de décalage), rendu voyant
+par le passage des boutons de 25 à 44 px (52 px de décalage).
+
+- Nouvelle constante `bubbleInset` appliquée aux trois éléments : `md:pr-12 md:mr-1` (isMe) /
+  `md:pl-12 md:ml-1` (autres). `md:` seulement — en dessous les boutons sont en `hidden`, la rangée
+  se réduit à la bulle et l'alignement était déjà bon. Conditionnée par `!isTemp`, soit exactement
+  quand les boutons sont rendus.
+- **52 px et non 48** : le bouton porte un `mr-1`/`ml-1` **en plus** du `gap-1` de la rangée. Déduire
+  la valeur (44 + 4) laissait 4 px de dépassement ; c'est la mesure dans le navigateur qui a donné
+  44 + 4 + 4.
+- Écrit en `12` + `1` et non en valeur arbitraire `pr-[52px]` : l'échelle Tailwind n'a pas de `13`,
+  et **l'utilitaire arbitraire n'était pas généré** — classe bien présente dans le DOM, aucune règle
+  correspondante dans `document.styleSheets`, y compris après rechargement sans cache, alors que les
+  `w-11` du même fichier passaient. Piège à retenir avant de compter sur une valeur arbitraire ici.
+
+Vérifié : écart pastille ↔ bord de bulle et texte d'horodatage ↔ bord de bulle = **0 px** à 1024 px,
+dans les deux sens (mes messages et ceux des autres) ; mobile inchangé (retrait de 4 px du `px-1`
+d'origine, cohérent avec l'horodatage) ; aucun débordement, 0 message de console.
 
 Incident d'environnement à connaître : `.next/dev/types/validator.ts` peut être **tronqué en cours
 d'écriture** par le dev server et faire échouer `tsc` sur des erreurs de syntaxe fantômes dans un

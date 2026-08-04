@@ -321,15 +321,20 @@ export default function GroupPurchasesPage() {
                             : GROUP_PURCHASE_STATUS_COLORS[p.status])}>
                           {deadlinePassed && p.status === 'ouvert' ? 'Échu' : GROUP_PURCHASE_STATUS_LABELS[p.status]}
                         </span>
+                        {/* Cibles tactiles de 44 × 44 px, icônes à 15 px. Ici seulement `-mb-3`
+                            et pas `-my-3` : un `-mt` négatif ferait remonter la zone cliquable
+                            sous le badge de statut, et un appui sur le badge déclencherait
+                            « Modifier ». Boutons jointifs sans recouvrement : `supprimer` est
+                            destructif. */}
                         {canManage && (
-                          <span className="flex items-center gap-2">
+                          <span className="flex items-center -mb-3 -mr-3">
                             <button onClick={() => startEdit(p)}
-                              className="text-content-faint hover:text-brand-600 transition-colors"
+                              className="w-11 h-11 flex items-center justify-center rounded-xl text-content-faint hover:text-brand-600 hover:bg-surface-sunken transition-colors"
                               aria-label="Modifier">
                               <Pencil size={15} />
                             </button>
                             <button onClick={() => handleDelete(p.id)}
-                              className="text-content-faint hover:text-red-500 transition-colors"
+                              className="w-11 h-11 flex items-center justify-center rounded-xl text-content-faint hover:text-red-500 hover:bg-surface-sunken transition-colors"
                               aria-label="Supprimer">
                               <Trash2 size={15} />
                             </button>

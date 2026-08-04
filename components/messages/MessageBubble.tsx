@@ -47,6 +47,23 @@ export function MessageBubble({
   const isTemp = msg.id.startsWith('temp-')
   const canDelete = isMe && !isTemp
 
+  /* Horodatage, nom d'expéditeur et réactions sont des frères de la rangée
+     `[réaction][bulle][supprimer]`, donc alignés sur le bord de cette rangée — c'est-à-dire
+     sur le bouton de survol, pas sur la bulle. Ce décalage les compense pour qu'ils restent
+     collés au message.
+     52 px = bouton `w-11` (44) + `gap-1` de la rangée (4) + le `mr-1`/`ml-1` du bouton (4).
+     Mesuré dans le navigateur, pas déduit : le `mr-1` s'ajoute au `gap` de la rangée, et
+     l'oublier laissait 4 px de dépassement. À resynchroniser si la taille des deux boutons
+     de survol ci-dessous change.
+     Obtenu en `12` + `1` (48 + 4) et non en valeur arbitraire `pr-[52px]` : l'échelle
+     Tailwind n'a pas de `13`, et l'utilitaire arbitraire n'était pas généré ici (classe
+     présente dans le DOM, aucune règle CSS correspondante — vérifié en parcourant
+     `document.styleSheets`, y compris après un rechargement sans cache).
+     `md:` seulement : en dessous, les boutons sont en `hidden`, la rangée se réduit à la
+     bulle et l'alignement est déjà bon.
+     Conditionné par `!isTemp` : c'est exactement quand les boutons sont rendus. */
+  const bubbleInset = isTemp ? '' : isMe ? 'md:pr-12 md:mr-1' : 'md:pl-12 md:ml-1'
+
   // ── Groupement des réactions ────────────────────────────────────────────────
   const reactionGroups = MESSAGE_EMOJIS.reduce<Record<string, { count: number; mine: boolean }>>(
     (acc, emoji) => {
@@ -150,9 +167,9 @@ export function MessageBubble({
       <div
         className={`flex flex-col gap-0.5 max-w-[70%] ${isMe ? 'items-end' : 'items-start'}`}
       >
-        <span className="text-[11px] text-gray-400 px-1">{formatDateTime(msg.created_at)}</span>
+        <span className={`text-[11px] text-gray-400 px-1 ${bubbleInset}`}>{formatDateTime(msg.created_at)}</span>
         {showSender && (
-          <span className="text-xs text-gray-400 px-1">{senderName}</span>
+          <span className={`text-xs text-gray-400 px-1 ${bubbleInset}`}>{senderName}</span>
         )}
 
         {/* Wrapper relatif pour le bouton supprimer (mobile swipe) */}
@@ -184,12 +201,16 @@ export function MessageBubble({
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
           >
-            {/* Bouton supprimer desktop (hover) */}
+            {/* Bouton supprimer desktop (hover).
+                `w-11 h-11` : au-dessus de `md:` le bouton de swipe est masqué, donc sur
+                une tablette tactile c'est la seule cible — elle doit faire 44 px. Sur
+                mobile ce bouton n'est pas rendu (`hidden`), la cible tactile y est le
+                bouton de swipe, qui fait déjà 44 px de large sur la hauteur de la bulle. */}
             {canDelete && (
               <button
                 onClick={handleDeleteClick}
                 aria-label="Supprimer ce message"
-                className={`hidden md:flex opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-full hover:bg-red-100 text-red-400 hover:text-red-600 flex-shrink-0 ${
+                className={`hidden md:flex items-center justify-center w-11 h-11 opacity-0 group-hover:opacity-100 transition-opacity rounded-full hover:bg-red-100 text-red-400 hover:text-red-600 flex-shrink-0 ${
                   isMe ? 'order-first mr-1' : 'order-last ml-1'
                 }`}
               >
@@ -203,7 +224,7 @@ export function MessageBubble({
                 <button
                   onClick={() => setShowPicker(v => !v)}
                   aria-label="Ajouter une réaction"
-                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 text-sm leading-none"
+                  className="flex items-center justify-center w-11 h-11 opacity-0 group-hover:opacity-100 transition-opacity rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 text-sm leading-none"
                 >
                   😊
                 </button>
@@ -243,9 +264,9 @@ export function MessageBubble({
           </div>
         </div>
 
-        {/* Réactions affichées sous la bulle */}
+        {/* Réactions affichées sous la bulle, collées à son bord (cf. `bubbleInset`) */}
         {hasReactions && (
-          <div className={`flex flex-wrap gap-1 mt-0.5 px-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
+          <div className={`flex flex-wrap gap-1 mt-0.5 px-1 ${isMe ? 'justify-end' : 'justify-start'} ${bubbleInset}`}>
             {(Object.entries(reactionGroups) as [string, { count: number; mine: boolean }][]).map(([emoji, { count, mine }]) => (
               <button
                 key={emoji}

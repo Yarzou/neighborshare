@@ -175,16 +175,20 @@ export function AnnouncementsSection({ userId, isReferent }: Props) {
                   {a.is_pinned && <Pin size={14} className="text-brand-600 shrink-0" />}
                   {a.title}
                 </h3>
-                {/* Tout référent gère toutes les annonces (policy 038), pas seulement les siennes */}
+                {/* Tout référent gère toutes les annonces (policy 038), pas seulement les siennes.
+                    Cibles tactiles de 44 × 44 px, icônes à 15 px : c'est la surface cliquable qui
+                    grandit. `-my-3` annule la hauteur ajoutée par le padding (la rangée reste à la
+                    hauteur du titre), `-mr-3` récupère de la largeur sur le `p-4` de la carte.
+                    Boutons jointifs sans recouvrement : `supprimer` est destructif. */}
                 {isReferent && (
-                  <span className="flex items-center gap-2 shrink-0">
+                  <span className="flex items-center shrink-0 -my-3 -mr-3">
                     <button onClick={() => startEdit(a)}
-                      className="text-content-faint hover:text-brand-600 transition-colors"
+                      className="w-11 h-11 flex items-center justify-center rounded-xl text-content-faint hover:text-brand-600 hover:bg-surface-sunken transition-colors"
                       aria-label="Modifier">
                       <Pencil size={15} />
                     </button>
                     <button onClick={() => handleDelete(a.id)}
-                      className="text-content-faint hover:text-red-500 transition-colors"
+                      className="w-11 h-11 flex items-center justify-center rounded-xl text-content-faint hover:text-red-500 hover:bg-surface-sunken transition-colors"
                       aria-label="Supprimer">
                       <Trash2 size={15} />
                     </button>

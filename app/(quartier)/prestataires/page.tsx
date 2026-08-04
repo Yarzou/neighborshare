@@ -284,16 +284,23 @@ export default function ProvidersPage() {
                         {p.trade}
                       </span>
                     </div>
-                    {/* Créateur ou référent : modifier et supprimer (policy 038) */}
+                    {/* Créateur ou référent : modifier et supprimer (policy 038).
+                        Cibles tactiles de 44 × 44 px (`w-11 h-11`), l'icône restant à
+                        15 px : c'est la surface cliquable qui grandit, pas le dessin.
+                        Les marges négatives compensent le padding pour que l'icône
+                        reste optiquement au même endroit, et récupèrent une partie de
+                        la largeur sur le `p-4` de la carte. Boutons strictement
+                        jointifs et non superposés : `supprimer` est destructif, une
+                        zone de recouvrement ferait des faux appuis. */}
                     {(p.created_by === userId || isReferent) && (
-                      <span className="flex items-center shrink-0 -mt-1.5 -mr-1.5">
+                      <span className="flex items-center shrink-0 -mt-3 -mr-3">
                         <button onClick={() => startEdit(p)}
-                          className="p-2 rounded-lg text-content-faint hover:text-brand-600 hover:bg-surface-sunken transition-colors"
+                          className="w-11 h-11 flex items-center justify-center rounded-xl text-content-faint hover:text-brand-600 hover:bg-surface-sunken transition-colors"
                           aria-label="Modifier">
                           <Pencil size={15} />
                         </button>
                         <button onClick={() => handleDelete(p.id)}
-                          className="p-2 rounded-lg text-content-faint hover:text-red-500 hover:bg-surface-sunken transition-colors"
+                          className="w-11 h-11 flex items-center justify-center rounded-xl text-content-faint hover:text-red-500 hover:bg-surface-sunken transition-colors"
                           aria-label="Supprimer">
                           <Trash2 size={15} />
                         </button>
