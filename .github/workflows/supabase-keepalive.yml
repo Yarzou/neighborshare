@@ -60,20 +60,38 @@ jobs:
           set -euo pipefail
 
           # Normalisation défensive des secrets. Une valeur collée depuis
-          # .env.local embarque facilement le préfixe `NEXT_PUBLIC_SUPABASE_URL=`,
-          # des guillemets ou un retour à la ligne — curl sort alors un cryptique
-          # « URL rejected: Port number was not a decimal number » (il ne voit
-          # plus `https` comme un schéma). GitHub masquant la valeur dans les
-          # logs, on ne peut pas l'inspecter : on la valide donc explicitement.
-          url=$(printf '%s' "${SUPABASE_URL}" | tr -d '\r\n')
-          url="${url#*=}"           # tolère un préfixe « VAR= »
-          url=$(printf '%s' "$url" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//; s/^["'"'"'](.*)["'"'"']$/\1/; s#/+$##')
-          key=$(printf '%s' "${SUPABASE_ANON_KEY}" | tr -d '\r\n' | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//; s/^["'"'"'](.*)["'"'"']$/\1/')
+          # .env.local embarque facilement le préfixe `NEXT_PUBLIC_…=`, des
+          # guillemets ou un retour à la ligne. Symptômes vécus : curl sort un
+          # cryptique « URL rejected: Port number was not a decimal number »
+          # pour l'URL (il ne voit plus `https` comme un schéma), et Supabase
+          # répond 401 pour la clé. GitHub masquant les secrets dans les logs,
+          # la valeur n'est inspectable par personne : on la normalise, on la
+          # valide, et on ne journalise que des longueurs.
+          sanitize() {
+            local v="${1//$'\r'/}" i
+            v="${v//$'\n'/}"
+            # deux passes : une valeur peut cumuler préfixe ET guillemets, dans
+            # un ordre ou dans l'autre (`VAR="x"` comme `"VAR=x"`).
+            for i in 1 2; do
+              v="${v#"${v%%[![:space:]]*}"}"                      # trim gauche
+              v="${v%"${v##*[![:space:]]}"}"                      # trim droite
+              if [[ $v == \"*\" || $v == \'*\' ]]; then v="${v:1:${#v}-2}"; fi
+              # retrait ancré sur une forme d'identifiant : une valeur qui
+              # contient légitimement un « = » n'est pas tronquée.
+              if [[ $v =~ ^[A-Za-z_][A-Za-z0-9_]*=.+ ]]; then v="${v#*=}"; fi
+            done
+            printf '%s' "$v"
+          }
 
-          if ! printf '%s' "$url" | grep -qE '^https://[A-Za-z0-9.-]+$'; then
+          url=$(sanitize "${SUPABASE_URL}")
+          url="${url%/}"
+          key=$(sanitize "${SUPABASE_ANON_KEY}")
+
+          if [[ ! $url =~ ^https://[A-Za-z0-9.-]+$ ]]; then
             echo "::error::Secret SUPABASE_URL invalide : une origine nue est attendue, du type https://<ref>.supabase.co (sans préfixe NEXT_PUBLIC_…=, sans guillemets, sans chemin ni slash final)."
             exit 1
           fi
+          echo "Secrets normalisés — URL : forme valide · clé : ${#key} caractères"
 
           code=$(curl -sS -o /dev/null -w '%{http_code}' \
                    --retry 3 --retry-delay 10 --max-time 30 \
@@ -81,6 +99,10 @@ jobs:
                    -H "Authorization: Bearer ${key}" \
                    "${url}/rest/v1/categories?select=id&limit=1")
           echo "PostgREST → $code"
+          if [ "$code" = "401" ]; then
+            echo "::error::PostgREST a répondu 401 : Supabase refuse la clé. Le secret SUPABASE_ANON_KEY doit contenir la valeur nue de NEXT_PUBLIC_SUPABASE_ANON_KEY, ni tronquée ni préfixée. Longueur reçue après normalisation : ${#key} caractères — comparer avec celle de la clé dans .env.local."
+            exit 1
+          fi
           if [ "$code" != "200" ]; then
             echo "::error::PostgREST a répondu $code"
             exit 1

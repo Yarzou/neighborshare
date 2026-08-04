@@ -50,6 +50,19 @@ collés depuis `.env.local` — curl ne lit alors plus `https` comme un schéma 
   faire échouer le job (pas de `continue-on-error`) : ce workflow existe justement pour qu'une
   panne silencieuse devienne bruyante.
 
+**Run #12** : URL acceptée (plus de `curl: (3)`), mais PostgREST → **401**. Même défaut de saisie
+sur l'autre secret : la normalisation ne retirait le préfixe `VAR=` que pour l'URL, pas pour la
+clé. Généralisée dans une fonction `sanitize()` commune (deux passes, car une valeur peut cumuler
+préfixe **et** guillemets dans les deux ordres : `VAR="x"` comme `"VAR=x"`), en bash pur plutôt
+qu'en `sed` — le quoting d'un `sed -E` dans un bloc `run: |` YAML devenait illisible. Le retrait
+de préfixe est **ancré** (`^[A-Za-z_][A-Za-z0-9_]*=.+`) au lieu du `${v#*=}` initial qui coupait
+au premier `=` : une clé JWT contenant un `=`, ou terminée par un padding base64, n'est plus
+tronquée (cas couverts par un test local). Ajout d'un `echo` de la **longueur** de la clé
+normalisée et d'un message dédié au 401 : les secrets étant masqués dans les logs, la longueur est
+le seul signal exploitable pour repérer un préfixe resté collé (ici 46 caractères attendus, 76
+avec le préfixe `NEXT_PUBLIC_SUPABASE_ANON_KEY=`). Ne jamais journaliser la valeur elle-même, même
+normalisée : le masquage GitHub ne reconnaît plus la chaîne après transformation.
+
 ## 2026-08-03 (7) — Notifications push « vie du quartier »
 
 Six points d'envoi choisis par l'utilisateur (A→F tous retenus) :
