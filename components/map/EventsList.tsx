@@ -88,7 +88,10 @@ export function EventsList({
     let query = supabase
       .from('events')
       .select('*')
-      .order('event_date', { ascending: true })
+      // Du plus récent au plus ancien (doit rester aligné sur la liste mobile
+      // d'`app/evenements/page.tsx`). Compatible avec la pagination `range()`
+      // ci-dessous : le tri est fait en base, avant le découpage.
+      .order('event_date', { ascending: false })
 
     if (from) query = query.gte('event_date', `${from}T00:00:00`)
     if (to) query = query.lte('event_date', `${to}T23:59:59`)

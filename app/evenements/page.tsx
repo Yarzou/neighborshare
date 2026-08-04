@@ -43,7 +43,8 @@ export default function EvenementsPage() {
     let query = supabase
       .from('events')
       .select('*')
-      .order('event_date', { ascending: true })
+      // Du plus récent au plus ancien (doit rester aligné sur `EventsList`, la liste desktop)
+      .order('event_date', { ascending: false })
     if (from) query = query.gte('event_date', `${from}T00:00:00`)
     else query = query.gte('event_date', `${new Date().getFullYear()}-01-01T00:00:00`)
     if (to) query = query.lte('event_date', `${to}T23:59:59`)
