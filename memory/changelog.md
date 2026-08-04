@@ -22,10 +22,33 @@ step.
   step). Le `env:` du step, devenu redondant, est supprimé. Commentaire ajouté pour ne pas
   reproduire le piège.
 
-À faire côté GitHub après le commit : vérifier qu'un `workflow_dispatch` manuel passe au vert,
-et que le run porte bien le nom « Supabase keepalive ». Le step PostgREST reste sauté tant que
-les secrets `SUPABASE_URL` / `SUPABASE_ANON_KEY` ne sont pas définis sur le dépôt (comportement
-voulu).
+**Vérifié après push (`cf85d35`)** : le push n'a créé **aucun run** — preuve que le workflow
+compile de nouveau (il n'écoute que `schedule` / `workflow_dispatch`, un push ne doit donc rien
+déclencher ; c'était l'inverse qui signalait le startup failure). Pré-checks des deux cibles OK :
+`/api/keepalive` → 200 `{"ok":true,"rows":1}` (et sans `Authorization` : pas de `CRON_SECRET`
+défini côté Vercel), `rest/v1/categories` avec la clé anon → 200.
+
+Les secrets `SUPABASE_URL` / `SUPABASE_ANON_KEY` ont été ajoutés au dépôt par l'utilisateur (le
+step PostgREST était sauté sans eux — comportement voulu du `if:`). Ni `gh` ni token GitHub ne
+sont disponibles depuis la session agent : **déclencher un `workflow_dispatch` et gérer les
+secrets sont des actions manuelles** (comme les commandes `db:*`). En lecture, en revanche,
+l'API publique suffit et c'est l'outil de diagnostic à privilégier :
+`/actions/runs/<id>/jobs` donne le verdict par step sans avoir à copier des logs.
+
+**Run #11 (`workflow_dispatch`)** : nom correct (« Supabase keepalive »), step 1 `/api/keepalive`
+**vert** — le keepalive fonctionne enfin de bout en bout ; step 2 PostgREST rouge sur
+`curl: (3) URL rejected: Port number was not a decimal number`. Cause : la **valeur** du secret
+`SUPABASE_URL` n'était pas une origine nue (préfixe `NEXT_PUBLIC_SUPABASE_URL=` ou guillemets
+collés depuis `.env.local` — curl ne lit alors plus `https` comme un schéma et interprète
+`//host` comme un port). Rien à voir avec le code.
+
+- `.github/workflows/supabase-keepalive.yml` : normalisation défensive des deux secrets dans le
+  step PostgREST (retraits de `\r\n`, d'un préfixe `VAR=`, des espaces, des guillemets, du slash
+  final) + validation `^https://[A-Za-z0-9.-]+$` qui échoue avec un message explicite. Motif :
+  GitHub masque les secrets dans les logs, la valeur est donc **inspectable par personne** — sans
+  validation, toute coquille de saisie ressort en `curl: (3)` indéchiffrable. Le step continue de
+  faire échouer le job (pas de `continue-on-error`) : ce workflow existe justement pour qu'une
+  panne silencieuse devienne bruyante.
 
 ## 2026-08-03 (7) — Notifications push « vie du quartier »
 

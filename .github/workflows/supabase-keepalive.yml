@@ -58,11 +58,28 @@ jobs:
         if: ${{ env.SUPABASE_ANON_KEY != '' && env.SUPABASE_URL != '' }}
         run: |
           set -euo pipefail
+
+          # Normalisation défensive des secrets. Une valeur collée depuis
+          # .env.local embarque facilement le préfixe `NEXT_PUBLIC_SUPABASE_URL=`,
+          # des guillemets ou un retour à la ligne — curl sort alors un cryptique
+          # « URL rejected: Port number was not a decimal number » (il ne voit
+          # plus `https` comme un schéma). GitHub masquant la valeur dans les
+          # logs, on ne peut pas l'inspecter : on la valide donc explicitement.
+          url=$(printf '%s' "${SUPABASE_URL}" | tr -d '\r\n')
+          url="${url#*=}"           # tolère un préfixe « VAR= »
+          url=$(printf '%s' "$url" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//; s/^["'"'"'](.*)["'"'"']$/\1/; s#/+$##')
+          key=$(printf '%s' "${SUPABASE_ANON_KEY}" | tr -d '\r\n' | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//; s/^["'"'"'](.*)["'"'"']$/\1/')
+
+          if ! printf '%s' "$url" | grep -qE '^https://[A-Za-z0-9.-]+$'; then
+            echo "::error::Secret SUPABASE_URL invalide : une origine nue est attendue, du type https://<ref>.supabase.co (sans préfixe NEXT_PUBLIC_…=, sans guillemets, sans chemin ni slash final)."
+            exit 1
+          fi
+
           code=$(curl -sS -o /dev/null -w '%{http_code}' \
                    --retry 3 --retry-delay 10 --max-time 30 \
-                   -H "apikey: ${SUPABASE_ANON_KEY}" \
-                   -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
-                   "${SUPABASE_URL}/rest/v1/categories?select=id&limit=1")
+                   -H "apikey: ${key}" \
+                   -H "Authorization: Bearer ${key}" \
+                   "${url}/rest/v1/categories?select=id&limit=1")
           echo "PostgREST → $code"
           if [ "$code" != "200" ]; then
             echo "::error::PostgREST a répondu $code"
