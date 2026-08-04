@@ -24,6 +24,13 @@ on:
 jobs:
   ping:
     runs-on: ubuntu-latest
+    # Le contexte `secrets` est interdit dans un `if:` (erreur de compilation
+    # « Unrecognized named-value: 'secrets' » → workflow entier invalide, aucun
+    # job créé). On le recopie donc en env de job : `env` y est autorisé, et
+    # `env` est lisible depuis un `if:` de step.
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
     steps:
       - name: Ping /api/keepalive (via Vercel)
         env:
@@ -48,10 +55,7 @@ jobs:
           fi
 
       - name: Ping direct PostgREST (indépendant de Vercel)
-        if: ${{ secrets.SUPABASE_ANON_KEY != '' }}
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        if: ${{ env.SUPABASE_ANON_KEY != '' && env.SUPABASE_URL != '' }}
         run: |
           set -euo pipefail
           code=$(curl -sS -o /dev/null -w '%{http_code}' \

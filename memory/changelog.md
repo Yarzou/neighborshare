@@ -1,5 +1,32 @@
 # Historique des modifications (par session)
 
+## 2026-08-04 (1) — Fix workflow GitHub Actions keepalive (startup failure)
+
+Le workflow `.github/workflows/supabase-keepalive.yml` échouait à **chaque push** avec
+« No jobs were run », depuis sa mise en place. Diagnostic via l'API publique
+(`/actions/runs/<id>/jobs` → `total_count: 0`, `check_runs: 0`, et `name` du run = le chemin du
+fichier au lieu de `Supabase keepalive`) : **startup failure**, GitHub n'arrivait pas à compiler
+le YAML, donc zéro job. D'où aussi les runs sur l'événement `push` alors que le workflow
+n'écoute que `schedule` / `workflow_dispatch` — un run de signalement d'erreur est créé sur le
+push quel que soit le `on:`. Le keepalive GitHub (filet de sécurité) n'a donc jamais ping quoi
+que ce soit ; seul le cron Vercel tournait.
+
+Cause : `if: ${{ secrets.SUPABASE_ANON_KEY != '' }}` sur le step « Ping direct PostgREST ».
+Le contexte **`secrets` est interdit dans un `if:`** (job comme step) →
+`Unrecognized named-value: 'secrets'`, ce qui invalide le workflow **entier**, pas seulement le
+step.
+
+- `.github/workflows/supabase-keepalive.yml` : les deux secrets remontés en `env` de **job**
+  (`secrets` y est autorisé), et le `if:` du step passé à
+  `env.SUPABASE_ANON_KEY != '' && env.SUPABASE_URL != ''` (`env` est lisible depuis un `if:` de
+  step). Le `env:` du step, devenu redondant, est supprimé. Commentaire ajouté pour ne pas
+  reproduire le piège.
+
+À faire côté GitHub après le commit : vérifier qu'un `workflow_dispatch` manuel passe au vert,
+et que le run porte bien le nom « Supabase keepalive ». Le step PostgREST reste sauté tant que
+les secrets `SUPABASE_URL` / `SUPABASE_ANON_KEY` ne sont pas définis sur le dépôt (comportement
+voulu).
+
 ## 2026-08-03 (7) — Notifications push « vie du quartier »
 
 Six points d'envoi choisis par l'utilisateur (A→F tous retenus) :
