@@ -30,3 +30,7 @@ next-env.d.ts
 liquibase/liquibase.properties
 liquibase/*.log
 
+# Claude
+CLAUDE.md
+.mcp.json
+
