@@ -1,5 +1,109 @@
 # Historique des modifications (par session)
 
+## 2026-08-04 (6) — Première vérification visuelle réelle via MCP Chrome, et correctif
+
+Test du diff non commité de la session (4) sur `/prestataires`, avec le serveur MCP mis en place en
+(5) — donc la première fois que le rendu est **contrôlé** plutôt que supposé.
+
+Résultats : grille à 2 colonnes conforme à 1280 px et au point de bascule le plus serré (768 px →
+colonnes de 314 px), pile propre à 360 et 320 px, **aucun débordement horizontal** à aucune largeur,
+0 message de console. Le thème sombre était le suspect principal (`bg-brand-50`, `text-brand-600`,
+`hover:border-brand-300` ne sont pas des tokens sémantiques) : il est en fait **déjà couvert** par le
+bloc d'overrides `!important` — vignette en `rgba(20,83,45,.25)` + icône `green-400`, pastilles
+`slate-900`/`green-300`. Rien à corriger de ce côté.
+
+- `app/(quartier)/prestataires/page.tsx` — **régression corrigée** : la pastille de métier était en
+  `rounded-full`, or `trade` est saisi librement. « Chauffage climatisation ventilation » remplissait
+  un stade de **3 lignes / 52 px** à 320 px (2 lignes / 36 px à 768 et 1280 px). Passée en
+  `rounded-md`. Pas de `truncate` : le métier est le critère de recherche de la page. Avant la
+  session (4) le problème n'existait pas — `trade` y était du texte brut, la mise en pastille l'a
+  introduit.
+- `CLAUDE.md`, section « Vérification visuelle » — trois pièges ajoutés, tous vécus dans la session :
+  - **fenêtre maximisée = serveur bloqué en boucle** (`Browser.setContentsSize` → puis
+    `browser is already running` en cascade, profil verrouillé) ; fermer la fenêtre ne suffit pas,
+    Chrome piloté en CDP survit sans interface ; correctif durable = `maximized: false` dans le
+    `Preferences` du profil, **process arrêté**, par substitution textuelle ;
+  - **`resize_page` plafonné à ~500 px sous Windows** — il renvoie un succès mais laisse le viewport
+    à 500 px, donc un faux test mobile ; utiliser `emulate` et vérifier `window.innerWidth` ;
+  - injecter en DOM les cas de données absents de la base, avec les classes exactes du source.
+  La ligne du mode d'emploi qui recommandait `resize_page` pour 360/320 px a été corrigée en
+  conséquence.
+
+Points mineurs relevés, **non corrigés** (à arbitrer) : cibles tactiles modifier/supprimer à
+31 × 31 px (contre 44 px recommandés, mais déjà bien mieux que les 15 px d'icône nue d'avant) ; le
+`-mr-1.5` fait dépasser la rangée d'en-tête de 6 px hors de son content box, absorbés par le `p-4`
+de la carte (effet voulu, sans conséquence visuelle) ; `grid` + `items-start` laisse un blanc sous
+une carte courte voisine d'une carte longue (inhérent, ce n'est pas de la maçonnerie).
+
+Incident d'environnement à connaître : `.next/dev/types/validator.ts` peut être **tronqué en cours
+d'écriture** par le dev server et faire échouer `tsc` sur des erreurs de syntaxe fantômes dans un
+fichier généré. Le supprimer suffit. `npm run lint` : 0 erreur, 33 warnings (base 40).
+
+## 2026-08-04 (5) — MCP Chrome DevTools pour vérifier les rendus
+
+Trois sessions de suite se sont terminées sur « rendu non vérifié visuellement, pas de navigateur
+headless installé ». Mise en place de `chrome-devtools-mcp` pour lever cette limite.
+
+- **`.mcp.json`** (nouveau, à la racine) : serveur `chrome-devtools`. Options retenues et pourquoi :
+  - `cmd /c npx` et **non** `npx` seul — vérifié par une sonde stdio : Claude Code peut lancer le
+    process **sans shell**, et `spawn npx` échoue alors en `ENOENT` sur Windows.
+  - **Ni `--isolated` ni `--headless`** (mon premier jet avait les deux, corrigé) : les pages sont
+    derrière RLS, donc la vérification exige une session. `--isolated` efface le profil à chaque
+    run → reconnexion à chaque fois, impossible sans les identifiants de l'utilisateur. Avec le
+    profil persistant par défaut (`~/.cache/chrome-devtools-mcp/chrome-profile`, distinct du profil
+    personnel) et une fenêtre visible, l'utilisateur se connecte **une fois à la main** et la
+    session est réutilisée. Le mot de passe ne transite jamais par l'agent.
+  - `--screenshotFormat=webp --screenshotQuality=80 --screenshotMaxWidth=1200` : un PNG pleine page
+    sature le contexte de la conversation.
+  - `--usageStatistics=false` : la télémétrie Google est active par défaut.
+- **`.claude/settings.local.json`** (gitignoré) : 14 outils MCP pré-autorisés (navigation, capture,
+  redimensionnement, `evaluate_script`, `emulate`, console) plutôt qu'un `mcp__chrome-devtools`
+  global — les outils intrusifs (`upload_file`, `take_heapsnapshot`, `lighthouse_audit`,
+  `performance_*`) continuent de demander. Plus `enabledMcpjsonServers: ["chrome-devtools"]` pour
+  éviter l'invite d'approbation du serveur au démarrage.
+- **`CLAUDE.md`** : section « Vérification visuelle (MCP Chrome DevTools) » — mode d'emploi et pièges.
+
+Validé avant de conclure, par une sonde `initialize` + `tools/list` en stdio (script dans le
+scratchpad) : serveur `chrome_devtools` v1.6.0, **29 outils**, y compris `take_screenshot`,
+`resize_page` et `emulate`. Testé avec **et** sans shell, pour ne pas dépendre du mode de lancement.
+
+⚠️ **Un serveur MCP est chargé au démarrage de la session** : les outils ne sont pas disponibles
+dans la session qui a écrit `.mcp.json`. Relancer Claude Code.
+
+## 2026-08-04 (4) — Mise en forme des cards prestataires (web + mobile)
+
+Demande utilisateur : aligner la présentation des fiches prestataires sur celle des événements. La
+liste était une colonne de cards en texte brut — jamais travaillée, contrairement à `EventCard`.
+
+- `app/(quartier)/prestataires/page.tsx`, bloc de rendu de la liste :
+  - **`grid grid-cols-1 md:grid-cols-2 gap-3 items-start`** au lieu de `flex flex-col`. `md:` et non
+    `sm:` : le conteneur du layout `(quartier)` plafonne à `max-w-2xl` (672 px), donc deux colonnes
+    valent ~324 px ; à `sm:` on tomberait à ~298 px, trop serré pour les pastilles de contact.
+    `items-start` pour que chaque card garde sa hauteur propre.
+  - **Tuile d'icône `Wrench`** 40×40 en `bg-brand-50 text-brand-600` : l'ancre visuelle qui remplace
+    la vignette d'un événement (une fiche prestataire n'a pas d'image en base). `bg-brand-50` est sûr
+    en sombre, `globals.css:249` lui donne déjà une surcharge.
+  - **Métier en badge** `rounded-full bg-surface-sunken text-brand-700` — c'est le critère de
+    recherche principal, il était noyé en `text-xs` sous le nom.
+  - **Contacts en pastilles tactiles** (`px-3 py-2 rounded-xl border-edge bg-surface-sunken`) au lieu
+    de liens inline à icônes de 13 px : « appeler » est l'action principale de la page et la cible
+    était très en dessous des ~44 px recommandés. Numéro en `whitespace-nowrap`, email en
+    `min-w-0 max-w-full` + `truncate` (seul rempart contre un email long qui déformait la card).
+  - Boutons modifier/supprimer passés en `p-2 rounded-lg` + marges négatives → cible ~34 px au lieu
+    de 15. Garde de visibilité inchangée (`created_by === userId || isReferent`, policy 038).
+  - Pied de card séparé par un `border-t border-edge`, nom du voisin en `truncate`.
+  - **Pas de `line-clamp` sur le retour d'expérience**, contrairement à `EventCard.description` :
+    il n'existe **aucune page de détail prestataire**, tronquer rendrait l'information définitivement
+    inatteignable. C'est `items-start` qui absorbe les hauteurs inégales.
+  - Tokens sémantiques uniquement — ne pas recopier `EventCard`, encore en `bg-white` / `gray-*`
+    legacy. Rien à ajouter au bloc `!important` de `globals.css`.
+- `memory/components.md` : description de la page complétée.
+
+Vérifs : `npx tsc --noEmit` OK, `npm run lint` → 0 erreur / 33 avertissements (inchangé),
+`npm run build` OK (`/prestataires` toujours prérendue en statique). **Rendu non vérifié
+visuellement** : aucun navigateur headless installé, contrôle mobile/desktop/sombre à faire par
+l'utilisateur.
+
 ## 2026-08-04 (3) — Push à la création d'un prestataire (`new_provider`)
 
 Un voisin a créé des fiches prestataires et personne n'a été notifié. Ce n'était **pas un bug** :

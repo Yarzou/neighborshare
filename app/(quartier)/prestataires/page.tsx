@@ -259,25 +259,41 @@ export default function ProvidersPage() {
               )}
             </div>
           ) : (
-            <div className="flex flex-col gap-3">
+            /* Pile sur mobile, deux colonnes à partir de md: — le conteneur du
+               layout (quartier) plafonne à max-w-2xl, donc `sm:` donnerait des
+               colonnes trop étroites pour les pastilles de contact.
+               `items-start` : chaque card garde sa hauteur propre. */
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
               {filtered.map(p => (
                 <article key={p.id}
-                  className="bg-surface border border-edge rounded-2xl p-4 flex flex-col gap-2">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h2 className="font-semibold text-content">{p.name}</h2>
-                      <p className="text-xs font-medium text-brand-700 mt-0.5">{p.trade}</p>
+                  className="bg-surface border border-edge rounded-2xl p-4 flex flex-col gap-3 transition-colors hover:border-brand-300">
+                  <div className="flex items-start gap-3">
+                    {/* Ancre visuelle : l'équivalent de la vignette d'un événement,
+                        qu'une fiche prestataire ne peut pas avoir (pas d'image). */}
+                    <span className="shrink-0 w-10 h-10 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center">
+                      <Wrench size={18} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <h2 className="font-semibold text-content leading-tight break-words">{p.name}</h2>
+                      {/* `rounded-md` et pas `rounded-full` : `trade` est saisi
+                          librement, un métier long (« Chauffage climatisation
+                          ventilation ») passe sur 2 ou 3 lignes et une pastille
+                          en forme de stade devient illisible. Pas de `truncate`
+                          non plus — le métier est ce sur quoi on cherche. */}
+                      <span className="inline-flex mt-1 px-2 py-0.5 rounded-md bg-surface-sunken text-xs font-medium text-brand-700">
+                        {p.trade}
+                      </span>
                     </div>
                     {/* Créateur ou référent : modifier et supprimer (policy 038) */}
                     {(p.created_by === userId || isReferent) && (
-                      <span className="flex items-center gap-2 shrink-0">
+                      <span className="flex items-center shrink-0 -mt-1.5 -mr-1.5">
                         <button onClick={() => startEdit(p)}
-                          className="text-content-faint hover:text-brand-600 transition-colors"
+                          className="p-2 rounded-lg text-content-faint hover:text-brand-600 hover:bg-surface-sunken transition-colors"
                           aria-label="Modifier">
                           <Pencil size={15} />
                         </button>
                         <button onClick={() => handleDelete(p.id)}
-                          className="text-content-faint hover:text-red-500 transition-colors"
+                          className="p-2 rounded-lg text-content-faint hover:text-red-500 hover:bg-surface-sunken transition-colors"
                           aria-label="Supprimer">
                           <Trash2 size={15} />
                         </button>
@@ -285,41 +301,48 @@ export default function ProvidersPage() {
                     )}
                   </div>
 
+                  {/* Pas de line-clamp : il n'existe pas de page de détail
+                      prestataire, tronquer rendrait le retour d'expérience
+                      définitivement inatteignable. */}
                   {p.comment && (
                     <p className="text-sm text-content-soft leading-relaxed">{p.comment}</p>
                   )}
 
-                  <div className="flex flex-wrap items-center gap-3 text-sm">
-                    {p.phone && (
-                      <a href={`tel:${p.phone.replace(/\s/g, '')}`}
-                        className="flex items-center gap-1.5 text-brand-700 hover:underline">
-                        <Phone size={13} /> {p.phone}
-                      </a>
-                    )}
-                    {p.email && (
-                      <a href={`mailto:${p.email}`}
-                        className="flex items-center gap-1.5 text-brand-700 hover:underline">
-                        <Mail size={13} /> {p.email}
-                      </a>
-                    )}
-                    {p.website && (
-                      <a href={p.website} target="_blank" rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 text-brand-700 hover:underline">
-                        <Globe size={13} /> Site
-                      </a>
-                    )}
-                  </div>
+                  {(p.phone || p.email || p.website) && (
+                    <div className="flex flex-wrap gap-2">
+                      {p.phone && (
+                        <a href={`tel:${p.phone.replace(/\s/g, '')}`}
+                          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-edge bg-surface-sunken text-sm text-brand-700 whitespace-nowrap hover:border-brand-300 transition-colors">
+                          <Phone size={14} className="shrink-0" /> {p.phone}
+                        </a>
+                      )}
+                      {p.email && (
+                        <a href={`mailto:${p.email}`}
+                          className="inline-flex items-center gap-1.5 min-w-0 max-w-full px-3 py-2 rounded-xl border border-edge bg-surface-sunken text-sm text-brand-700 hover:border-brand-300 transition-colors">
+                          <Mail size={14} className="shrink-0" />
+                          <span className="truncate">{p.email}</span>
+                        </a>
+                      )}
+                      {p.website && (
+                        <a href={p.website} target="_blank" rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-edge bg-surface-sunken text-sm text-brand-700 hover:border-brand-300 transition-colors">
+                          <Globe size={14} className="shrink-0" /> Site
+                        </a>
+                      )}
+                    </div>
+                  )}
 
-                  <div className="flex items-center gap-2 text-xs text-content-faint pt-1">
+                  <div className="flex items-center gap-2 text-xs text-content-faint border-t border-edge pt-2.5">
                     <span
-                      className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold"
+                      className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold"
                       style={getAvatarStyle(p.profiles?.avatar_color)}
                     >
                       {p.profiles?.full_name?.[0] || p.profiles?.username?.[0] || '?'}
                     </span>
-                    Recommandé par {p.profiles?.full_name || p.profiles?.username || 'un voisin'}
-                    <span>·</span>
-                    {formatDate(p.created_at)}
+                    <span className="truncate">
+                      Recommandé par {p.profiles?.full_name || p.profiles?.username || 'un voisin'}
+                    </span>
+                    <span className="shrink-0">· {formatDate(p.created_at)}</span>
                   </div>
                 </article>
               ))}
