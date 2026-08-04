@@ -1,5 +1,32 @@
 # Historique des modifications (par session)
 
+## 2026-08-04 (2) — Onglets « Quartier » : fin du scroll horizontal sur mobile
+
+Signalé par l'utilisateur : sur mobile il fallait **faire défiler vers la droite** pour atteindre
+l'onglet « Prestataires ». Cause structurelle : trois pills en `whitespace-nowrap` dans un
+`overflow-x-auto`. Les trois libellés complets demandent ~410 px alors que le conteneur du layout
+`(quartier)` (`max-w-2xl px-4`) n'en offre que 328 sur un écran de 360.
+
+- `components/layout/QuartierTabs.tsx` : remplacé par un **contrôle segmenté `grid-cols-3`** dans
+  un conteneur `rounded-2xl bg-surface-sunken border-edge p-1`. Chaque onglet valant un tiers de la
+  largeur, le débordement est **impossible par construction** — c'est ce qui rend le correctif
+  robuste, là où raccourcir les libellés seul ne ferait que repousser le seuil. `overflow-x-auto`
+  supprimé.
+  - Sur mobile l'icône passe **au-dessus** du libellé (`flex-col sm:flex-row`) : elle sort du budget
+    de largeur, ce qui laisse ~80 px de texte par segment.
+  - Champ **`short`** ajouté à `TABS` pour le libellé mobile (« Quartier », « Achats »,
+    « Prestataires ») ; le libellé complet revient à partir de `sm:` via
+    `sm:hidden` / `hidden sm:inline`. « Prestataires » (le plus long, insécable) tient en `text-xs`
+    même sur un 320 px — d'où le `px-1 sm:px-3` qui lui achète la marge nécessaire.
+  - Ajout de `aria-current="page"` sur l'onglet actif (absent avant).
+  - Tokens sémantiques uniquement (`bg-surface-sunken`, `border-edge`, `text-content-muted`) : rien
+    à déclarer dans le bloc de surcharges `!important` de `globals.css`.
+- `memory/components.md` : description de `QuartierTabs` mise à jour (n'était plus « pills »).
+
+Vérifs : `npx tsc --noEmit` OK, `npm run lint` → 0 erreur, 33 avertissements (inchangé, aucun
+nouveau). Pas de navigateur headless installé (ni Playwright ni Puppeteer) : le rendu n'a pas pu
+être capturé, la garantie tient au `grid-cols-3` et au calcul de largeur ci-dessus.
+
 ## 2026-08-04 (1) — Fix workflow GitHub Actions keepalive (startup failure)
 
 Le workflow `.github/workflows/supabase-keepalive.yml` échouait à **chaque push** avec
@@ -62,6 +89,10 @@ normalisée et d'un message dédié au 401 : les secrets étant masqués dans le
 le seul signal exploitable pour repérer un préfixe resté collé (ici 46 caractères attendus, 76
 avec le préfixe `NEXT_PUBLIC_SUPABASE_ANON_KEY=`). Ne jamais journaliser la valeur elle-même, même
 normalisée : le masquage GitHub ne reconnaît plus la chaîne après transformation.
+
+**Run #13 (`c57bb0b`) : vert sur les deux steps.** Le filet GitHub Actions est opérationnel pour
+la première fois depuis sa création — il pinge désormais `/api/keepalive` **et** PostgREST tous
+les 3 jours à 07:00 UTC, indépendamment du cron Vercel.
 
 ## 2026-08-03 (7) — Notifications push « vie du quartier »
 
