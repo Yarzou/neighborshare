@@ -177,6 +177,23 @@ au-dessus de `useUserId`). Un rafraîchissement de jeton ne relance plus la lect
 - L'audit signalait un `href='\accueil'` (antislash) dans `Navbar.tsx` — **vérifié, c'est faux**,
   les deux occurrences sont bien `'/accueil'`. Rien à corriger.
 
+### Correctif post-livraison — parsing Liquibase
+
+Premier `db:*` lancé par l'utilisateur : `Unexpected formatting in formatted changelog … at line 21`.
+Cause : l'en-tête du fichier 039 citait le mot-clé `rollback` **en prose**, précédé de deux tirets,
+entre accents graves au milieu d'une phrase — et **avant le premier changeset**. Le parser de
+changelog SQL formaté repère ces mots-clés n'importe où dans une ligne de commentaire, pas seulement
+en début de ligne ; un rollback hors changeset invalide tout le fichier.
+
+Reformulé en « clause de rollback ». Contrôle ajouté à `CLAUDE.md` §6 :
+
+```bash
+grep -rnE '.+--(rollback|changeset|comment|precondition|property)' liquibase/changelog/*.sql
+```
+
+Vérifié : plus aucune occurrence dans 039 **ni dans les 38 migrations précédentes**, les 8 changesets
+portent tous leur rollback, et aucune ligne `--` collée à un mot ne peut être lue comme une directive.
+
 ### Reste à faire (manuel)
 
 1. `npm run db:validate`, `npm run db:tag`, puis `npm run db:migrate` — **sur test d'abord**.
