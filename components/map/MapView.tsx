@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -25,7 +25,9 @@ const LeafletMap = dynamic(() => import('@/components/map/LeafletMap'), {
 export function MapView() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const [listings, setListings] = useState<Listing[]>([])
+  // rows = ce que la base a renvoyé, jamais filtré. `listings` en est dérivé
+  // (useMemo plus bas) : catégorie et recherche ne déclenchent donc aucune requête.
+  const [rows, setRows] = useState<Listing[]>([])
   const [selected, setSelected] = useState<Listing | null>(null)
   // searchCenter: centre utilisé pour le rayon de recherche (La Chapelle par défaut)
   const [searchCenter, setSearchCenter] = useState<[number, number]>(NEIGHBORHOOD_CENTER)
@@ -87,7 +89,9 @@ export function MapView() {
     return () => window.removeEventListener('resize', check)
   }, [])
 
-  // Fetch annonces
+  // Fetch annonces — ne dépend que du centre de recherche. Le filtrage (catégorie,
+  // texte) se fait en mémoire dans le useMemo ci-dessous : sans cette séparation,
+  // chaque caractère tapé relançait un select complet dont le résultat était identique.
   const fetchListings = useCallback(async () => {
     setLoading(true)
 
@@ -100,52 +104,60 @@ export function MapView() {
       .from('listings_geo')
       .select('*')
 
-    let rows: Listing[] | null = !error && data ? (data as Listing[]) : null
+    let fetched: Listing[] | null = !error && data ? (data as Listing[]) : null
 
     // Repli : tant que la migration 032 n'a pas été appliquée, la vue n'existe
     // pas en base — on retombe sur l'ancien RPC pour ne pas afficher une carte
     // vide pendant la fenêtre migration/déploiement. À retirer quand le RPC
     // sera droppé.
-    if (rows === null) {
+    if (fetched === null) {
       console.warn('[MapView] listings_geo indisponible (migration 032 non appliquée ?) — repli sur le RPC', error?.message)
       const [lat, lng] = searchCenter
       const { data: rpcData } = await supabase.rpc('listings_within_radius', {
         lat, lng, radius_km: NEIGHBORHOOD_RADIUS_KM,
       })
-      if (rpcData) rows = rpcData as Listing[]
+      if (rpcData) fetched = rpcData as Listing[]
     }
 
-    if (rows) {
+    if (fetched) {
       const radiusM = NEIGHBORHOOD_RADIUS_KM * 1000
-      let filtered = rows
-        .map(l => ({
-          ...l,
-          distance_m: l.lat_out != null && l.lng_out != null
-            ? distanceMeters(searchCenter, [l.lat_out, l.lng_out])
-            : undefined,
-        }))
-        .filter(l => l.distance_m === undefined || l.distance_m <= radiusM)
-        .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity))
-
-      if (category) {
-        const catId = slugToId[category]
-        if (catId !== undefined) {
-          filtered = filtered.filter(l => l.category_id === catId)
-        }
-      }
-      if (search.trim()) {
-        const term = normalizeSearch(search.trim())
-        filtered = filtered.filter(l =>
-          normalizeSearch(l.title).includes(term) ||
-          normalizeSearch(l.description ?? '').includes(term)
-        )
-      }
-      setListings(filtered)
+      setRows(
+        fetched
+          .map(l => ({
+            ...l,
+            distance_m: l.lat_out != null && l.lng_out != null
+              ? distanceMeters(searchCenter, [l.lat_out, l.lng_out])
+              : undefined,
+          }))
+          .filter(l => l.distance_m === undefined || l.distance_m <= radiusM)
+          .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity))
+      )
     }
     setLoading(false)
-  }, [searchCenter, category, search, slugToId])
+  }, [searchCenter])
 
   useEffect(() => { fetchListings() }, [fetchListings])
+
+  // Filtres appliqués en mémoire — aucune requête pendant la frappe.
+  const listings = useMemo(() => {
+    let filtered = rows
+
+    if (category) {
+      const catId = slugToId[category]
+      if (catId !== undefined) {
+        filtered = filtered.filter(l => l.category_id === catId)
+      }
+    }
+    if (search.trim()) {
+      const term = normalizeSearch(search.trim())
+      filtered = filtered.filter(l =>
+        normalizeSearch(l.title).includes(term) ||
+        normalizeSearch(l.description ?? '').includes(term)
+      )
+    }
+
+    return filtered
+  }, [rows, category, search, slugToId])
 
   return (
       <div className="flex flex-col h-full">

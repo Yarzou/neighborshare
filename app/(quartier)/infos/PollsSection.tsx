@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Vote, Plus, Loader2, X, Trash2, Check, Pencil } from 'lucide-react'
+import { Vote, Plus, Loader2, X, Check, AlertCircle } from 'lucide-react'
 import type { Poll, PollResult } from '@/lib/types'
 import { formatDate } from '@/lib/utils'
 import { notifyQuartier } from '@/lib/pushNotifications'
+import { ItemActions } from '@/components/common/ItemActions'
 
 interface Props {
   userId: string | null
@@ -29,6 +30,8 @@ export function PollsSection({ userId, isReferent }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /** Échec de suppression — distinct de `error`, qui appartient au formulaire. */
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const [form, setForm] = useState({ question: '', description: '', closes_at: '' })
   const [options, setOptions] = useState<string[]>(['', ''])
 
@@ -168,9 +171,12 @@ export function PollsSection({ userId, isReferent }: Props) {
     await load()
   }
 
-  const handleDelete = async (id: string) => {
-    await supabase.from('polls').delete().eq('id', id)
+  // `.select('id')` obligatoire : un delete refusé par RLS ne renvoie pas
+  // d'erreur, seulement zéro ligne.
+  const handleDelete = async (id: string): Promise<boolean> => {
+    const { data } = await supabase.from('polls').delete().eq('id', id).select('id')
     await load()
+    return (data?.length ?? 0) > 0
   }
 
   const isClosed = (p: Poll) => Boolean(p.closes_at && p.closes_at < new Date().toISOString().slice(0, 10))
@@ -270,6 +276,12 @@ export function PollsSection({ userId, isReferent }: Props) {
         </form>
       )}
 
+      {deleteError && (
+        <p className="flex items-center gap-2 text-sm text-red-600">
+          <AlertCircle size={14} className="shrink-0" /> {deleteError}
+        </p>
+      )}
+
       {loading ? (
         <div className="flex items-center justify-center py-10">
           <Loader2 className="animate-spin text-brand-600" size={24} />
@@ -302,18 +314,12 @@ export function PollsSection({ userId, isReferent }: Props) {
                       ajoutée par le padding, `-mr-3` récupère de la largeur sur le `p-4`.
                       Boutons jointifs sans recouvrement : `supprimer` est destructif. */}
                   {isReferent && (
-                    <span className="flex items-center shrink-0 -my-3 -mr-3">
-                      <button onClick={() => startEdit(p)}
-                        className="w-11 h-11 flex items-center justify-center rounded-xl text-content-faint hover:text-brand-600 hover:bg-surface-sunken transition-colors"
-                        aria-label="Modifier">
-                        <Pencil size={15} />
-                      </button>
-                      <button onClick={() => handleDelete(p.id)}
-                        className="w-11 h-11 flex items-center justify-center rounded-xl text-content-faint hover:text-red-500 hover:bg-surface-sunken transition-colors"
-                        aria-label="Supprimer">
-                        <Trash2 size={15} />
-                      </button>
-                    </span>
+                    <ItemActions
+                      className="-my-3 -mr-3"
+                      onEdit={() => startEdit(p)}
+                      onDelete={() => handleDelete(p.id)}
+                      onFailure={() => setDeleteError('Suppression impossible. Réessayez.')}
+                    />
                   )}
                 </div>
 

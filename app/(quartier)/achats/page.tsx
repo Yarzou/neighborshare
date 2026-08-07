@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { ShoppingCart, Plus, Loader2, X, Trash2, Users, CalendarDays, Pencil } from 'lucide-react'
+import { ShoppingCart, Plus, Loader2, X, Users, CalendarDays, AlertCircle } from 'lucide-react'
 import type { GroupPurchase } from '@/lib/types'
 import { GROUP_PURCHASE_STATUS_LABELS, GROUP_PURCHASE_STATUS_COLORS } from '@/lib/types'
 import { useCurrentUser } from '@/lib/hooks'
 import { LoginRequiredNotice } from '@/components/layout/LoginRequiredNotice'
+import { ItemActions } from '@/components/common/ItemActions'
 import { formatDate, getAvatarStyle, cn } from '@/lib/utils'
 import { notifyQuartier } from '@/lib/pushNotifications'
 
@@ -26,6 +27,8 @@ export default function GroupPurchasesPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /** Échec de suppression — distinct de `error`, qui appartient au formulaire. */
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const [form, setForm] = useState({
     title: '', description: '', unit: '', target_quantity: '', unit_price: '', deadline: '',
   })
@@ -175,9 +178,12 @@ export default function GroupPurchasesPage() {
     await load()
   }
 
-  const handleDelete = async (purchaseId: string) => {
-    await supabase.from('group_purchases').delete().eq('id', purchaseId)
+  // `.select('id')` obligatoire : un delete refusé par RLS ne renvoie pas
+  // d'erreur, seulement zéro ligne.
+  const handleDelete = async (purchaseId: string): Promise<boolean> => {
+    const { data } = await supabase.from('group_purchases').delete().eq('id', purchaseId).select('id')
     await load()
+    return (data?.length ?? 0) > 0
   }
 
   if (!resolved) {
@@ -279,6 +285,12 @@ export default function GroupPurchasesPage() {
             </form>
           )}
 
+          {deleteError && (
+            <p className="flex items-center gap-2 text-sm text-red-600">
+              <AlertCircle size={14} className="shrink-0" /> {deleteError}
+            </p>
+          )}
+
           {loading ? (
             <div className="flex items-center justify-center py-16">
               <Loader2 className="animate-spin text-brand-600" size={28} />
@@ -327,18 +339,12 @@ export default function GroupPurchasesPage() {
                             « Modifier ». Boutons jointifs sans recouvrement : `supprimer` est
                             destructif. */}
                         {canManage && (
-                          <span className="flex items-center -mb-3 -mr-3">
-                            <button onClick={() => startEdit(p)}
-                              className="w-11 h-11 flex items-center justify-center rounded-xl text-content-faint hover:text-brand-600 hover:bg-surface-sunken transition-colors"
-                              aria-label="Modifier">
-                              <Pencil size={15} />
-                            </button>
-                            <button onClick={() => handleDelete(p.id)}
-                              className="w-11 h-11 flex items-center justify-center rounded-xl text-content-faint hover:text-red-500 hover:bg-surface-sunken transition-colors"
-                              aria-label="Supprimer">
-                              <Trash2 size={15} />
-                            </button>
-                          </span>
+                          <ItemActions
+                            className="-mb-3 -mr-3"
+                            onEdit={() => startEdit(p)}
+                            onDelete={() => handleDelete(p.id)}
+                            onFailure={() => setDeleteError('Suppression impossible. Réessayez.')}
+                          />
                         )}
                       </div>
                     </div>

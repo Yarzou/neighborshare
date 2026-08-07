@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Wrench, Plus, Loader2, X, Trash2, Phone, Mail, Globe, Search, Pencil } from 'lucide-react'
+import { Wrench, Plus, Loader2, X, Phone, Mail, Globe, Search, AlertCircle } from 'lucide-react'
 import type { Provider } from '@/lib/types'
 import { useCurrentUser } from '@/lib/hooks'
 import { LoginRequiredNotice } from '@/components/layout/LoginRequiredNotice'
+import { ItemActions } from '@/components/common/ItemActions'
 import { notifyQuartier } from '@/lib/pushNotifications'
 import { formatDate, normalizeSearch, getAvatarStyle } from '@/lib/utils'
 
@@ -21,6 +22,8 @@ export default function ProvidersPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /** Échec de suppression — distinct de `error`, qui appartient au formulaire. */
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const [form, setForm] = useState({
     name: '', trade: '', phone: '', email: '', website: '', comment: '',
   })
@@ -109,9 +112,12 @@ export default function ProvidersPage() {
     await load()
   }
 
-  const handleDelete = async (id: string) => {
-    await supabase.from('providers').delete().eq('id', id)
+  // `.select('id')` obligatoire : un delete refusé par RLS ne renvoie pas
+  // d'erreur, seulement zéro ligne.
+  const handleDelete = async (id: string): Promise<boolean> => {
+    const { data } = await supabase.from('providers').delete().eq('id', id).select('id')
     await load()
+    return (data?.length ?? 0) > 0
   }
 
   const filtered = search.trim()
@@ -244,6 +250,12 @@ export default function ProvidersPage() {
             </div>
           )}
 
+          {deleteError && (
+            <p className="flex items-center gap-2 text-sm text-red-600">
+              <AlertCircle size={14} className="shrink-0" /> {deleteError}
+            </p>
+          )}
+
           {loading ? (
             <div className="flex items-center justify-center py-16">
               <Loader2 className="animate-spin text-brand-600" size={28} />
@@ -293,18 +305,12 @@ export default function ProvidersPage() {
                         jointifs et non superposés : `supprimer` est destructif, une
                         zone de recouvrement ferait des faux appuis. */}
                     {(p.created_by === userId || isReferent) && (
-                      <span className="flex items-center shrink-0 -mt-3 -mr-3">
-                        <button onClick={() => startEdit(p)}
-                          className="w-11 h-11 flex items-center justify-center rounded-xl text-content-faint hover:text-brand-600 hover:bg-surface-sunken transition-colors"
-                          aria-label="Modifier">
-                          <Pencil size={15} />
-                        </button>
-                        <button onClick={() => handleDelete(p.id)}
-                          className="w-11 h-11 flex items-center justify-center rounded-xl text-content-faint hover:text-red-500 hover:bg-surface-sunken transition-colors"
-                          aria-label="Supprimer">
-                          <Trash2 size={15} />
-                        </button>
-                      </span>
+                      <ItemActions
+                        className="-mt-3 -mr-3"
+                        onEdit={() => startEdit(p)}
+                        onDelete={() => handleDelete(p.id)}
+                        onFailure={() => setDeleteError('Suppression impossible. Réessayez.')}
+                      />
                     )}
                   </div>
 

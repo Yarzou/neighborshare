@@ -7,6 +7,7 @@ import { MapPin, MessageCircle, User, LogOut, Menu, X, ClipboardList, CalendarDa
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
+import { useUnreadCount, usePendingRequests } from '@/lib/hooks'
 import { useTheme } from '@/components/theme/ThemeProvider'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
 
@@ -16,8 +17,10 @@ export function Navbar() {
   const { setTheme } = useTheme()
   const [user, setUser] = useState<SupabaseUser | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
-  const [unreadCount, setUnreadCount] = useState(0)
-  const [pendingRequestsCount, setPendingRequestsCount] = useState(0)
+  // Compteurs factorisés dans lib/hooks.ts — ils portent leur propre session,
+  // leur propre abonnement Realtime et le repli sur le changement de route.
+  const unreadCount = useUnreadCount()
+  const pendingRequestsCount = usePendingRequests()
   const supabase = createClient()
 
   useEffect(() => {
@@ -27,75 +30,6 @@ export function Navbar() {
     })
     return () => subscription.unsubscribe()
   }, [])
-
-  // Fetch unread count whenever user changes or path changes (messages page marks as read)
-  useEffect(() => {
-    if (!user) { setUnreadCount(0); return }
-
-    const fetchUnread = async () => {
-      const { data: parts } = await supabase
-        .from('conversation_participants')
-        .select('conversation_id, last_read_at')
-        .eq('user_id', user.id)
-
-      if (!parts || parts.length === 0) { setUnreadCount(0); return }
-
-      let total = 0
-      await Promise.all(parts.map(async (p) => {
-        const { count } = await supabase
-          .from('messages')
-          .select('id', { count: 'exact', head: true })
-          .eq('conversation_id', p.conversation_id)
-          .neq('sender_id', user.id)
-          .gt('created_at', p.last_read_at)
-        total += count ?? 0
-      }))
-      setUnreadCount(total)
-    }
-
-    const fetchPendingRequests = async () => {
-      // Count en_cours + validee listings where user is owner OR responder
-      const [{ count: asOwner }, { count: asResponder }] = await Promise.all([
-        supabase
-          .from('listings')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', user.id)
-          .in('status', ['en_cours', 'validee']),
-        supabase
-          .from('listings')
-          .select('id', { count: 'exact', head: true })
-          .eq('responder_id', user.id)
-          .in('status', ['en_cours', 'validee']),
-      ])
-      setPendingRequestsCount((asOwner ?? 0) + (asResponder ?? 0))
-    }
-
-    fetchUnread()
-    fetchPendingRequests()
-
-    // Realtime: met à jour le badge dès qu'un nouveau message arrive
-    const channel = supabase
-      .channel('navbar_unread')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => {
-        fetchUnread()
-      })
-      // Quand l'utilisateur lit une conversation, last_read_at est mis à jour
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'conversation_participants',
-        filter: `user_id=eq.${user.id}` }, () => {
-        fetchUnread()
-      })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'listings',
-        filter: `user_id=eq.${user.id}` }, () => {
-        fetchPendingRequests()
-      })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'listings',
-        filter: `responder_id=eq.${user.id}` }, () => {
-        fetchPendingRequests()
-      })
-      .subscribe()
-
-    return () => { supabase.removeChannel(channel) }
-  }, [user, pathname])
 
   const handleLogout = async () => {
     setTheme('system')

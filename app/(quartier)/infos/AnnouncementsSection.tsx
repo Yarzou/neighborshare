@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Megaphone, Pin, Plus, Loader2, X, Trash2, Pencil } from 'lucide-react'
+import { Megaphone, Pin, Plus, Loader2, X, AlertCircle } from 'lucide-react'
 import type { Announcement } from '@/lib/types'
 import { formatDate, getAvatarStyle } from '@/lib/utils'
 import { notifyQuartier } from '@/lib/pushNotifications'
+import { ItemActions } from '@/components/common/ItemActions'
 
 interface Props {
   userId: string | null
@@ -21,6 +22,8 @@ export function AnnouncementsSection({ userId, isReferent }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /** Échec de suppression — distinct de `error`, qui appartient au formulaire. */
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const [form, setForm] = useState({ title: '', body: '', is_pinned: false })
 
   const startEdit = (a: Announcement) => {
@@ -92,9 +95,13 @@ export function AnnouncementsSection({ userId, isReferent }: Props) {
     await load()
   }
 
-  const handleDelete = async (id: string) => {
-    await supabase.from('announcements').delete().eq('id', id)
+  // `.select('id')` obligatoire : un delete refusé par RLS ne renvoie pas
+  // d'erreur, seulement zéro ligne. Sans ce contrôle l'écran affiche un succès
+  // et l'information réapparaît au rechargement.
+  const handleDelete = async (id: string): Promise<boolean> => {
+    const { data } = await supabase.from('announcements').delete().eq('id', id).select('id')
     await load()
+    return (data?.length ?? 0) > 0
   }
 
   return (
@@ -156,6 +163,12 @@ export function AnnouncementsSection({ userId, isReferent }: Props) {
         </form>
       )}
 
+      {deleteError && (
+        <p className="flex items-center gap-2 text-sm text-red-600">
+          <AlertCircle size={14} className="shrink-0" /> {deleteError}
+        </p>
+      )}
+
       {loading ? (
         <div className="flex items-center justify-center py-10">
           <Loader2 className="animate-spin text-brand-600" size={24} />
@@ -176,23 +189,16 @@ export function AnnouncementsSection({ userId, isReferent }: Props) {
                   {a.title}
                 </h3>
                 {/* Tout référent gère toutes les annonces (policy 038), pas seulement les siennes.
-                    Cibles tactiles de 44 × 44 px, icônes à 15 px : c'est la surface cliquable qui
-                    grandit. `-my-3` annule la hauteur ajoutée par le padding (la rangée reste à la
-                    hauteur du titre), `-mr-3` récupère de la largeur sur le `p-4` de la carte.
-                    Boutons jointifs sans recouvrement : `supprimer` est destructif. */}
+                    Géométrie portée par ItemActions (44 × 44 px, sans recouvrement) ; `-my-3`
+                    annule la hauteur ajoutée par le padding (la rangée reste à la hauteur du
+                    titre) et `-mr-3` récupère de la largeur sur le `p-4` de la carte. */}
                 {isReferent && (
-                  <span className="flex items-center shrink-0 -my-3 -mr-3">
-                    <button onClick={() => startEdit(a)}
-                      className="w-11 h-11 flex items-center justify-center rounded-xl text-content-faint hover:text-brand-600 hover:bg-surface-sunken transition-colors"
-                      aria-label="Modifier">
-                      <Pencil size={15} />
-                    </button>
-                    <button onClick={() => handleDelete(a.id)}
-                      className="w-11 h-11 flex items-center justify-center rounded-xl text-content-faint hover:text-red-500 hover:bg-surface-sunken transition-colors"
-                      aria-label="Supprimer">
-                      <Trash2 size={15} />
-                    </button>
-                  </span>
+                  <ItemActions
+                    className="-my-3 -mr-3"
+                    onEdit={() => startEdit(a)}
+                    onDelete={() => handleDelete(a.id)}
+                    onFailure={() => setDeleteError('Suppression impossible. Réessayez.')}
+                  />
                 )}
               </div>
 

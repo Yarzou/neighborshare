@@ -46,6 +46,10 @@ export default function RecentPage() {
 
   // Quand une recherche texte est active, on charge un set plus large côté serveur
   // puis on filtre côté client pour garantir la recherche insensible aux accents.
+  //
+  // ⚠️ `search` n'est volontairement PAS une dépendance : seul le passage
+  // recherche active / inactive change la requête. Sinon chaque caractère tapé
+  // relançait un `limit(500)` dont le résultat était identique au précédent.
   const fetchListings = useCallback(async (p: number) => {
     setLoading(true)
 
@@ -77,7 +81,7 @@ export default function RecentPage() {
   // Recharge quand catégorie ou mode filtrage change, reset page
   useEffect(() => {
     setPage(0)
-  }, [category, search])
+  }, [category, isFiltering])
 
   useEffect(() => {
     fetchListings(page)

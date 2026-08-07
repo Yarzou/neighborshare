@@ -1,5 +1,149 @@
 # Historique des modifications (par session)
 
+## 2026-08-07 — Revue de code : correctifs de performance, de cohérence et de fiabilité
+
+Relecture complète du dépôt à la demande de l'utilisateur (propositions d'améliorations), puis
+arbitrage : **seul l'axe « correctifs vérifiés » est retenu**. Les trois autres axes (visuel/a11y,
+fonctionnalités, dette) sont écartés — leur analyse est conservée en fin de section.
+Aucun changement de schéma, aucune migration.
+
+### 1. La carte relançait une requête à chaque caractère tapé
+
+`components/map/MapView.tsx` — `fetchListings` avait `category` et `search` dans ses dépendances
+alors que **les deux filtres étaient appliqués après le fetch, en mémoire**. Chaque frappe
+déclenchait donc un `select('*')` complet sur `listings_geo` dont le résultat était identique.
+
+- nouvel état **`rows`** (données brutes) alimenté par un `fetchListings` réduit à `[searchCenter]` ;
+  la variable locale du fetch a été renommée `fetched` pour ne pas masquer l'état ;
+- **`listings` devient un `useMemo`** sur `[rows, category, search, slugToId]`. Distance, filtre de
+  rayon et tri par proximité restent dans le fetch (ils ne dépendent que du centre).
+- Le repli sur le RPC `listings_within_radius` est **inchangé** (règle expand/contract).
+
+`app/recent/page.tsx` — même défaut par `isFiltering` : l'effet de reset de page écoutait `search`,
+donc chaque frappe relançait un `limit(500)`. Passé à `[category, isFiltering]` — la requête élargie
+ne part plus qu'**au passage** recherche inactive → active.
+
+**Mesuré dans le navigateur** : sur `/map`, 3 modifications de la recherche puis un clic sur un
+filtre catégorie → **0 requête ajoutée** (`list_network_requests` identique avant/après), liste
+correctement réduite à 1 annonce et un seul marqueur. Sur `/recent`, 4 frappes → **1** requête
+`limit=500` au lieu de 4.
+
+### 2. Compteurs de pastilles : N+1, duplication, et un badge impossible à effacer
+
+`components/layout/Navbar.tsx` et `app/accueil/DashboardClient.tsx` portaient **le même code à
+l'identique** : un `count` par conversation (N+1), rejoué à chaque navigation. Trois défauts d'un
+coup, dont un bug réel.
+
+- **`lib/hooks.ts`** — nouveaux `useUnreadCount()` et `usePendingRequests()`, exportés à côté de
+  `useCurrentUser()`. Le décompte des non-lus passe de *1 + N* requêtes à **2**, quel que soit le
+  nombre de conversations : les participations d'abord, puis **une seule** requête `messages`
+  bornée par le plus ancien `last_read_at`, le comptage se faisant en mémoire.
+- 🐛 **Bug corrigé** : ces compteurs ignoraient `deleted_at` et `visible_from`, alors que
+  `MessagesClient` les respecte. Une conversation **supprimée** continuait d'alimenter la pastille
+  rouge — donc un badge que rien ne permettait de faire retomber, la conversation n'apparaissant
+  plus dans la liste. Les hooks filtrent désormais `.is('deleted_at', null)` et écartent
+  l'historique antérieur à `visible_from`.
+- ⚠️ **Comparaisons en millisecondes, pas lexicographiques** : `visible_from` est écrit côté client
+  (`toISOString()`, suffixe « Z ») alors que les colonnes de la base reviennent en « +00:00 ».
+  Comparer ces deux formats comme des chaînes donne un résultat faux (`'Z'` > les chiffres).
+- **Magasin partagé** (`counterStores`, module-level, compté par références) : la navbar et le
+  tableau de bord affichent les mêmes pastilles et sont montés **en même temps** sur `/accueil`.
+  Deux instances indépendantes lançaient les mêmes requêtes en double et ouvraient deux canaux
+  Realtime sur le même sujet — ce que le client Supabase ne gère pas. La première instance montée
+  crée le canal, la dernière démontée le ferme, et un chargement déjà en vol est réutilisé.
+- **`getSession()` et non `getUser()`** dans le helper interne `useUserId` : lecture locale, sans
+  aller-retour `/auth/v1/user`. L'identifiant ne sert qu'à construire une requête dont le RLS reste
+  l'arbitre (même raisonnement que `proxy.ts`).
+- Le tableau de bord **gagne le temps réel** qu'il n'avait pas : ses badges ne bougeaient plus une
+  fois la page affichée.
+
+**Mesuré sur `/accueil`** : **4 requêtes de données** contre **14** auparavant (2 × (1 participations
++ 4 counts + 2 HEAD)), et un seul `/auth/v1/user` (celui, pré-existant, de la navbar).
+
+### 3. Suppressions destructives sans confirmation ni détection du refus
+
+Cinq emplacements supprimaient au premier clic. Depuis la migration 038 un référent peut détruire le
+contenu d'un autre référent ; et un `delete` refusé par RLS **ne renvoie pas d'erreur**, juste zéro
+ligne — l'écran affichait donc un succès silencieux.
+
+- **`components/common/ItemActions.tsx`** (nouveau dossier `components/common/`) — groupe
+  « modifier / supprimer » avec confirmation en deux temps, pendant d'`EventActions` pour les écrans
+  du quartier. Props : `onEdit?`, `onDelete: () => Promise<boolean>`, `onFailure?`, `className`,
+  `editLabel`, `deleteLabel`.
+  ⚠️ **Le mode confirmation *remplace* les deux boutons au lieu de s'y ajouter** : l'encombrement
+  reste de 2 × 44 px, donc **aucun décalage de mise en page** — c'est ce qui permet de conserver
+  telle quelle la géométrie mesurée le 2026-08-04.
+- Adopté dans `AnnouncementsSection`, `PollsSection`, `prestataires/page.tsx` et `achats/page.tsx`,
+  chacun conservant sa marge négative propre (`-my-3 -mr-3`, `-mt-3 -mr-3`, et **`-mb-3 -mr-3` seul
+  pour achats** — un `-mt` négatif ferait passer la zone cliquable sous le badge de statut).
+- Les cinq `delete` passent en **`.select('id')`** et renvoient `(data?.length ?? 0) > 0` ; chaque
+  écran affiche « Suppression impossible. Réessayez. » via un état `deleteError` distinct de
+  l'`error` du formulaire.
+- Imports `Trash2` / `Pencil` retirés des quatre fichiers (plus d'autre usage).
+
+**Mesuré sur `/prestataires`** : boutons **44 × 44 px**, **0 px de recouvrement** (bord droit du
+premier = bord gauche du second), carte **strictement inchangée** entre l'état normal et l'état
+confirmation (203 × 314 dans les deux cas), aucun débordement horizontal à 1280 px **ni à 360 px**
+(`emulate`, `window.innerWidth` vérifié à 360). Thème sombre correct — le composant est en tokens
+sémantiques.
+
+⚠️ **`/infos` et `/achats` restent vides en base** : leurs trois instances d'`ItemActions` n'ont pas
+pu être exercées avec de vraies données. Le composant étant partagé et validé sur `/prestataires`,
+seule la marge négative diffère — reprise verbatim de chaque appelant.
+
+### 4. `/recent` n'était liée depuis aucun écran
+
+Page complète (recherche, filtres, pagination) inatteignable autrement qu'en tapant l'URL : ni la
+navbar ni les tuiles du tableau de bord n'y renvoyaient.
+`app/accueil/DashboardClient.tsx` — **9ᵉ tuile « Derniers ajouts »** (icône `Sparkles`, `/recent`).
+Le centrage de la dernière tuile d'un compte impair était déjà géré, il s'applique donc tout seul.
+Vérifié : 9 tuiles, « Mon profil » centrée sur la dernière ligne.
+
+### 5. Images d'événements hors du pipeline Next
+
+`components/map/EventCard.tsx` — les deux `<img>` (et leurs `eslint-disable
+@next/next/no-img-element`) passent à **`next/image`** en `fill` + `sizes`, alors que `ListingCard`
+utilisait déjà `next/image`. Les événements sont pourtant l'écran le plus chargé en photos.
+
+**Mesuré** : les 8 images de `/evenements` passent par `/_next/image`, l'image principale est
+demandée en **750 px** (326 px rendus × DPR 2) et les vignettes en **96 px** — elles téléchargeaient
+jusque-là la **photo originale pleine résolution**. `loading="lazy"` présent. Le badge « Passé »
+reste bien superposé à l'image.
+
+### Vérifications
+
+`npm run lint` : **0 erreur, 30 avertissements** (base 40 — 10 de moins, aucun ajouté).
+`npm run typecheck` et `npm run build` : verts. Console du navigateur : aucun message hors une
+remontée a11y pré-existante (champ de recherche sans `id`/`name`).
+
+Un seul `eslint-disable` ajouté, dans `lib/hooks.ts` : la lecture initiale du magasin externe au
+moment de l'abonnement est exactement le cas que `react-hooks/set-state-in-effect` décrit comme
+légitime. Sans elle, un composant monté après les autres afficherait 0 jusqu'au rafraîchissement
+suivant.
+
+### Reste à faire — analyse conservée (axes écartés par l'utilisateur)
+
+- **Visuel / a11y** : aucune page `error.tsx` / `not-found.tsx` / `loading.tsx` dans tout `app/`,
+  donc écran d'erreur Next **en anglais** (contredit la règle « toute l'UI en français ») ;
+  `html.dark img` (`globals.css:365`) ternit aussi le logo et les avatars ; poursuite de la
+  migration vers les tokens sémantiques (`DashboardClient`, `MapView`, `DemandesClient`) pour
+  démonter le bloc `!important` de 200 lignes ; `text-gray-400` sur blanc à ~2,8:1 (sous AA) ;
+  `ListingCard` empile jusqu'à 4 badges qui rognent le titre en mode compact.
+- **Fonctionnalités** : participation aux événements (le contenu le plus social n'a aucune
+  interaction) ; avis entre voisins — **`profiles.rating` / `rating_count` existent depuis la
+  migration 001, sont lus mais jamais écrits**, donnée morte ; événements sur la carte principale
+  (coordonnées déjà présentes) ; rappel avant expiration d'annonce (`expire-listings` passe en
+  `termine` sans prévenir) ; centre de notifications in-app ; objets perdus/trouvés ; `shortcuts`
+  PWA ; mode hors-ligne (le seul Service Worker est celui de FCM).
+- **Dette** : phase *contract* du RPC `listings_within_radius` ; `zustand` installé jamais importé ;
+  `public/logo_cedre_anim.mp4` non référencé ; type `Message` legacy ; aucun test (Vitest sur
+  `formatChildcareSlots`, `distanceMeters`, `normalizeSearch`) ; CSP sans `object-src` / `base-uri` /
+  `form-action` ; README et `copilot-instructions.md` annoncent toujours Next 14, `middleware.ts`,
+  Nominatim.
+- **`<img>` bruts restants** (hors périmètre de cette session) : `EventForm`, `ListingForm`
+  (aperçus d'upload en blob — `next/image` ne convient pas tel quel), `PublicProfileAccordion`,
+  `EventDetailClient`, `EventDetailPopup`.
+
 ## 2026-08-04 (6) — Première vérification visuelle réelle via MCP Chrome, et correctif
 
 Test du diff non commité de la session (4) sur `/prestataires`, avec le serveur MCP mis en place en

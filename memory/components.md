@@ -85,6 +85,34 @@ Utilisé par `MapView` (liste + voile de la carte), `app/recent`, `app/evenement
 
 **Purement visuel** — ce qui protège les données est le RLS (migration 030), jamais cet encart.
 
+### `ItemActions` (`components/common/ItemActions.tsx`) — actions d'une carte du quartier
+Groupe **modifier / supprimer** avec confirmation en deux temps, pendant d'`EventActions` pour
+`AnnouncementsSection`, `PollsSection`, `/prestataires` et `/achats` (2026-08-07). Props : `onEdit?`,
+`onDelete: () => Promise<boolean>`, `onFailure?`, `className`, `editLabel`, `deleteLabel`.
+
+⚠️ Deux règles à ne pas casser :
+1. Le mode confirmation **remplace** les deux boutons (✓ / ✗) au lieu de s'y ajouter : l'encombrement
+   reste de 2 × 44 px, donc **aucun décalage de mise en page**. C'est ce qui préserve la géométrie
+   mesurée le 2026-08-04 (44 × 44 px, 0 px de recouvrement — « supprimer » est destructif).
+2. `onDelete` doit renvoyer `false` quand **zéro ligne** a été supprimée : un `delete` refusé par RLS
+   ne renvoie pas d'erreur. Les appelants font donc `.select('id')` puis `(data?.length ?? 0) > 0`.
+
+La marge négative reste propre à l'appelant : `-my-3 -mr-3` (infos, sondages), `-mt-3 -mr-3`
+(prestataires), **`-mb-3 -mr-3` seul** pour achats — un `-mt` négatif y ferait passer la zone
+cliquable sous le badge de statut.
+
+### `useUnreadCount()` / `usePendingRequests()` (`lib/hooks.ts`)
+Les pastilles de la navbar **et** des tuiles du tableau de bord (2026-08-07). Auparavant dupliquées
+à l'identique dans `Navbar` et `DashboardClient`, avec un `count` par conversation.
+- Non-lus : **2 requêtes**, quel que soit le nombre de conversations. Respectent `deleted_at` et
+  `visible_from` comme `MessagesClient` — sans ça une conversation supprimée alimentait un badge
+  impossible à faire retomber.
+- **Magasin partagé** de module, compté par références : navbar et dashboard sont montés ensemble
+  sur `/accueil`, deux instances doubleraient les requêtes et ouvriraient deux canaux Realtime sur
+  le même sujet. Ne pas revenir à un état par composant.
+- Comparer les dates **en millisecondes** : `visible_from` est écrit côté client (suffixe « Z »),
+  les colonnes de la base reviennent en « +00:00 » — la comparaison de chaînes est fausse.
+
 ### `useCurrentUser()` (`lib/hooks.ts`)
 Session + rôle référent pour les pages client : `{ userId, isReferent, resolved }`. S'abonne à `onAuthStateChange` et lit `profiles.is_referent`. **Toujours attendre `resolved`** avant d'afficher un état déconnecté (même piège de clignotement que `authResolved`). Utilisé par `/infos`, `/achats`, `/prestataires`. Ne remplace pas les policies — il évite seulement de proposer une action qui échouerait.
 

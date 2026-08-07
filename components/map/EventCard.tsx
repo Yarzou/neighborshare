@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { CalendarDays, MapPin } from 'lucide-react'
 import type { Event } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -62,8 +63,15 @@ export function EventCard({ event, compact = false, onClick, selected }: EventCa
           'relative overflow-hidden flex-shrink-0 bg-gray-100',
           compact ? 'w-20 h-20 rounded-xl' : 'w-full h-40'
         )}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={firstImage} alt={event.title} className="w-full h-full object-cover" />
+          {/* `sizes` calé sur les deux tailles rendues : vignette de 80 px en
+              compact, sinon pleine largeur de carte (grille jusqu'à 3 colonnes). */}
+          <Image
+            src={firstImage}
+            alt={event.title}
+            fill
+            sizes={compact ? '80px' : '(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw'}
+            className="object-cover"
+          />
           {isPast && (
             <span className="absolute top-2 right-2 text-[10px] font-medium bg-black/50 text-white px-2 py-0.5 rounded-full backdrop-blur-sm">
               Passé
@@ -104,9 +112,8 @@ export function EventCard({ event, compact = false, onClick, selected }: EventCa
         {!compact && event.image_urls && event.image_urls.length > 1 && (
           <div className="flex gap-1.5 mt-2">
             {event.image_urls.slice(1).map((url, i) => (
-              <div key={i} className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={url} alt="" className="w-full h-full object-cover" />
+              <div key={i} className="relative w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                <Image src={url} alt="" fill sizes="48px" className="object-cover" />
               </div>
             ))}
           </div>

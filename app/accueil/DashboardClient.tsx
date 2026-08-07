@@ -1,9 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { MapPin, CalendarDays, MessageCircle, ClipboardList, User, Megaphone, ShoppingCart, Wrench } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
+import { MapPin, CalendarDays, MessageCircle, ClipboardList, User, Megaphone, ShoppingCart, Wrench, Sparkles } from 'lucide-react'
+import { useUnreadCount, usePendingRequests } from '@/lib/hooks'
 import { cn } from '@/lib/utils'
 
 interface Props {
@@ -22,59 +21,11 @@ interface Tile {
 
 export default function DashboardClient({ firstName, avatarUrl, avatarColor }: Props) {
   const router = useRouter()
-  const supabase = createClient()
-  const [unreadCount, setUnreadCount] = useState(0)
-  const [pendingRequestsCount, setPendingRequestsCount] = useState(0)
-  const [userId, setUserId] = useState<string | null>(null)
-
-  const fetchUnread = async (uid: string) => {
-    const { data: parts } = await supabase
-      .from('conversation_participants')
-      .select('conversation_id, last_read_at')
-      .eq('user_id', uid)
-
-    if (!parts || parts.length === 0) { setUnreadCount(0); return }
-
-    let total = 0
-    await Promise.all(parts.map(async (p) => {
-      const { count } = await supabase
-        .from('messages')
-        .select('id', { count: 'exact', head: true })
-        .eq('conversation_id', p.conversation_id)
-        .neq('sender_id', uid)
-        .gt('created_at', p.last_read_at)
-      total += count ?? 0
-    }))
-    setUnreadCount(total)
-  }
-
-  const fetchPendingRequests = async (uid: string) => {
-    const [{ count: asOwner }, { count: asResponder }] = await Promise.all([
-      supabase
-        .from('listings')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', uid)
-        .in('status', ['en_cours', 'validee']),
-      supabase
-        .from('listings')
-        .select('id', { count: 'exact', head: true })
-        .eq('responder_id', uid)
-        .in('status', ['en_cours', 'validee']),
-    ])
-    setPendingRequestsCount((asOwner ?? 0) + (asResponder ?? 0))
-  }
-
-  // Déclaré après fetchUnread / fetchPendingRequests : l'effet les référence,
-  // les placer avant provoquerait une lecture en zone morte (TDZ).
-  useEffect(() => {
-    const init = async () => {
-      const { data } = await supabase.auth.getUser()
-      if (!data.user) return
-      setUserId(data.user.id)
-      await Promise.all([fetchUnread(data.user.id), fetchPendingRequests(data.user.id)])
-    }
-    void init()
-  }, [])
+  // Mêmes compteurs que la navbar, factorisés dans lib/hooks.ts. Le tableau de
+  // bord gagne au passage le temps réel, qu'il n'avait pas : ses badges ne
+  // bougeaient plus une fois la page affichée.
+  const unreadCount = useUnreadCount()
+  const pendingRequestsCount = usePendingRequests()
 
   const tiles: Tile[] = [
     {
@@ -88,6 +39,12 @@ export default function DashboardClient({ firstName, avatarUrl, avatarColor }: P
       description: 'Voir les événements à venir',
       icon: <CalendarDays size={32} />,
       href: '/evenements',
+    },
+    {
+      label: 'Derniers ajouts',
+      description: 'Les annonces les plus récentes',
+      icon: <Sparkles size={32} />,
+      href: '/recent',
     },
     {
       label: 'Vie du quartier',
