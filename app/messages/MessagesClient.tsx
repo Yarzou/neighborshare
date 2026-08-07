@@ -1,113 +1,64 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { MessageCircle, Plus, Loader2 } from 'lucide-react'
-import type { ConversationWithDetails, ConversationParticipant, DirectMessage } from '@/lib/types'
+import type { ConversationWithDetails } from '@/lib/types'
+import { fetchConversationsOverview, createDebouncedRefresh } from '@/lib/messaging'
 import { ConversationRow } from '@/components/messages/ConversationRow'
 
-export default function MessagesClient() {
-  const router = useRouter()
+/** `userId` est résolu côté serveur par `page.tsx` (voir son commentaire). */
+export default function MessagesClient({ userId }: { userId: string }) {
   const supabase = createClient()
 
-  const [userId, setUserId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [conversations, setConversations] = useState<ConversationWithDetails[]>([])
 
-  const buildConversations = useCallback(async (uid: string) => {
-    // 1. Participations de l'utilisateur courant (exclut les conversations supprimées)
-    const { data: myParts } = await supabase
-      .from('conversation_participants')
-      .select('conversation_id, last_read_at, visible_from')
-      .eq('user_id', uid)
-      .is('deleted_at', null)
-
-    const convIds = (myParts ?? []).map(p => p.conversation_id)
-    if (convIds.length === 0) { setConversations([]); return }
-
-    // 2. Conversations triées par updated_at
-    const { data: convs } = await supabase
-      .from('conversations')
-      .select('id, name, created_at, updated_at')
-      .in('id', convIds)
-      .order('updated_at', { ascending: false })
-
-    // 3. Tous les participants avec leur profil
-    const { data: allParts } = await supabase
-      .from('conversation_participants')
-      .select('conversation_id, user_id, last_read_at, joined_at, profiles(id, username, full_name, avatar_url, avatar_color)')
-      .in('conversation_id', convIds)
-
-    // 4. Dernier message par conversation
-    const { data: allMsgs } = await supabase
-      .from('messages')
-      .select('id, conversation_id, sender_id, content, created_at')
-      .in('conversation_id', convIds)
-      .order('created_at', { ascending: false })
-
-    // Grouper les participants et messages par conversation
-    const partsMap: Record<string, ConversationParticipant[]> = {}
-    for (const p of allParts ?? []) {
-      if (!partsMap[p.conversation_id]) partsMap[p.conversation_id] = []
-      partsMap[p.conversation_id].push(p as unknown as ConversationParticipant)
-    }
-
-    // Indexer le dernier message visible par conversation (respecte visible_from)
-    const visibleFromMap: Record<string, string | null> = {}
-    for (const p of myParts ?? []) visibleFromMap[p.conversation_id] = p.visible_from ?? null
-
-    const lastMsgMap: Record<string, DirectMessage> = {}
-    for (const m of allMsgs ?? []) {
-      if (lastMsgMap[m.conversation_id]) continue
-      const visibleFrom = visibleFromMap[m.conversation_id]
-      if (visibleFrom && new Date(m.created_at) < new Date(visibleFrom)) continue
-      lastMsgMap[m.conversation_id] = m as DirectMessage
-    }
-
-    // Unread: messages après last_read_at du current user
-    const lastReadMap: Record<string, string> = {}
-    for (const p of myParts ?? []) lastReadMap[p.conversation_id] = p.last_read_at
-
-    const result: ConversationWithDetails[] = (convs ?? []).map(conv => {
-      const parts = partsMap[conv.id] ?? []
-      const lastMsg = lastMsgMap[conv.id] ?? null
-      const lastRead = lastReadMap[conv.id]
-      const unread = lastMsg && lastMsg.sender_id !== uid && lastRead
-        ? new Date(lastMsg.created_at) > new Date(lastRead) ? 1 : 0
-        : 0
-      return { ...conv, participants: parts, lastMessage: lastMsg, unreadCount: unread }
-    })
-
-    setConversations(result)
-  }, [supabase])
+  /**
+   * Une seule requête là où il y en avait quatre en séquence — dont un `select`
+   * sur `messages` NON BORNÉ, qui ramenait tout l'historique de l'utilisateur
+   * pour n'en extraire que le dernier message de chaque fil. Le regroupement se
+   * fait maintenant en base (`conversations_overview`, migration 039), avec
+   * repli automatique sur l'ancien chemin tant qu'elle n'est pas appliquée.
+   */
+  const refresh = useCallback(async () => {
+    setConversations(await fetchConversationsOverview(supabase, userId))
+  }, [supabase, userId])
 
   useEffect(() => {
-    const init = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        router.push('/auth/login?redirect=%2Fmessages')
-        return
-      }
-      setUserId(user.id)
-      await buildConversations(user.id)
-      setLoading(false)
-    }
-    init()
-  }, [])
+    void refresh().finally(() => setLoading(false))
+  }, [refresh])
 
-  // Realtime: met à jour la liste à chaque nouveau message
+  // Realtime : met à jour la liste à chaque nouveau message
   useEffect(() => {
-    if (!userId) return
+    // Un rafraîchissement par message était intenable quand il coûtait quatre
+    // requêtes ; il en coûte une désormais, mais une rafale (conversation de
+    // groupe active) mérite toujours d'être regroupée.
+    const refresher = createDebouncedRefresh(refresh, 400)
+
     const channel = supabase
       .channel('messages_list_updates')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => {
-        buildConversations(userId)
-      })
+      // Volontairement SANS filtre `conversation_id` : le Realtime applique le
+      // RLS de `messages`, on ne reçoit donc que les fils dont on est
+      // participant. Un filtre `in.(…)` devrait être reconstruit à chaque
+      // nouvelle conversation — et manquerait justement le cas « quelqu'un
+      // m'écrit pour la première fois ».
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' },
+        () => refresher.schedule())
+      // La vue d'ensemble porte aussi les non-lus : une conversation lue depuis
+      // un autre onglet (`mark_conversation_read` → `last_read_at`) doit faire
+      // retomber la pastille ici aussi.
+      .on('postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'conversation_participants', filter: `user_id=eq.${userId}` },
+        () => refresher.schedule())
       .subscribe()
-    return () => { supabase.removeChannel(channel) }
-  }, [userId, buildConversations])
+
+    return () => {
+      refresher.cancel()
+      supabase.removeChannel(channel)
+    }
+  }, [supabase, userId, refresh])
 
   const handleDeleteConversation = async (convId: string) => {
     // Soft delete : masque la conversation + mémorise la coupure d'historique
@@ -117,9 +68,9 @@ export default function MessagesClient() {
       .from('conversation_participants')
       .update({ deleted_at: now, visible_from: now })
       .eq('conversation_id', convId)
-      .eq('user_id', userId!)
+      .eq('user_id', userId)
     if (error) {
-      await buildConversations(userId!)
+      await refresh()
     }
   }
 
@@ -163,7 +114,7 @@ export default function MessagesClient() {
             <ConversationRow
               key={conv.id}
               conv={conv}
-              userId={userId!}
+              userId={userId}
               onDelete={handleDeleteConversation}
             />
           ))}

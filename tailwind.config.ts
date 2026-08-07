@@ -51,7 +51,10 @@ const config: Config = {
       },
       fontFamily: {
         sans: ['var(--font-geist-sans)', 'system-ui', 'sans-serif'],
-        mono: ['var(--font-geist-mono)', 'monospace'],
+        // Pile système, plus GeistMono : la police monospace pesait 71 Ko de
+        // woff2 chargés sur chaque page pour un seul mot de l'interface (le
+        // « SUPPRIMER » à recopier dans la modale de suppression de compte).
+        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Consolas', 'monospace'],
       },
       borderRadius: {
         '2xl': '1rem',

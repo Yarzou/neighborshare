@@ -28,12 +28,14 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
       .select('id, title, description, type, listing_intent, image_url')
       .eq('user_id', id)
       .eq('status', 'disponible')
-      .order('created_at', { ascending: false }),
+      .order('created_at', { ascending: false })
+      .limit(100),
     supabase
       .from('events')
       .select('id, title, description, event_date, image_urls')
       .eq('user_id', id)
-      .order('event_date', { ascending: false }),
+      .order('event_date', { ascending: false })
+      .limit(100),
   ])
 
   const displayName = profile.full_name || profile.username || 'Voisin'

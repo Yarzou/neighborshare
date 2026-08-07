@@ -63,6 +63,9 @@ export default function GroupPurchasesPage() {
         profiles!created_by(full_name, username, avatar_color),
         group_purchase_participants(*, profiles!user_id(full_name, username, avatar_color))`)
       .order('created_at', { ascending: false })
+      // Borne défensive : liste non paginée, et chaque ligne embarque ses
+      // participants et leurs profils.
+      .limit(100)
     setPurchases((data ?? []) as GroupPurchase[])
     setLoading(false)
   }

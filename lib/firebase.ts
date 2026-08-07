@@ -1,4 +1,4 @@
-import { initializeApp, getApps, getApp } from 'firebase/app'
+import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app'
 import { getMessaging, getToken, onMessage, type Messaging } from 'firebase/messaging'
 
 const firebaseConfig = {
@@ -11,13 +11,28 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 }
 
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp()
+let app: FirebaseApp | null = null
+
+/**
+ * Initialisation paresseuse.
+ *
+ * `initializeApp()` était appelé au niveau module : il s'exécutait donc à
+ * l'hydratation de **chaque** page, y compris pour un visiteur anonyme qui
+ * n'accordera jamais la permission de notification. Ce module n'est plus
+ * chargé que par `await import()`, depuis un effet ou un gestionnaire
+ * d'événement (cf. `FirebaseSWRegister`, `pushNotifications`) — l'appelant
+ * n'est donc plus jamais un module de premier niveau.
+ */
+function getFirebaseApp(): FirebaseApp {
+  if (!app) app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp()
+  return app
+}
 
 let messaging: Messaging | null = null
 
 export function getFirebaseMessaging(): Messaging | null {
   if (typeof window === 'undefined') return null
-  if (!messaging) messaging = getMessaging(app)
+  if (!messaging) messaging = getMessaging(getFirebaseApp())
   return messaging
 }
 

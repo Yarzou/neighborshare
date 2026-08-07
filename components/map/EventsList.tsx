@@ -129,10 +129,23 @@ export function EventsList({
     loadEvents(filterFrom, filterTo, true)
   }, [filterFrom, filterTo]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Load all marked dates (always unfiltered, for calendar dots)
+  // Pastilles du calendrier : dates seules, sur une fenêtre glissante
   useEffect(() => {
     const loadMarked = async () => {
-      const { data } = await supabase.from('events').select('event_date')
+      // Bornée à ±1 an. La requête ramenait TOUS les événements depuis toujours,
+      // pour n'en garder que la partie « date » — or le mini-calendrier ne
+      // navigue jamais au-delà de quelques mois. `event_date` est indexée
+      // (migration 024), la borne est donc servie par l'index.
+      const now = new Date()
+      const from = new Date(now.getFullYear() - 1, now.getMonth(), 1).toISOString()
+      const to = new Date(now.getFullYear() + 1, now.getMonth() + 1, 0).toISOString()
+
+      const { data } = await supabase
+        .from('events')
+        .select('event_date')
+        .gte('event_date', from)
+        .lte('event_date', to)
+
       const dates = new Set((data ?? []).map((e: { event_date: string }) => e.event_date.slice(0, 10)))
       setMarkedDates(dates)
       onMarkedDatesReady?.(dates)

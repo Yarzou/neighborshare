@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, CalendarDays, MapPin, Clock, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { Event, Profile } from '@/lib/types'
@@ -55,11 +56,12 @@ export default function EventDetailClient({ event }: Props) {
         {/* Photo gallery */}
         {photos.length > 0 ? (
           <div className="relative w-full h-56 bg-gray-100 overflow-hidden">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               src={photos[photoIndex]}
               alt={event.title}
-              className="w-full h-full object-cover"
+              fill
+              sizes="(min-width: 768px) 768px, 100vw"
+              className="object-cover"
             />
             {photos.length > 1 && (
               <>

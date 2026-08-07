@@ -1,5 +1,15 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { requestFCMToken } from '@/lib/firebase'
+
+/*
+ * ⚠️ Aucun import statique de `@/lib/firebase` dans ce module.
+ *
+ * `notifyQuartier` (plus bas) n'est qu'un `fetch`, mais il est importé depuis
+ * `EventForm`, `/achats`, `/prestataires`, `AnnouncementsSection` et
+ * `PollsSection`. Un import statique de Firebase en tête de fichier suffisait à
+ * embarquer ~44 Ko de SDK push dans le bundle de toutes ces pages, dont aucune
+ * ne demande jamais de token. Les deux fonctions qui en ont réellement besoin
+ * le chargent en `await import()`.
+ */
 
 /** Vérifie si le navigateur supporte les notifications push. */
 export function isPushSupported(): boolean {
@@ -20,6 +30,7 @@ export async function activatePushNotifications(
   userId: string,
   supabase: SupabaseClient,
 ): Promise<void> {
+  const { requestFCMToken } = await import('@/lib/firebase')
   const token = await requestFCMToken()
   const { error } = await supabase
     .from('fcm_tokens')

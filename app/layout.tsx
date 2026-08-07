@@ -1,12 +1,14 @@
 import type { Metadata, Viewport } from 'next'
+import dynamic from 'next/dynamic'
 import { GeistSans } from 'geist/font/sans'
-import { GeistMono } from 'geist/font/mono'
 import './globals.css'
 import { Navbar } from '@/components/layout/Navbar'
 import FirebaseSWRegister from '@/components/layout/FirebaseSWRegister'
-import PWAInstallBanner from '@/components/layout/PWAInstallBanner'
-import PushNotificationBanner from '@/components/layout/PushNotificationBanner'
 import { ThemeProvider } from '@/components/theme/ThemeProvider'
+
+// Bannière conditionnelle, presque toujours invisible : chargée à part pour ne
+// pas peser sur le bundle partagé du premier rendu.
+const PWAInstallBanner = dynamic(() => import('@/components/layout/PWAInstallBanner'))
 
 export const metadata: Metadata = {
   title: 'Les voisins du Cèdre',
@@ -45,13 +47,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body
-        className={`${GeistSans.variable} ${GeistMono.variable} font-sans bg-gray-50 text-gray-900 antialiased`}
+        className={`${GeistSans.variable} font-sans bg-gray-50 text-gray-900 antialiased`}
       >
         <ThemeProvider>
           <Navbar />
           <FirebaseSWRegister />
           <PWAInstallBanner />
-          <PushNotificationBanner />
+          {/* PushNotificationBanner n'est plus ici : il ne s'affiche que sur
+              /messages et vit désormais dans app/messages/layout.tsx. */}
           <main className="min-h-screen pt-16">
             {children}
           </main>

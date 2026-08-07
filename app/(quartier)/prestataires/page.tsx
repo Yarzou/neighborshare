@@ -52,6 +52,8 @@ export default function ProvidersPage() {
       .select('*, profiles!created_by(full_name, username, avatar_color)')
       .order('trade', { ascending: true })
       .order('created_at', { ascending: false })
+      // Borne défensive : liste non paginée, filtrée ensuite côté client.
+      .limit(200)
     setProviders((data ?? []) as Provider[])
     setLoading(false)
   }

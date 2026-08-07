@@ -6,7 +6,11 @@ import { Vote, Plus, Loader2, X, Check, AlertCircle } from 'lucide-react'
 import type { Poll, PollResult } from '@/lib/types'
 import { formatDate } from '@/lib/utils'
 import { notifyQuartier } from '@/lib/pushNotifications'
+import { fetchPollResults } from '@/lib/messaging'
 import { ItemActions } from '@/components/common/ItemActions'
+
+/** Borne défensive : la liste n'est pas paginée et grandit sans limite. */
+const POLLS_LIMIT = 100
 
 interface Props {
   userId: string | null
@@ -50,36 +54,32 @@ export function PollsSection({ userId, isReferent }: Props) {
     setError(null)
   }
 
-  /** Résultats : le RPC lève une exception si l'utilisateur n'a pas encore voté. */
-  const loadResults = async (pollId: string) => {
-    const { data, error: rpcErr } = await supabase.rpc('poll_results', { p_poll_id: pollId })
-    return rpcErr ? null : (data as PollResult[])
-  }
-
   const load = async () => {
     const { data } = await supabase
       .from('polls')
       .select('*, poll_options(*)')
       .order('created_at', { ascending: false })
+      .limit(POLLS_LIMIT)
 
     const list = (data ?? []) as Poll[]
     list.forEach(p => p.poll_options?.sort((a, b) => a.position - b.position))
     setPolls(list)
 
     if (userId && list.length > 0) {
-      const { data: myVotes } = await supabase
-        .from('poll_votes')
-        .select('poll_id, option_id')
+      // Un seul appel pour tous les sondages, là où il y en avait un par
+      // sondage (`poll_results`). Les deux requêtes sont indépendantes.
+      // Un sondage dont les résultats ne sont pas encore accessibles est
+      // simplement absent du retour — d'où le `?? null`.
+      const [{ data: myVotes }, results] = await Promise.all([
+        supabase.from('poll_votes').select('poll_id, option_id'),
+        fetchPollResults(supabase, list.map(p => p.id)),
+      ])
 
       const voteByPoll = new Map((myVotes ?? []).map(v => [v.poll_id, v.option_id]))
-      const entries = await Promise.all(
-        list.map(async p => {
-          const myOptionId = voteByPoll.get(p.id) ?? null
-          const results = await loadResults(p.id)
-          return [p.id, { myOptionId, results }] as const
-        })
-      )
-      setStates(Object.fromEntries(entries))
+      setStates(Object.fromEntries(list.map(p => [p.id, {
+        myOptionId: voteByPoll.get(p.id) ?? null,
+        results: (results[p.id] ?? null) as PollResult[] | null,
+      }])))
     }
     setLoading(false)
   }
@@ -98,8 +98,12 @@ export function PollsSection({ userId, isReferent }: Props) {
       setError('Vote impossible. Réessayez.')
       return
     }
-    const results = await loadResults(pollId)
-    setStates(s => ({ ...s, [pollId]: { myOptionId: optionId, results } }))
+    // Un seul sondage à recharger après un vote : même helper, tableau d'un élément.
+    const results = await fetchPollResults(supabase, [pollId])
+    setStates(s => ({
+      ...s,
+      [pollId]: { myOptionId: optionId, results: (results[pollId] ?? null) as PollResult[] | null },
+    }))
   }
 
   const handleCreate = async (e: React.FormEvent) => {

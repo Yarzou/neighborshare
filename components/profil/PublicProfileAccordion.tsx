@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { ChevronDown, CalendarDays } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { LISTING_TYPE_LABELS, LISTING_TYPE_COLORS } from '@/lib/types'
@@ -65,8 +66,17 @@ export default function PublicProfileAccordion({ listings, events }: Props) {
                   <Link key={listing.id} href={`/listings/${listing.id}`}
                     className="flex items-center gap-3 px-4 py-3 hover:bg-brand-50 transition-colors group">
                     {listing.image_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={listing.image_url} alt="" className="w-12 h-12 rounded-xl object-cover flex-shrink-0" />
+                      // `next/image` et non `<img>` : la vignette fait 48 px mais
+                      // l'URL Supabase pointe l'upload d'origine, en pleine
+                      // résolution. `remotePatterns` couvre déjà **.supabase.co.
+                      <Image
+                        src={listing.image_url}
+                        alt=""
+                        width={48}
+                        height={48}
+                        sizes="48px"
+                        className="w-12 h-12 rounded-xl object-cover flex-shrink-0"
+                      />
                     ) : (
                       <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center text-xl flex-shrink-0">📦</div>
                     )}
@@ -118,8 +128,14 @@ export default function PublicProfileAccordion({ listings, events }: Props) {
                   <Link key={event.id} href={`/evenements/${event.id}`}
                     className="flex items-center gap-3 px-4 py-3 hover:bg-brand-50 transition-colors group">
                     {event.image_urls?.[0] ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={event.image_urls[0]} alt="" className="w-12 h-12 rounded-xl object-cover flex-shrink-0" />
+                      <Image
+                        src={event.image_urls[0]}
+                        alt=""
+                        width={48}
+                        height={48}
+                        sizes="48px"
+                        className="w-12 h-12 rounded-xl object-cover flex-shrink-0"
+                      />
                     ) : (
                       <div className="w-12 h-12 rounded-xl bg-brand-50 flex items-center justify-center flex-shrink-0">
                         <CalendarDays size={20} className="text-brand-400" />

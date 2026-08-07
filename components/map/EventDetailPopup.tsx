@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { X, CalendarDays, MapPin, ChevronLeft, ChevronRight, Clock } from 'lucide-react'
 import type { Event } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -64,11 +65,13 @@ export function EventDetailPopup({ event, onClose, onDeleted }: EventDetailPopup
         {/* Photo gallery — hauteur fixe, ne scroll pas */}
         {photos.length > 0 ? (
           <div className="relative w-full h-52 bg-gray-100 overflow-hidden rounded-t-2xl flex-shrink-0">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            {/* Popup de carte : largeur bornée, jamais plein écran. */}
+            <Image
               src={photos[photoIndex]}
               alt={event.title}
-              className="w-full h-full object-cover"
+              fill
+              sizes="(min-width: 768px) 384px, 100vw"
+              className="object-cover"
             />
             {photos.length > 1 && (
               <>

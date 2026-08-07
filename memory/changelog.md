@@ -1,5 +1,191 @@
 # Historique des modifications (par session)
 
+## 2026-08-07 (2) — Optimisation de la vitesse d'affichage client
+
+Demande : « fait en sorte que tout soit optimisé pour une rapidité d'affichage client », périmètre
+complet accepté (assets + requêtes + architecture). Trois audits préalables (données, bundle, base).
+
+**Mesure avant/après** (`scripts/measure-bundle.js`, nouveau, sur build de production) :
+
+| | avant | après |
+|---|---|---|
+| `/profile` | 1167,7 Ko | **1060,4 Ko** |
+| `/infos` | 1150,3 Ko | **1042,6 Ko** |
+| `/demandes` | 1141,2 Ko | **1032,4 Ko** |
+| polices par page | 137,1 Ko | **67,8 Ko** |
+| `public/logo_cedre.png` | 1 744 144 o | **17 067 o** |
+| `public/logo_cedre_anim.mp4` | 1 378 835 o servis | **retiré de `public/`** |
+
+Soit **−107 Ko par page** de façon homogène, plus 3,1 Mo d'assets sortis du chemin servi.
+`npm run lint` : 0 erreur, **25 avertissements** (base : 40). `typecheck` et `build` passent.
+
+### 1. Assets
+
+- **`public/logo_cedre.png` : 1,7 Mo → 17 Ko.** Original 2048×2048 rendu en 50×50 dans la navbar —
+  et surtout servi **brut, sans `next/image`**, comme icône et badge de notification push
+  (`app/api/firebase-messaging-sw/route.ts`, `supabase/functions/_shared/fcm.ts`,
+  `notify-new-listing`, `notify-new-message`) : chaque push tirait 1,7 Mo. Ré-encodé en 192×192
+  avec `sharp` (déjà présent, dépendance de Next). Couleurs vraies et non palette : 4,5 Ko d'écart
+  seulement, et le fichier est servi sans ré-encodage sur le chemin des notifications.
+- **`assets-source/`** (nouveau, avec `README.md`) : original 2048 + `logo_cedre_anim.mp4`
+  (1,4 Mo, **référencé nulle part**, vérifié sur `.ts/.tsx/.css/.json`). Sortis de `public/`, donc
+  plus téléchargeables, mais conservés et régénérables — la commande `sharp` est dans le README.
+- `public/fonts/geist/` supprimé (ne contenait qu'un `README.txt` vide).
+
+### 2. Bundle
+
+- **Firebase hors du bundle racine.** `lib/firebase.ts` appelait `initializeApp()` **au niveau
+  module**, et `FirebaseSWRegister` (layout racine) l'importait statiquement → chunk
+  `@firebase/messaging` (43,6 Ko) chargé sur 10 des 11 routes. Init passée en getter mémoïsé
+  `getFirebaseApp()`, import passé en `await import()` dans l'effet.
+  **Cause aggravante trouvée en chemin** : `lib/pushNotifications.ts` importait lui aussi Firebase
+  statiquement, et cinq pages importent `notifyQuartier` depuis ce module (`EventForm`, `/achats`,
+  `/prestataires`, `AnnouncementsSection`, `PollsSection`) — le SDK push était donc tiré jusque dans
+  `/infos` pour une simple fonction `fetch`. `activatePushNotifications` charge maintenant Firebase
+  en `await import()`, comme le faisait déjà `deactivatePushNotifications`.
+  Vérifié après build : le chunk existe mais est référencé par **0 page HTML**.
+- **`GeistMono` retiré** (71 Ko de woff2 par page) : `font-mono` n'était utilisé qu'une fois, pour le
+  mot « SUPPRIMER » de la modale de suppression de compte. `tailwind.config.ts` bascule sur la pile
+  système, donc `font-mono` continue de fonctionner partout.
+- **Layout racine allégé** : `PushNotificationBanner` déplacé dans `app/messages/layout.tsx`
+  (nouveau) — son effet s'arrêtait déjà hors de `/messages`, mais tout son arbre de modules était
+  expédié partout ; `PWAInstallBanner` passé en `dynamic()`.
+- **Icônes Leaflet auto-hébergées** (`components/map/LeafletMap.tsx`) : importées de `node_modules`
+  au lieu de `unpkg.com`, et **`unpkg.com` retiré de `img-src`** dans la CSP.
+- `next.config.js` : `images.formats` AVIF/WebP, `minimumCacheTTL` 30 jours, et branche
+  `@next/bundle-analyzer` sous `ANALYZE=1` (aucune visibilité n'existait).
+- `package.json` : **`date-fns` et `zustand` supprimés** (zéro import dans tout le dépôt) ;
+  `@types/leaflet.markercluster` et `@types/nodemailer` déplacés en `devDependencies`.
+
+### 3. Images
+
+`next/image` à la place de `<img>` bruts sur des URLs Supabase Storage :
+`PublicProfileAccordion` (deux vignettes 48×48 qui téléchargeaient l'original pleine résolution),
+`EventDetailPopup`, `EventDetailClient`. `sizes` ajouté à `ListingCard` (`fill` sans `sizes` fait
+supposer 100vw à Next). `priority` sur le logo de la navbar. Les `<img>` sur `blob:`
+(`ListingForm`, `EventForm`) sont laissés tels quels — c'est correct pour un aperçu local.
+
+### 4. Migration 039 — `liquibase/changelog/039-perf-indexes-et-messagerie.sql`
+
+Purement additive (expand). **Non appliquée** : la base n'est pas joignable depuis la session.
+
+- **9 index.** Le schéma n'en comptait que 9 au total, et **aucune clé étrangère n'était indexée**.
+  Retenus : `messages(conversation_id, created_at)`, `messages(sender_id)`,
+  `conversation_participants(user_id)`, `listings(user_id, created_at desc)`,
+  `listings(responder_id)` partiel, `listings(status, created_at desc)`,
+  `listings(conversation_id)` partiel, `poll_votes(user_id)`, `poll_votes(option_id)`.
+  Chacun a été confronté au code ; **12 index proposés par l'audit ont été écartés** et la raison est
+  écrite dans l'en-tête du fichier (notamment : un embed PostgREST `profiles!author_id(...)` est
+  *to-one*, il résout `profiles.id`, jamais la colonne enfant — les index FK correspondants seraient
+  morts-nés). Pas de `concurrently` : incompatible avec l'atomicité du changeset.
+- **`conversations_overview()`**, **`unread_message_count()`**, **`poll_results_bulk(uuid[])`** —
+  `stable security definer set search_path`, périmètre refermé par `auth.uid()` dans la fonction,
+  `revoke execute from public` puis `grant to authenticated`.
+- **`listings` ajoutée à `supabase_realtime`.** `usePendingRequests` s'y abonnait depuis toujours,
+  mais la publication ne contenait que `messages`, `conversation_participants` (017) et
+  `message_reactions` (022) : **ces callbacks ne pouvaient jamais se déclencher**. La pastille
+  « Demandes » ne bougeait qu'au changement de page.
+- **Décision : pas de réécriture des policies en `(select auth.uid())`.** Les policies `select` des
+  tables les plus lues sont en `to authenticated using (true)` depuis 030 — rien à hisser ; et là où
+  le coût par ligne est réel (`messages_select`), l'argument de `is_conversation_participant()`
+  dépend de la ligne, donc aucun InitPlan n'est possible : le correctif est l'index, pas la
+  réécriture. ~40 `drop/create policy` sans test sur le seul verrou de l'application, pour un gain
+  non mesurable à ce volume. Convention `(select auth.uid())` adoptée pour les policies **nouvelles**.
+
+### 5. Messagerie — `lib/messaging.ts` (nouveau)
+
+Module isomorphe (client Supabase en paramètre), avec **repli 039 systématique** : détection
+`PGRST202` mémorisée pour la durée de l'onglet, `console.warn` explicite, et les corps d'origine
+conservés tels quels sous `buildConversationsLegacy` / `unreadCountLegacy` — marqués
+`⛔ Code de transition`, à ne pas améliorer, leur rôle est d'être le miroir exact de la production.
+
+- **`/messages` : 5 allers-retours séquentiels → 1 RPC.** Les quatre requêtes de `MessagesClient`,
+  dont un `select` sur `messages` **non borné** qui ramenait tout l'historique de l'utilisateur pour
+  n'en extraire que le dernier message de chaque fil, sont remplacées par `conversations_overview()`.
+- **`/messages/[id]` : 7 allers-retours séquentiels → 2 vagues.** Découpé en `page.tsx` (Server
+  Component de garde) + `ConversationClient.tsx`. Le contrôle d'accès a fusionné avec la lecture des
+  participants, `mark_conversation_read` n'est plus attendu avant le premier rendu.
+- **Bug corrigé — les 50 *premiers* messages au lieu des 50 derniers.**
+  `.order('created_at', { ascending: true }).limit(50)` : `limit` s'applique **après** le tri. Sur un
+  fil de plus de 50 messages, la conversation s'ouvrait sur ses tout premiers échanges. La même
+  erreur était présente **une seconde fois**, dans le rollback de `handleDelete`. Les deux passent
+  par `fetchRecentMessages` (tri descendant + `.reverse()`).
+- **Requête morte supprimée** : à chaque message reçu en Realtime, un `select profiles` alimentait
+  `newMsg.profiles` — que `MessageBubble` ne lit jamais (nom, initiale et couleur viennent de
+  `participants`). L'embed `profiles(...)` du `select` des messages est retiré pour la même raison.
+- `createDebouncedRefresh` : fenêtre glissante + dédup du vol en cours + un passage de rattrapage.
+
+### 6. Pastilles de la navbar (`lib/hooks.ts`)
+
+- `useUnreadCount` passe sur `unread_message_count()` — 1 RPC au lieu de 2 requêtes dont un `select`
+  sur `messages` en pratique non borné, **sur chaque page** (la navbar est dans le layout racine).
+- **Filtre `sender_id=neq.${uid}`** sur l'abonnement `INSERT messages` : ses propres messages ne
+  peuvent pas créer de non-lu, or chaque message **envoyé** déclenchait un recomptage complet — au
+  milieu d'une frappe active.
+- **TTL de 30 s** (`lastLoadedAt` dans `CounterStore`) : `pathname` reste dans les dépendances comme
+  filet si le websocket est indisponible, mais **chaque navigation** payait un comptage complet par
+  pastille. Plus debounce des rafraîchissements Realtime.
+
+### 7. `useCurrentUser` — N+1 qui grandissait avec les données
+
+Le hook n'avait **ni cache, ni contexte, ni store** : chaque instance faisait un `getUser()`
+(appel réseau) + un `select is_referent`, et posait son propre `onAuthStateChange`. Or
+`EventActions` l'appelle, et il est rendu **dans un `.map()`** (`ProfileClient`, accordéon
+« Mes événements ») : N événements = **2N requêtes identiques**. Passé en magasin de module
+refcompté avec dédup `inFlight` (même forme que `counterStores`, déjà dans le fichier) et
+`getSession()` au lieu de `getUser()` (lecture locale, zéro réseau — raison déjà documentée
+au-dessus de `useUserId`). Un rafraîchissement de jeton ne relance plus la lecture de `profiles`.
+
+### 8. Autres pages
+
+- **`/evenements` : 3 requêtes `events` → 1.** Les blocs mobile (`md:hidden`) et desktop
+  (`hidden md:flex`) étaient **tous deux toujours montés** — masqués en CSS, pas rendus
+  conditionnellement. Chaque chargement lançait donc la liste mobile complète, la page desktop de
+  dix, **et** les dates du calendrier, dont deux non bornées, quelle que soit la taille de l'écran.
+  Les blocs restent rendus (aucune bascule visuelle, aucune divergence d'hydratation) mais leurs
+  requêtes sont conditionnées par un `isMobile` résolu en effet (`null` au premier rendu → personne
+  ne charge). Les dates du calendrier sont bornées à ±1 an (`event_date` est indexée depuis 024).
+- **`PollsSection` : N+1 supprimé** — un `poll_results` par sondage remplacé par
+  `poll_results_bulk`, en parallèle de la lecture des votes.
+- **`loading.tsx`** (squelettes, pas de rond qui tourne : la page ne se réorganise pas sous le
+  curseur) sur `/accueil`, `/listings/[id]`, `/evenements/[id]`, `/profil/[id]`, `/messages`,
+  `/messages/[id]`, avec `components/layout/Skeleton.tsx` en tokens sémantiques.
+  **`app/error.tsx` et `app/not-found.tsx`** ajoutés : `notFound()` était appelé à cinq endroits
+  sans page dédiée, l'écran par défaut de Next s'affichait, en anglais.
+- Bornes défensives (`.limit()`) sur les listes non paginées : annonces ASL, sondages, achats
+  groupés, prestataires, annonces et événements de `/profile` et `/profil/[id]`.
+- `app/listings/[id]/page.tsx` : `profiles!user_id(*)` → colonnes explicites. La ligne complète
+  (adresse du foyer, coordonnées, préférences de notification, état FCM) était sérialisée dans le
+  HTML pour afficher un nom et une couleur d'avatar.
+
+### Écarts assumés par rapport au plan
+
+- **`/messages` n'est pas passée en SSR complet**, seulement en Server Component de *garde*
+  (`getUser()` + `redirect`). Un SSR du fetch initial n'aurait retiré aucun code client — la liste
+  est abonnée au Realtime, le composant doit savoir tout recalculer — en aurait ajouté un second
+  chemin avec son propre repli 039, et se serait fait rattraper par le Router Cache de Next : au
+  retour depuis une conversation, la liste serait réaffichée telle qu'elle était **avant** la
+  lecture, pastille non-lue encore allumée. `lib/messaging.ts` étant isomorphe, la bascule coûterait
+  cinq lignes si une mesure la justifiait un jour.
+- **`MapView` garde son `select('*')` sur `listings_geo`.** Énumérer les colonnes annulerait la
+  propriété que la migration 032 cherchait précisément à obtenir (« une nouvelle colonne de
+  `listings` remonte automatiquement », CLAUDE.md §3), et PostgreSQL n'a pas de `select * except` —
+  l'énumération serait inévitable où qu'on la mette. À l'échelle d'un lotissement le gain se compte
+  en kilo-octets : la propriété vaut plus cher.
+- **`app/profile/ProfileClient.tsx` garde son `profiles.select('*')`** : c'est son propre profil, et
+  le formulaire en utilise presque tous les champs.
+- L'audit signalait un `href='\accueil'` (antislash) dans `Navbar.tsx` — **vérifié, c'est faux**,
+  les deux occurrences sont bien `'/accueil'`. Rien à corriger.
+
+### Reste à faire (manuel)
+
+1. `npm run db:validate`, `npm run db:tag`, puis `npm run db:migrate` — **sur test d'abord**.
+2. Recette : voir la section « Vérification » du plan de session. Le point le plus important est de
+   **voir** le repli fonctionner *avant* d'appliquer 039 (console : « migration 039 non appliquée ? »,
+   onglet Réseau : les 4 requêtes historiques), puis les 50 **derniers** messages sur un fil long.
+
+---
+
 ## 2026-08-07 — Revue de code : correctifs de performance, de cohérence et de fiabilité
 
 Relecture complète du dépôt à la demande de l'utilisateur (propositions d'améliorations), puis

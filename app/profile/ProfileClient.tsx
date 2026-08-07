@@ -112,9 +112,13 @@ export default function ProfileClient() {
       setUserId(uid)
 
       const [{ data: prof }, { data: lists }, { data: evts }] = await Promise.all([
+        // `select('*')` assumé ici : c'est SON profil, et le formulaire en
+        // utilise presque tous les champs (nom, pseudo, bio, couleur, adresse,
+        // préférences e-mail et push).
         supabase.from('profiles').select('*').eq('id', uid).single(),
-        supabase.from('listings').select('*, categories(*)').eq('user_id', uid).order('created_at', { ascending: false }),
-        supabase.from('events').select('*').eq('user_id', uid).order('event_date', { ascending: true }),
+        // Bornes défensives : les deux accordéons ne sont pas paginés.
+        supabase.from('listings').select('*, categories(*)').eq('user_id', uid).order('created_at', { ascending: false }).limit(200),
+        supabase.from('events').select('*').eq('user_id', uid).order('event_date', { ascending: true }).limit(200),
       ])
 
       if (prof) {

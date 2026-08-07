@@ -33,6 +33,27 @@ export default function EvenementsPage() {
   const [mobileFilterFrom, setMobileFilterFrom] = useState('')
   const [mobileFilterTo, setMobileFilterTo] = useState('')
 
+  /**
+   * `null` tant que le viewport n'est pas connu — et c'est volontaire.
+   *
+   * Les deux dispositions restent rendues et masquées en CSS (`md:hidden` /
+   * `hidden md:flex`) : aucune bascule visuelle, aucune divergence
+   * d'hydratation. Mais leurs REQUÊTES, elles, sont conditionnées. Avant, les
+   * deux blocs étant toujours montés, chaque affichage de la page lançait trois
+   * requêtes `events` — la liste mobile complète, la page desktop de dix, et les
+   * dates du calendrier — dont deux non bornées, quelle que soit la taille de
+   * l'écran. Une seule des deux dispositions est visible : une seule doit
+   * charger.
+   */
+  const [isMobile, setIsMobile] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
   const handleEventSelect = (event: Event | null) => {
     setSelectedEvent(event)
     setSelectedEventDate(event ? event.event_date.slice(0, 10) : null)
@@ -62,14 +83,14 @@ export default function EvenementsPage() {
       setIsLoggedIn(!!session?.user)
       setUserId(session?.user?.id ?? null)
     })
-    loadMobileEvents('', '')
     return () => subscription.unsubscribe()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Reload mobile events when filters change
+  // Chargement initial et rechargement sur filtre — uniquement en vue mobile.
   useEffect(() => {
+    if (isMobile !== true) return
     loadMobileEvents(mobileFilterFrom, mobileFilterTo)
-  }, [mobileFilterFrom, mobileFilterTo]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isMobile, mobileFilterFrom, mobileFilterTo]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Calendar date click → filter to that single day (toggle off if same day)
   const handleCalendarDateClick = (date: string) => {
@@ -153,7 +174,7 @@ export default function EvenementsPage() {
           )}
         </div>
 
-        {mobileLoading ? (
+        {isMobile !== true || mobileLoading ? (
           <div className="flex items-center justify-center py-16">
             <Loader2 className="animate-spin text-brand-600" size={32} />
           </div>
@@ -202,7 +223,9 @@ export default function EvenementsPage() {
         <div className="flex flex-1 overflow-hidden">
           {/* Left: events list (grid on desktop) */}
           <div className="flex-1 overflow-hidden relative">
-            <EventsList
+            {/* Monté seulement en vue desktop : c'est lui qui porte la requête
+                paginée ET celle des dates du calendrier. */}
+            {isMobile === false && <EventsList
               className="h-full"
               showCalendarToggle={false}
               layout="grid"
@@ -218,7 +241,7 @@ export default function EvenementsPage() {
                 else if (!from && !to) setActiveDate(null)
               }}
               onEventSelect={(event) => handleEventSelect(event)}
-            />
+            />}
           </div>
 
           {/* Right: calendar (desktop only, always visible) */}

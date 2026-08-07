@@ -67,12 +67,24 @@ Badge de messages non lus alimenté en Realtime (canal `navbar_unread`). « Publ
 
 ### `FirebaseSWRegister.tsx`
 Enregistre le Service Worker FCM servi par `/api/firebase-messaging-sw`.
+⚠️ Monté par le **layout racine**, donc sur toutes les routes : `lib/firebase` doit y être chargé en
+`await import()` dans l'effet, jamais en import statique — sinon ~44 Ko de SDK push repartent dans le
+bundle partagé de chaque page. Même raison pour `lib/pushNotifications`.
 
 ### `PWAInstallBanner.tsx`
-Bannière d'installation PWA — gère `beforeinstallprompt` (Android) **et** les instructions manuelles iOS (`Platform = 'android' | 'ios' | null`).
+Bannière d'installation PWA — gère `beforeinstallprompt` (Android) **et** les instructions manuelles iOS (`Platform = 'android' | 'ios' | null`). Chargée en `dynamic()` depuis le layout racine.
 
 ### `PushNotificationBanner.tsx`
-Demande de permission notifications push.
+Demande de permission notifications push. Monté par **`app/messages/layout.tsx`** et non par le
+layout racine (2026-08-07) : il ne s'affiche que sur `/messages`, il n'a rien à faire dans le bundle
+des autres pages.
+
+### `Skeleton.tsx` (2026-08-07)
+`SkeletonBlock` / `SkeletonCard` / `SkeletonRow`, en tokens sémantiques (donc pas de déclaration à
+ajouter au bloc `!important` de `globals.css`). Utilisés par les `loading.tsx` de `/accueil`,
+`/listings/[id]`, `/evenements/[id]`, `/profil/[id]`, `/messages`, `/messages/[id]`.
+Un squelette et non un rond qui tourne : il occupe la place de ce qui arrive, donc la page ne se
+réorganise pas sous le curseur quand la donnée atterrit.
 
 ### `LoginRequiredNotice.tsx`
 Encart « Réservé aux voisins » affiché **à la place d'une liste vide** quand le visiteur n'est pas connecté — depuis la migration 030, `listings` / `profiles` / `events` ne sont plus lisibles par `anon`, donc sans ça on croirait le quartier vide.  
@@ -104,17 +116,50 @@ cliquable sous le badge de statut.
 ### `useUnreadCount()` / `usePendingRequests()` (`lib/hooks.ts`)
 Les pastilles de la navbar **et** des tuiles du tableau de bord (2026-08-07). Auparavant dupliquées
 à l'identique dans `Navbar` et `DashboardClient`, avec un `count` par conversation.
-- Non-lus : **2 requêtes**, quel que soit le nombre de conversations. Respectent `deleted_at` et
-  `visible_from` comme `MessagesClient` — sans ça une conversation supprimée alimentait un badge
-  impossible à faire retomber.
+- Non-lus : **1 RPC** (`unread_message_count()`, migration 039), quel que soit le nombre de
+  conversations. Repli sur les 2 requêtes d'origine tant que 039 n'est pas appliquée
+  (`lib/messaging.ts`). Respectent `deleted_at` et `visible_from` comme la liste des conversations —
+  sans ça une conversation supprimée alimentait un badge impossible à faire retomber.
 - **Magasin partagé** de module, compté par références : navbar et dashboard sont montés ensemble
   sur `/accueil`, deux instances doubleraient les requêtes et ouvriraient deux canaux Realtime sur
   le même sujet. Ne pas revenir à un état par composant.
-- Comparer les dates **en millisecondes** : `visible_from` est écrit côté client (suffixe « Z »),
-  les colonnes de la base reviennent en « +00:00 » — la comparaison de chaînes est fausse.
+- **TTL de 30 s** (`lastLoadedAt`) : `pathname` reste dans les dépendances de l'effet comme filet si
+  le websocket est indisponible, mais sans ce garde-fou **chaque navigation** payait un comptage
+  complet par pastille. Les rafraîchissements Realtime sont en plus débouncés (400 ms).
+- **Filtre `sender_id=neq`** sur l'abonnement `INSERT messages` : ses propres messages ne peuvent pas
+  créer de non-lu, or chaque message envoyé déclenchait un recomptage — pendant la frappe.
+- Comparer les dates **en millisecondes** dans le chemin de repli : `visible_from` est écrit côté
+  client (suffixe « Z »), les colonnes de la base reviennent en « +00:00 » — la comparaison de
+  chaînes est fausse. En SQL (chemin RPC) le problème n'existe pas, ce sont des `timestamptz`.
 
 ### `useCurrentUser()` (`lib/hooks.ts`)
-Session + rôle référent pour les pages client : `{ userId, isReferent, resolved }`. S'abonne à `onAuthStateChange` et lit `profiles.is_referent`. **Toujours attendre `resolved`** avant d'afficher un état déconnecté (même piège de clignotement que `authResolved`). Utilisé par `/infos`, `/achats`, `/prestataires`. Ne remplace pas les policies — il évite seulement de proposer une action qui échouerait.
+Session + rôle référent pour les pages client : `{ userId, isReferent, resolved }`. Lit
+`profiles.is_referent`. **Toujours attendre `resolved`** avant d'afficher un état déconnecté (même
+piège de clignotement que `authResolved`). Utilisé par `/infos`, `/achats`, `/prestataires` et
+**`EventActions`**. Ne remplace pas les policies — il évite seulement de proposer une action qui
+échouerait.
+
+⚠️ **Magasin de module depuis le 2026-08-07** (comme les compteurs ci-dessus), et `getSession()` au
+lieu de `getUser()` (lecture locale, zéro réseau). Motif : `EventActions` est rendu **dans un
+`.map()`** (`ProfileClient`, accordéon « Mes événements »), et le hook n'avait aucun cache — N
+événements donnaient **2N requêtes identiques** plus N écouteurs `onAuthStateChange` qui rejouaient
+tous la lecture de `profiles` au prochain rafraîchissement de jeton. Ne pas revenir à un état par
+instance dans un hook appelé depuis une liste.
+
+### `lib/messaging.ts` (2026-08-07)
+Socle **isomorphe** de la messagerie — pas de `'use client'`, le client Supabase est passé en
+paramètre, donc appelable depuis un composant client comme depuis un Server Component.
+`fetchConversationsOverview`, `fetchUnreadCount`, `fetchRecentMessages`, `fetchPollResults`,
+`createDebouncedRefresh`.
+
+⚠️ Deux règles :
+1. **Le repli 039 y est centralisé** : détection `PGRST202` mémorisée pour la durée de l'onglet, et
+   les corps d'origine conservés **tels quels** sous `buildConversationsLegacy` / `unreadCountLegacy`,
+   marqués `⛔ Code de transition`. Ne pas les « améliorer » — leur seul rôle est d'être le miroir
+   exact du comportement de production tant que la migration n'est pas passée sur les deux bases.
+2. **`fetchRecentMessages` trie en `descending` puis inverse en mémoire.** Ne pas « simplifier » en
+   `ascending` + `limit` : `limit` s'applique **après** le tri, on obtiendrait les 50 *premiers*
+   messages du fil. C'était le bug d'origine, présent à deux endroits.
 
 ### Pages « quartier » (2026-08-03, en tokens sémantiques)
 Regroupées sous le route group **`app/(quartier)/`** (URLs inchangées) : son `layout.tsx` fournit le conteneur `max-w-2xl` et la barre d'onglets **`QuartierTabs`** (`components/layout/QuartierTabs.tsx` — contrôle segmenté `grid-cols-3`, actif = `pathname.startsWith`, libellé mobile raccourci via le champ `short`). Les pages n'ont donc **pas** de conteneur propre (sinon padding doublé). Le lien « Quartier » de la Navbar reste actif sur les trois routes via `matches: ['/infos','/achats','/prestataires']` (helper `isNavLinkActive`).

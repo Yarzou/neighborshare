@@ -119,4 +119,8 @@
   <!-- Droits complets du référent : update providers/achats, update+delete annonces/sondages de tout auteur -->
   <include file="liquibase/changelog/038-referent-full-rights.sql"/>
 
+  <!-- Performances : index manquants (messagerie, annonces, votes), lecture groupée des conversations
+       (conversations_overview, unread_message_count, poll_results_bulk), realtime sur listings -->
+  <include file="liquibase/changelog/039-perf-indexes-et-messagerie.sql"/>
+
 </databaseChangeLog>

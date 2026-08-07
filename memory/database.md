@@ -51,8 +51,51 @@
 | 036 | Tables `polls` / `poll_options` / `poll_votes` + RPC `poll_results()`. Votes lisibles uniquement par leur auteur ; les totaux passent par le RPC, qui refuse de répondre avant d'avoir voté (sauf sondage clos ou auteur) |
 | 037 | Delete **et update** d'événement élargis au référent : `events_delete_own` → `events_delete`, `events_update_own` → `events_update` (`user_id = auth.uid() OR is_referent()`), idem pour `events_storage_delete` (images du bucket) |
 | 038 | **Modèle de droits complet** : update `providers`/`group_purchases` = créateur ou référent ; update/delete `announcements`/`polls` (+ gestion `poll_options`) = **tout** référent (plus seulement l'auteur) |
+| 039 | **Performances** — 9 index (le schéma n'en avait que 9 au total, **aucune FK indexée**) + RPC `conversations_overview()`, `unread_message_count()`, `poll_results_bulk()` + `listings` ajoutée à `supabase_realtime`. Purement additive. ⚠️ **écrite, pas encore appliquée** |
 
 Ajouter une migration = créer `0NN-nom.sql` **et** l'inclure dans `db.changelog-master.xml` avec un commentaire. Ne jamais modifier un changeset déjà appliqué.
+
+### Index (état après 039)
+
+Avant 039 le schéma comptait **9 index explicites** et **aucune clé étrangère indexée** — Postgres
+ne les crée pas tout seul. Ajoutés :
+
+| Index | Sert |
+|---|---|
+| `messages(conversation_id, created_at)` | La requête la plus chaude. `messages_select` (002) appelle `is_conversation_participant()` **une fois par ligne scannée** : sans index, ouvrir un fil parcourait toute la table *et* exécutait la fonction autant de fois |
+| `messages(sender_id)` | Aucune requête ne filtre dessus — justifié par la cascade depuis `profiles` (`/api/account/delete`) |
+| `conversation_participants(user_id)` | La PK est `(conversation_id, user_id)`, inutilisable pour `user_id` seul. Bénéficiaire principal : `find_or_create_conversation` (016). **Volontairement non partiel** sur `deleted_at` — 016 interroge délibérément les soft-deleted |
+| `listings(user_id, created_at desc)` | `/profile`, `/profil/[id]`, `/demandes` |
+| `listings(responder_id)` *partiel* | `/demandes`, pastille, suppression de compte |
+| `listings(status, created_at desc)` | `/recent` |
+| `listings(conversation_id)` *partiel* | `/messages/[id]` |
+| `poll_votes(user_id)` | `PollsSection` lit `poll_votes` **sans filtre** : tout vient de la policy |
+| `poll_votes(option_id)` | `poll_results()` / `poll_results_bulk()` |
+
+**Écartés volontairement, ne pas les rajouter « par principe »** : `listings(category_id)`,
+`listings(expires_at)`, `listings(updated_at)`, `conversations(updated_at)`,
+`group_purchase_participants(user_id)`, `message_reactions(user_id)`, et les FK `author_id` /
+`created_by` de `announcements` / `providers` / `group_purchases` / `polls` — un embed PostgREST
+`profiles!author_id(...)` est *to-one*, il résout `profiles.id` (PK côté parent) et **jamais** la
+colonne enfant. Justifications complètes dans l'en-tête de `039-perf-indexes-et-messagerie.sql`.
+
+**Pas de `create index concurrently`** : interdit en transaction, imposerait `runInTransaction:false`
+et la perte de l'atomicité du changeset. À reconsidérer si `messages` dépassait le million de lignes.
+
+### `auth.uid()` vs `(select auth.uid())` — décision prise
+
+La préconisation Supabase (évaluer une fois par requête en InitPlan) **ne s'applique pas ici** :
+- les policies `select` des tables les plus lues sont en `to authenticated using (true)` depuis 030,
+  elles n'appellent pas `auth.uid()` du tout ;
+- là où le coût par ligne est réel (`messages_select`, `conversations_select`, `participants_select`),
+  l'argument de `is_conversation_participant(<colonne de la ligne>)` **dépend de la ligne** : aucun
+  InitPlan n'est possible, quelle que soit l'écriture d'`auth.uid()` à l'intérieur. Le correctif de
+  ce chemin est l'index de 039, pas la réécriture.
+
+Réécrire ~40 policies sans aucun test, sur le seul verrou de l'application, pour un gain non mesurable
+à ce volume : **non**. Convention retenue à la place — `(select auth.uid())` dans toute policy
+**nouvelle** (039+), et réécriture opportuniste quand une policy est de toute façon recréée pour une
+raison fonctionnelle (méthode déjà appliquée en 037/038).
 
 ### `spatial_ref_sys` et l'alerte Advisor — NON RÉGLÉE (état 2026-08-03)
 
@@ -165,6 +208,9 @@ Vote : PK `(poll_id, user_id)` → une voix par compte, upsert pour changer d'av
 | **`listings_geo` (VUE, 032)** | Remplace le RPC côté app : `listings.* + lat_out/lng_out`, filtre `expires_at`, `security_invoker = true` (respecte le RLS de 030). En `l.*` → **plus aucune colonne à déclarer** quand `listings` évolue. La distance/le tri se font côté client (`distanceMeters()` de `lib/neighborhood.ts`). |
 | `listings_within_radius(lat, lng, radius_km)` | **Obsolète depuis 032** (plus appelé par le code ; conservé en base pour la fenêtre migration/déploiement, à dropper dans une migration future). Dernière définition : 029. |
 | `poll_results(p_poll_id)` | Totaux d'un sondage — refuse de répondre si l'appelant n'a pas voté (sauf clos / auteur) |
+| **`poll_results_bulk(p_poll_ids uuid[])` (039)** | Idem pour **plusieurs** sondages en un appel (`PollsSection` en lançait un par sondage). Un sondage non accessible est **omis** du retour au lieu de lever — sinon un seul sondage ferait échouer le lot. |
+| **`conversations_overview()` (039)** | Toute la liste `/messages` en une requête : nom, dernier message, **vrai** décompte de non-lus, participants (jsonb). Respecte `deleted_at` et `visible_from`. `security definer` nécessaire (sinon `is_conversation_participant()` est réévaluée par ligne) mais refermée par `auth.uid()` dans la CTE `mine`. |
+| **`unread_message_count()` (039)** | Pastille de la navbar — scalaire. Remplace 2 requêtes dont un `select messages` en pratique non borné, exécuté **sur chaque page**. |
 | `is_referent()` | Helper RLS : `profiles.is_referent` de l'appelant |
 | `contact_listing(p_listing_id, …)` | Crée la conversation, pose `responder_id` + `conversation_id`, passe le statut à `en_cours` |
 | `validate_listing_response(p_listing_id)` | `en_cours` → `validee` + message système |
@@ -198,8 +244,14 @@ Messagerie (`conversations`, `conversation_participants`, `messages`, `message_r
 Pas de notion de membre du lotissement : l'inscription reste ouverte (choix assumé).
 
 ## Realtime
-Activé sur `messages` et `conversation_participants` (migration 017), + `message_reactions` (022).  
+Activé sur `messages` et `conversation_participants` (migration 017), + `message_reactions` (022),
++ **`listings` (039)**.  
 Canaux utilisés côté app : `conv:{id}`, `typing:{id}` (broadcast), `messages_list_updates`, `navbar_unread`.
+
+⚠️ **Piège historique** : `usePendingRequests` (`lib/hooks.ts`) s'abonnait à `UPDATE listings` depuis
+toujours, alors que la table n'était **pas dans la publication** — ces callbacks ne se déclenchaient
+jamais, et la pastille « Demandes » ne bougeait qu'au changement de page. Corrigé par 039. Avant
+d'ajouter un abonnement Realtime, vérifier que la table est bien publiée : l'API ne signale rien.
 
 ## Valeurs métier (slugs français)
 ### Types d'annonces (`ListingType`)

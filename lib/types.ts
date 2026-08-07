@@ -108,6 +108,10 @@ export interface ConversationParticipant {
   user_id: string
   last_read_at: string
   joined_at: string
+  /** Conversation masquée par cet utilisateur (soft delete, migration 015). */
+  deleted_at?: string | null
+  /** Coupure d'historique posée à la suppression (migration 016). */
+  visible_from?: string | null
   profiles?: Profile
 }
 

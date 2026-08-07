@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
+import { fetchUnreadCount, createDebouncedRefresh } from '@/lib/messaging'
 
 /** Abonnement Realtime déclaré par un compteur. */
 interface CounterWatch {
@@ -21,7 +22,17 @@ interface CounterStore {
   refs: number
   /** Chargement en cours, réutilisé au lieu d'en lancer un second. */
   inFlight: Promise<void> | null
+  /** Horodatage du dernier chargement abouti, pour le TTL de fraîcheur. */
+  lastLoadedAt: number
 }
+
+/**
+ * Au-delà de ce délai, un changement de page relance un comptage ; en deçà, la
+ * valeur du magasin est considérée à jour. Voir le commentaire de l'effet de
+ * `useSharedCounter` : `pathname` est un filet de secours, pas un mécanisme de
+ * rafraîchissement.
+ */
+const COUNTER_TTL_MS = 30_000
 
 const counterStores = new Map<string, CounterStore>()
 
@@ -37,48 +48,100 @@ interface CurrentUserState {
   resolved: boolean
 }
 
+const UNRESOLVED: CurrentUserState = { userId: null, isReferent: false, resolved: false }
+
+/**
+ * Magasin de module, même principe que `counterStores` : un seul chargement et
+ * un seul abonnement `onAuthStateChange` pour toutes les instances montées.
+ */
+const currentUserStore: {
+  state: CurrentUserState
+  listeners: Set<(s: CurrentUserState) => void>
+  subscription: { unsubscribe: () => void } | null
+  refs: number
+  inFlight: Promise<void> | null
+} = { state: UNRESOLVED, listeners: new Set(), subscription: null, refs: 0, inFlight: null }
+
+function publishCurrentUser(next: CurrentUserState) {
+  currentUserStore.state = next
+  currentUserStore.listeners.forEach(notify => notify(next))
+}
+
 /**
  * Session courante + rôle référent, pour les pages qui doivent adapter leur
  * interface (bouton de publication réservé aux référents, encart de connexion).
  *
  * Ne remplace pas les policies : le RLS reste le seul verrou, ce hook ne sert
  * qu'à ne pas proposer une action qui échouerait.
+ *
+ * ⚠️ Deux corrections de coût, toutes deux déjà présentes ailleurs dans ce
+ * fichier et qui manquaient ici :
+ *
+ *  1. **Magasin partagé** plutôt qu'un état par instance. `EventActions` appelle
+ *     ce hook, et il est rendu DANS un `.map()` (`ProfileClient`, accordéon
+ *     « Mes événements ») : avec N événements, c'était 2N requêtes rigoureusement
+ *     identiques, plus N écouteurs qui rejouaient tous la requête `profiles` au
+ *     prochain rafraîchissement de jeton.
+ *  2. **`getSession()` et non `getUser()`** — lecture du stockage local, sans
+ *     appel réseau, pour la raison déjà écrite au-dessus de `useUserId`.
+ *     L'identifiant ne sert qu'à construire une requête dont le RLS reste
+ *     l'arbitre : rien ne repose ici sur la validité du jeton côté client.
  */
 export function useCurrentUser(): CurrentUserState {
   const supabase = createClient()
-  const [state, setState] = useState<CurrentUserState>({
-    userId: null,
-    isReferent: false,
-    resolved: false,
-  })
+  const [state, setState] = useState<CurrentUserState>(currentUserStore.state)
 
   useEffect(() => {
-    let cancelled = false
+    const store = currentUserStore
+    store.refs += 1
+    store.listeners.add(setState)
+    // Lecture initiale d'un magasin externe au moment où l'on s'y abonne — même
+    // faux positif que dans `useSharedCounter`.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setState(store.state)
 
-    const load = async (uid: string | null) => {
+    const load = (uid: string | null) => {
       if (!uid) {
-        if (!cancelled) setState({ userId: null, isReferent: false, resolved: true })
-        return
+        publishCurrentUser({ userId: null, isReferent: false, resolved: true })
+        return Promise.resolve()
       }
-      const { data } = await supabase
-        .from('profiles')
-        .select('is_referent')
-        .eq('id', uid)
-        .single()
-      if (!cancelled) {
-        setState({ userId: uid, isReferent: data?.is_referent === true, resolved: true })
-      }
+      if (store.inFlight) return store.inFlight
+      // `Promise.resolve(...)` : le constructeur de requête Supabase est un
+      // `PromiseLike`, il n'expose pas `.finally()`.
+      store.inFlight = Promise.resolve(
+        supabase.from('profiles').select('is_referent').eq('id', uid).single(),
+      )
+        .then(({ data }) => {
+          publishCurrentUser({ userId: uid, isReferent: data?.is_referent === true, resolved: true })
+        })
+        .finally(() => { store.inFlight = null })
+      return store.inFlight
     }
 
-    supabase.auth.getUser().then(({ data }) => load(data.user?.id ?? null))
+    if (!store.state.resolved) {
+      void supabase.auth.getSession().then(({ data }) => load(data.session?.user?.id ?? null))
+    }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
-      load(session?.user?.id ?? null)
-    })
+    if (!store.subscription) {
+      const { data } = supabase.auth.onAuthStateChange((_e, session) => {
+        const uid = session?.user?.id ?? null
+        // Un simple rafraîchissement de jeton ne change pas le rôle : ne relance
+        // la lecture de `profiles` que si l'utilisateur a réellement changé.
+        if (uid === store.state.userId && store.state.resolved) return
+        void load(uid)
+      })
+      store.subscription = data.subscription
+    }
 
     return () => {
-      cancelled = true
-      subscription.unsubscribe()
+      store.listeners.delete(setState)
+      store.refs -= 1
+      if (store.refs === 0) {
+        store.subscription?.unsubscribe()
+        store.subscription = null
+        // L'état est conservé : une remontée du hook sur la page suivante
+        // réaffiche immédiatement la bonne valeur, sans requête ni clignotement.
+      }
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -151,7 +214,7 @@ function useSharedCounter(
     const storeKey = `${key}:${userId}`
     let store = counterStores.get(storeKey)
     if (!store) {
-      store = { value: 0, listeners: new Set(), channel: null, refs: 0, inFlight: null }
+      store = { value: 0, listeners: new Set(), channel: null, refs: 0, inFlight: null, lastLoadedAt: 0 }
       counterStores.set(storeKey, store)
     }
     const current = store
@@ -171,24 +234,35 @@ function useSharedCounter(
       if (current.inFlight) return current.inFlight
       current.inFlight = load(userId).then(next => {
         current.value = next
+        current.lastLoadedAt = Date.now()
         current.listeners.forEach(notify => notify(next))
       }).finally(() => { current.inFlight = null })
       return current.inFlight
     }
 
-    void refresh()
+    // Premier montage : `lastLoadedAt` vaut 0, le chargement a toujours lieu.
+    // Navigations suivantes : on ne recompte que si la valeur a vieilli — le
+    // websocket Realtime la tient à jour entre-temps, et `pathname` n'est là
+    // qu'au cas où il serait indisponible. Sans ce garde-fou, chaque clic dans
+    // la navbar coûtait un comptage complet par pastille.
+    if (Date.now() - current.lastLoadedAt > COUNTER_TTL_MS) void refresh()
+
+    // Regroupe les rafales : cinq messages reçus d'affilée ne déclenchent qu'un
+    // recomptage, là où `refresh()` en enchaînait un par événement.
+    const refresher = createDebouncedRefresh(refresh, 400)
 
     if (!current.channel) {
       const channel = supabase.channel(`counter:${storeKey}`)
       watches(userId).forEach(w => {
         channel.on('postgres_changes',
           { event: w.event, schema: 'public', table: w.table, ...(w.filter ? { filter: w.filter } : {}) },
-          () => { void refresh() })
+          () => { refresher.schedule() })
       })
       current.channel = channel.subscribe()
     }
 
     return () => {
+      refresher.cancel()
       current.listeners.delete(setValue)
       current.refs -= 1
       if (current.refs === 0) {
@@ -208,9 +282,12 @@ function useSharedCounter(
  * Nombre de messages non lus, tous fils confondus — la pastille de la navbar et
  * de la tuile « Messages » du tableau de bord.
  *
- * Deux requêtes au total, quel que soit le nombre de conversations. La version
- * précédente (dupliquée dans `Navbar` et `DashboardClient`) faisait un `count`
- * par conversation, rejoué à chaque navigation.
+ * Une seule requête, calculée en base (`unread_message_count`, migration 039).
+ * La version précédente en faisait deux, dont un `select` sur `messages` borné
+ * par le plus ancien `last_read_at` de toutes les conversations — c'est-à-dire,
+ * en pratique, non borné. Sur CHAQUE page, puisque la navbar est dans le layout
+ * racine. Ce corps-là survit dans `lib/messaging.ts` comme repli tant que la
+ * migration n'est pas appliquée.
  *
  * ⚠️ Les conversations supprimées (`deleted_at`) et l'historique antérieur à une
  * suppression (`visible_from`) sont exclus, comme le fait `MessagesClient`. Sans
@@ -220,50 +297,16 @@ function useSharedCounter(
 export function useUnreadCount(): number {
   const supabase = createClient()
 
-  const load = useCallback(async (uid: string) => {
-    const { data: parts } = await supabase
-      .from('conversation_participants')
-      .select('conversation_id, last_read_at, visible_from')
-      .eq('user_id', uid)
-      .is('deleted_at', null)
-
-    if (!parts || parts.length === 0) return 0
-
-    // Borne basse commune à toutes les conversations : le plus ancien
-    // `last_read_at`. Elle permet de ne ramener que les messages susceptibles
-    // d'être non lus, en une seule requête.
-    const sinceMs = Math.min(...parts.map(p => new Date(p.last_read_at).getTime()))
-
-    const { data: msgs } = await supabase
-      .from('messages')
-      .select('conversation_id, created_at')
-      .in('conversation_id', parts.map(p => p.conversation_id))
-      .neq('sender_id', uid)
-      .gt('created_at', new Date(sinceMs).toISOString())
-
-    if (!msgs) return 0
-
-    // Comparaisons en millisecondes et non lexicographiques : `visible_from` est
-    // écrit côté client (`toISOString()`, suffixe « Z ») alors que les colonnes
-    // de la base reviennent en « +00:00 » — deux formats qui ne se comparent pas
-    // comme des chaînes.
-    const cutoffs = new Map(parts.map(p => [p.conversation_id, {
-      lastRead: new Date(p.last_read_at).getTime(),
-      visibleFrom: p.visible_from ? new Date(p.visible_from).getTime() : null,
-    }]))
-
-    return msgs.reduce((total, m) => {
-      const cutoff = cutoffs.get(m.conversation_id)
-      if (!cutoff) return total
-      const at = new Date(m.created_at).getTime()
-      if (at <= cutoff.lastRead) return total
-      if (cutoff.visibleFrom !== null && at < cutoff.visibleFrom) return total
-      return total + 1
-    }, 0)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  const load = useCallback(
+    (uid: string) => fetchUnreadCount(supabase, uid),
+    [], // eslint-disable-line react-hooks/exhaustive-deps
+  )
 
   return useSharedCounter('unread', load, uid => [
-    { event: 'INSERT', table: 'messages' },
+    // `sender_id=neq` : ses propres messages ne peuvent pas créer de non-lu.
+    // Sans ce filtre, chaque message ENVOYÉ déclenchait un recomptage complet —
+    // le pire moment, puisqu'il arrive au milieu d'une frappe active.
+    { event: 'INSERT', table: 'messages', filter: `sender_id=neq.${uid}` },
     // `mark_conversation_read` met à jour `last_read_at` : la pastille retombe
     // dès que la conversation est ouverte, sans attendre une navigation.
     { event: 'UPDATE', table: 'conversation_participants', filter: `user_id=eq.${uid}` },

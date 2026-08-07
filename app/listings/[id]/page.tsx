@@ -25,7 +25,12 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
 
   const { data: listing, error: listingError } = await supabase
     .from('listings')
-    .select('*, profiles!user_id(*), categories(*)')
+    // Colonnes de profil explicites : `profiles!user_id(*)` ramenait toute la
+    // ligne — adresse du foyer, coordonnées, préférences de notification, état
+    // FCM — pour n'afficher qu'un nom et une couleur d'avatar (plus bas dans ce
+    // fichier). Moins d'octets, et surtout aucune donnée personnelle inutile
+    // sérialisée dans le HTML de la page.
+    .select('*, profiles!user_id(id, username, full_name, avatar_url, avatar_color), categories(*)')
     .eq('id', id)
     .single()
 

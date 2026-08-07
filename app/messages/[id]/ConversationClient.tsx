@@ -1,0 +1,470 @@
+'use client'
+
+import {useCallback, useEffect, useRef, useState} from 'react'
+import Link from 'next/link'
+import {createClient} from '@/lib/supabase/client'
+import {ArrowLeft, Loader2, Package, Send, UserCircle2, Users} from 'lucide-react'
+import type {RealtimeChannel} from '@supabase/supabase-js'
+import type {ConversationParticipant, DirectMessage, MessageEmoji, MessageReaction, Profile} from '@/lib/types'
+import {getAvatarStyle} from '@/lib/utils'
+import {fetchRecentMessages} from '@/lib/messaging'
+import {MessageBubble} from '@/components/messages/MessageBubble'
+import {TypingIndicator} from '@/components/messages/TypingIndicator'
+
+interface Props {
+  conversationId: string
+  /** Résolu côté serveur par `page.tsx` : plus d'aller-retour `/auth/v1/user`. */
+  userId: string
+}
+
+export default function ConversationClient({ conversationId: id, userId }: Props) {
+  const supabase = createClient()
+
+  const [loading, setLoading] = useState(true)
+  const [messages, setMessages] = useState<DirectMessage[]>([])
+  const [participants, setParticipants] = useState<ConversationParticipant[]>([])
+  const [convName, setConvName] = useState<string | null>(null)
+  const [linkedListing, setLinkedListing] = useState<{ id: string; title: string; category: { icon: string } | null } | null>(null)
+  const [input, setInput] = useState('')
+  const [sending, setSending] = useState(false)
+  const [notFound, setNotFound] = useState(false)
+  const [typingUsers, setTypingUsers] = useState<string[]>([])
+
+  const bottomRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const presenceChannelRef = useRef<RealtimeChannel | null>(null)
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  /** `visible_from` de ma participation, nécessaire au rechargement des messages. */
+  const visibleFromRef = useRef<string | null>(null)
+
+  const scrollToBottom = useCallback(() => {
+    setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    const init = async () => {
+      // ── Vague 1 : trois lectures indépendantes, en parallèle ──
+      //
+      // Le chargement enchaînait sept allers-retours : auth, contrôle d'accès,
+      // conversation, annonce liée, participants, messages, marquage comme lu.
+      // L'authentification est passée au serveur (page.tsx), le contrôle d'accès
+      // a fusionné avec la lecture des participants — une seule requête sur
+      // `conversation_participants` par `conversation_id` ramène TOUS les
+      // participants, dont le mien : « ma ligne est-elle là ? » suffit, et le
+      // RLS reste l'arbitre puisqu'il ne renvoie rien à un non-participant.
+      const [{ data: parts }, { data: conv }, { data: listing }] = await Promise.all([
+        supabase
+          .from('conversation_participants')
+          .select('conversation_id, user_id, last_read_at, joined_at, visible_from, deleted_at, profiles(id, username, full_name, avatar_url, avatar_color)')
+          .eq('conversation_id', id),
+        supabase
+          .from('conversations')
+          .select('id, name')
+          .eq('id', id)
+          .maybeSingle(),
+        supabase
+          .from('listings')
+          .select('id, title, categories(icon)')
+          .eq('conversation_id', id)
+          .maybeSingle(),
+      ])
+
+      if (cancelled) return
+
+      const allParts = (parts ?? []) as unknown as ConversationParticipant[]
+      const myPart = allParts.find(p => p.user_id === userId)
+      if (!myPart) { setNotFound(true); setLoading(false); return }
+
+      visibleFromRef.current = myPart.visible_from ?? null
+      setParticipants(allParts)
+      setConvName(conv?.name ?? null)
+      if (listing) {
+        setLinkedListing({
+          id: listing.id,
+          title: listing.title,
+          category: Array.isArray(listing.categories)
+            ? (listing.categories[0] as { icon: string } | null)
+            : (listing.categories as unknown as { icon: string } | null),
+        })
+      }
+
+      // ── Vague 2 : les messages, seule requête qui dépende de `visible_from` ──
+      const msgs = await fetchRecentMessages(supabase, id, visibleFromRef.current)
+      if (cancelled) return
+      setMessages(msgs)
+
+      setLoading(false)
+      scrollToBottom()
+
+      // Plus attendu avant le rendu : c'est une écriture dont l'affichage ne
+      // dépend pas, et l'`await` retardait le premier paint d'un aller-retour.
+      void supabase.rpc('mark_conversation_read', { conv_id: id })
+    }
+
+    void init()
+    return () => { cancelled = true }
+  }, [id, userId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Realtime : nouveaux messages + réactions
+  useEffect(() => {
+    const channel = supabase
+      .channel(`conv:${id}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: `conversation_id=eq.${id}`,
+      }, (payload) => {
+        const newMsg = payload.new as DirectMessage
+        if (newMsg.sender_id === userId) {
+          // Remplace le message temporaire optimiste par le vrai message
+          setMessages(prev => {
+            const tempIndex = prev.findIndex(m => m.id.startsWith('temp-'))
+            if (tempIndex === -1) return [...prev, newMsg]
+            const updated = [...prev]
+            updated[tempIndex] = newMsg
+            return updated
+          })
+        } else {
+          // Aucune requête `profiles` ici : elle alimentait `newMsg.profiles`,
+          // que rien ne rend. MessageBubble ne reçoit que senderName /
+          // senderInitial / senderAvatarColor, tous dérivés de `participants`.
+          // C'était donc un aller-retour réseau par message reçu, pour un champ
+          // mort.
+          setMessages(prev => [...prev, newMsg])
+        }
+        scrollToBottom()
+        // Marquer comme lu si la fenêtre est active
+        if (document.visibilityState === 'visible') {
+          void supabase.rpc('mark_conversation_read', { conv_id: id })
+        }
+      })
+      // Réaction ajoutée par un autre utilisateur
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'message_reactions',
+      }, (payload) => {
+        const reaction = payload.new as MessageReaction
+        if (reaction.user_id === userId) return // déjà géré en optimiste
+        setMessages(prev => prev.map(m => {
+          if (m.id !== reaction.message_id) return m
+          // Déduplique : évite d'accumuler si le DELETE précédent n'a pas nettoyé l'état
+          const filtered = (m.reactions ?? []).filter(r =>
+            !(r.user_id === reaction.user_id && r.emoji === reaction.emoji)
+          )
+          return { ...m, reactions: [...filtered, reaction] }
+        }))
+      })
+      // Réaction supprimée (toggle off) par un autre utilisateur.
+      // Supabase ne renvoie que la PK dans payload.old sans REPLICA IDENTITY FULL,
+      // donc on cherche par reaction.id sur l'ensemble des messages.
+      .on('postgres_changes', {
+        event: 'DELETE',
+        schema: 'public',
+        table: 'message_reactions',
+      }, (payload) => {
+        const reactionId = (payload.old as { id?: string }).id
+        if (!reactionId) return
+        setMessages(prev => prev.map(m => ({
+          ...m,
+          reactions: (m.reactions ?? []).filter(r => r.id !== reactionId),
+        })))
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [userId, id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Broadcast : indicateur de frappe (plus fiable que Presence, pas de config serveur)
+  useEffect(() => {
+    // Timeouts côté récepteur pour auto-effacer si le correspondant quitte sans broadcaster "false"
+    const receiverTimers: Record<string, ReturnType<typeof setTimeout>> = {}
+
+    const broadcastChannel = supabase
+      .channel(`typing:${id}`)
+      .on('broadcast', { event: 'typing' }, ({ payload }) => {
+        const { userId: typingUserId, typing } = payload as { userId: string; typing: boolean }
+        if (typingUserId === userId) return
+
+        // Annule le timer d'auto-effacement précédent pour cet utilisateur
+        if (receiverTimers[typingUserId]) clearTimeout(receiverTimers[typingUserId])
+
+        if (typing) {
+          setTypingUsers(prev => prev.includes(typingUserId) ? prev : [...prev, typingUserId])
+          scrollToBottom()
+          // Sécurité : efface automatiquement après 5s si on ne reçoit pas de "false"
+          receiverTimers[typingUserId] = setTimeout(() => {
+            setTypingUsers(prev => prev.filter(u => u !== typingUserId))
+          }, 5000)
+        } else {
+          setTypingUsers(prev => prev.filter(u => u !== typingUserId))
+        }
+      })
+      .subscribe()
+
+    presenceChannelRef.current = broadcastChannel
+    return () => {
+      Object.values(receiverTimers).forEach(clearTimeout)
+      supabase.removeChannel(broadcastChannel)
+      presenceChannelRef.current = null
+    }
+  }, [userId, id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleSend = async () => {
+    if (!input.trim() || sending) return
+    const content = input.trim()
+    setInput('')
+    setSending(true)
+    inputRef.current?.focus()
+
+    // Arrête l'indicateur de frappe immédiatement
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current)
+    presenceChannelRef.current?.send({ type: 'broadcast', event: 'typing', payload: { userId, typing: false } })
+
+    // Optimistic insert
+    const tempMsg: DirectMessage = {
+      id: `temp-${Date.now()}`,
+      conversation_id: id,
+      sender_id: userId,
+      content,
+      created_at: new Date().toISOString(),
+    }
+    setMessages(prev => [...prev, tempMsg])
+    scrollToBottom()
+
+    const { error } = await supabase.from('messages').insert({
+      conversation_id: id,
+      sender_id: userId,
+      content,
+    })
+
+    if (error) {
+      // Retire le message optimiste en cas d'erreur
+      setMessages(prev => prev.filter(m => m.id !== tempMsg.id))
+    }
+    setSending(false)
+  }
+
+  const handleDelete = async (msgId: string) => {
+    // Suppression optimiste
+    setMessages(prev => prev.filter(m => m.id !== msgId))
+    const { error } = await supabase.from('messages').delete().eq('id', msgId)
+    if (error) {
+      // Rollback : recharge depuis la base. Passe par le helper partagé, qui
+      // renvoie bien les messages les plus RÉCENTS — la requête recopiée ici
+      // portait la même erreur de tri que le chargement initial, et projetait
+      // l'utilisateur au tout début du fil après un échec de suppression.
+      setMessages(await fetchRecentMessages(supabase, id, visibleFromRef.current))
+    }
+  }
+
+  const handleReact = async (messageId: string, emoji: MessageEmoji) => {
+    const msg = messages.find(m => m.id === messageId)
+    if (!msg) return
+
+    const existing = msg.reactions?.find(r => r.user_id === userId && r.emoji === emoji)
+
+    if (existing) {
+      // Toggle off — suppression optimiste
+      setMessages(prev => prev.map(m =>
+        m.id === messageId
+          ? { ...m, reactions: (m.reactions ?? []).filter(r => r.id !== existing.id) }
+          : m
+      ))
+      await supabase.from('message_reactions').delete().eq('id', existing.id)
+    } else {
+      // Toggle on — insertion optimiste
+      const tempReaction: MessageReaction = {
+        id: `temp-${Date.now()}`,
+        message_id: messageId,
+        user_id: userId,
+        emoji,
+        created_at: new Date().toISOString(),
+      }
+      setMessages(prev => prev.map(m =>
+        m.id === messageId
+          ? { ...m, reactions: [...(m.reactions ?? []), tempReaction] }
+          : m
+      ))
+      const { data } = await supabase
+        .from('message_reactions')
+        .insert({ message_id: messageId, user_id: userId, emoji })
+        .select()
+        .single()
+      if (data) {
+        // Remplace la réaction temporaire par la vraie
+        setMessages(prev => prev.map(m =>
+          m.id === messageId
+            ? { ...m, reactions: (m.reactions ?? []).map(r => r.id === tempReaction.id ? data as MessageReaction : r) }
+            : m
+        ))
+      }
+    }
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSend()
+    }
+  }
+
+  const handleInputChange = (value: string) => {
+    setInput(value)
+    if (!presenceChannelRef.current) return
+    if (value.trim()) {
+      presenceChannelRef.current.send({ type: 'broadcast', event: 'typing', payload: { userId, typing: true } })
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current)
+      typingTimerRef.current = setTimeout(() => {
+        presenceChannelRef.current?.send({ type: 'broadcast', event: 'typing', payload: { userId, typing: false } })
+      }, 2500)
+    } else {
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current)
+      presenceChannelRef.current.send({ type: 'broadcast', event: 'typing', payload: { userId, typing: false } })
+    }
+  }
+
+  // Helpers affichage
+  const others = participants.filter(p => p.user_id !== userId)
+  const isGroup = others.length > 1
+  const headerName = convName
+    || (isGroup
+      ? others.map(p => (p.profiles as Profile | undefined)?.full_name || (p.profiles as Profile | undefined)?.username).filter(Boolean).join(', ')
+      : ((others[0]?.profiles as Profile | undefined)?.full_name || (others[0]?.profiles as Profile | undefined)?.username || 'Conversation'))
+
+  const getParticipantName = (senderId: string) => {
+    if (senderId === userId) return 'Vous'
+    const p = participants.find(p => p.user_id === senderId)
+    const profile = p?.profiles as Profile | undefined
+    return profile?.full_name || profile?.username || 'Utilisateur'
+  }
+
+  const getInitial = (senderId: string) => {
+    const name = getParticipantName(senderId)
+    return name === 'Vous' ? 'V' : name[0]?.toUpperCase() || '?'
+  }
+
+  const getParticipantAvatarColor = (senderId: string) => {
+    const p = participants.find(p => p.user_id === senderId)
+    return (p?.profiles as Profile | undefined)?.avatar_color
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="animate-spin text-brand-600" size={32} />
+      </div>
+    )
+  }
+
+  if (notFound) {
+    return (
+      <div className="max-w-5xl mx-auto px-4 py-16 text-center text-gray-400">
+        <p className="text-lg font-medium mb-4">Conversation introuvable</p>
+        <Link href="/messages" className="text-brand-600 hover:underline text-sm">← Retour aux messages</Link>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col h-[calc(100dvh-4rem)] max-w-5xl mx-auto w-full">
+      {/* Header */}
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 bg-white flex-shrink-0">
+        <Link href="/messages" className="text-gray-500 hover:text-gray-700 flex-shrink-0">
+          <ArrowLeft size={20} />
+        </Link>
+        <div
+          className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0"
+          style={isGroup ? { backgroundColor: '#f3e8ff', color: '#6b21a8' } : getAvatarStyle((others[0]?.profiles as Profile | undefined)?.avatar_color)}
+        >
+          {isGroup ? <Users size={16} /> : (headerName[0]?.toUpperCase() || '?')}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-sm text-gray-900 truncate">{headerName}</p>
+          <p className="text-xs text-gray-400">
+            {participants.length} participant{participants.length > 1 ? 's' : ''}
+          </p>
+        </div>
+      </div>
+
+      {/* Listing banner */}
+      {linkedListing && (
+        <Link
+          href={`/listings/${linkedListing.id}`}
+          className="flex items-center gap-2.5 px-4 py-2.5 bg-brand-50 border-b border-brand-100 hover:bg-brand-100 transition-colors flex-shrink-0"
+        >
+          <div className="w-7 h-7 rounded-lg bg-brand-100 flex items-center justify-center flex-shrink-0 text-base">
+            {linkedListing.category?.icon ?? <Package size={14} className="text-brand-600" />}
+          </div>
+          <div className="min-w-0">
+            <p className="text-[11px] font-medium text-brand-500 uppercase tracking-wide leading-none mb-0.5">Annonce liée</p>
+            <p className="text-sm font-semibold text-brand-700 truncate">{linkedListing.title}</p>
+          </div>
+          <span className="ml-auto text-brand-400 text-xs flex-shrink-0">→</span>
+        </Link>
+      )}
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3 bg-gray-50">
+        {messages.length === 0 && (
+          <div className="text-center py-12 text-gray-400">
+            <UserCircle2 size={40} className="mx-auto mb-2 opacity-20" />
+            <p className="text-sm">Commencez la conversation !</p>
+          </div>
+        )}
+
+        {messages.map((msg, i) => {
+          const isMe = msg.sender_id === userId
+          const prevMsg = messages[i - 1]
+          const isSameAuthor = prevMsg && prevMsg.sender_id === msg.sender_id
+          const showSender = !isMe && isGroup && !isSameAuthor
+
+          return (
+            <MessageBubble
+              key={msg.id}
+              msg={msg}
+              isMe={isMe}
+              isGroup={isGroup}
+              isSameAuthor={!!isSameAuthor}
+              showSender={showSender}
+              senderName={getParticipantName(msg.sender_id)}
+              senderInitial={getInitial(msg.sender_id)}
+              senderAvatarColor={getParticipantAvatarColor(msg.sender_id)}
+              onDelete={handleDelete}
+              onReact={handleReact}
+              currentUserId={userId}
+            />
+          )
+        })}
+        <TypingIndicator
+            names={typingUsers.map(uid => getParticipantName(uid))}
+            isGroup={isGroup}
+        />
+        <div ref={bottomRef} />
+      </div>
+
+      {/* Input */}
+      <div className="flex items-center gap-2 px-4 py-3 border-t border-gray-200 bg-white flex-shrink-0">
+        <input
+          ref={inputRef}
+          type="text"
+          value={input}
+          onChange={e => handleInputChange(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Écrivez un message…"
+          className="flex-1 min-w-0 px-4 py-2.5 rounded-full border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+        />
+        <button
+          onClick={handleSend}
+          disabled={!input.trim() || sending}
+          className="w-10 h-10 rounded-full bg-brand-600 text-white flex items-center justify-center hover:bg-brand-700 transition-colors disabled:opacity-40 flex-shrink-0"
+        >
+          {sending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+        </button>
+      </div>
+    </div>
+  )
+}

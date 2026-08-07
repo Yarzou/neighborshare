@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { usePathname } from 'next/navigation'
 import { Bell, X, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { isPushSupported, activatePushNotifications } from '@/lib/pushNotifications'
@@ -10,32 +9,44 @@ import { cn } from '@/lib/utils'
 const DISMISSED_KEY = (userId: string) => `push_prompt_dismissed_until:${userId}`
 const DISMISS_DAYS = 30
 
+/**
+ * La restriction à `/messages` n'est plus faite ici par `usePathname` : le
+ * composant est monté par `app/messages/layout.tsx`, donc uniquement sur les
+ * routes concernées. Il n'est plus expédié dans le bundle des autres pages.
+ */
 export default function PushNotificationBanner() {
-  const pathname = usePathname()
   const [visible, setVisible] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const isOnMessages = pathname?.startsWith('/messages')
-
   useEffect(() => {
-    if (!isOnMessages) return
     if (!isPushSupported()) return
     if (Notification.permission !== 'default') return
 
+    // `cancelled` et `timer` sont portés par la fermeture de l'effet : le
+    // `return () => clearTimeout(timer)` d'origine se trouvait à l'intérieur du
+    // `.then()`, il était donc renvoyé à la promesse et jamais appelé par React
+    // — le minuteur survivait au démontage.
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout> | undefined
+
     const supabase = createClient()
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return
+    void supabase.auth.getUser().then(({ data: { user } }) => {
+      if (cancelled || !user) return
 
       const until = localStorage.getItem(DISMISSED_KEY(user.id))
       if (until && Date.now() < Number(until)) return
 
       setUserId(user.id)
-      const timer = setTimeout(() => setVisible(true), 3000)
-      return () => clearTimeout(timer)
+      timer = setTimeout(() => setVisible(true), 3000)
     })
-  }, [isOnMessages])
+
+    return () => {
+      cancelled = true
+      if (timer) clearTimeout(timer)
+    }
+  }, [])
 
   const handleActivate = async () => {
     if (!userId) return

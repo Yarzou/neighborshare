@@ -46,6 +46,9 @@ export function AnnouncementsSection({ userId, isReferent }: Props) {
       .select('*, profiles!author_id(full_name, username, avatar_color)')
       .order('is_pinned', { ascending: false })
       .order('created_at', { ascending: false })
+      // Borne défensive : la liste n'est pas paginée. Les plus anciennes infos
+      // n'intéressent personne, mais elles seraient transférées à chaque visite.
+      .limit(100)
     setAnnouncements((data ?? []) as Announcement[])
     setLoading(false)
   }

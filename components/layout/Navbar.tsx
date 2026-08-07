@@ -79,7 +79,9 @@ export function Navbar() {
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link href={user ? '/accueil' : '/'} className="flex items-center gap-2 font-bold text-brand-700 text-lg">
-          <Image src="/logo_cedre.png" alt="Logo" width={50} height={50} className="rounded-lg" />
+          {/* `priority` : le logo est visible d'emblée sur toutes les pages, il
+              n'a aucune raison d'être chargé paresseusement. */}
+          <Image src="/logo_cedre.png" alt="Logo" width={50} height={50} priority className="rounded-lg" />
           <span>Les voisins du Cèdre</span>
         </Link>
 

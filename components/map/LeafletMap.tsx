@@ -6,17 +6,26 @@ import 'leaflet/dist/leaflet.css'
 import 'leaflet.markercluster'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
+import markerIcon from 'leaflet/dist/images/marker-icon.png'
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
+import markerShadow from 'leaflet/dist/images/marker-shadow.png'
 import type { Listing } from '@/lib/types'
 import { LISTING_TYPE_MARKER_COLORS } from '@/lib/types'
 import { getCategoryEmoji } from '@/lib/categories'
 import { NEIGHBORHOOD_CENTER, NEIGHBORHOOD_DEFAULT_ZOOM } from '@/lib/neighborhood'
 
-// Fix icônes Leaflet avec Next.js
+// Fix icônes Leaflet avec Next.js.
+//
+// Les PNG sont importés depuis `node_modules` et servis par Next depuis
+// `/_next/static/media/`, au lieu d'être tirés de `unpkg.com` : trois requêtes
+// tierces en moins (DNS + TLS) sur le chemin d'affichage de la carte, une
+// dépendance externe en moins, et `unpkg.com` a pu sortir de la directive
+// `img-src` de la CSP (`next.config.js`).
 delete (L.Icon.Default.prototype as any)._getIconUrl
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconRetinaUrl: markerIcon2x.src,
+  iconUrl: markerIcon.src,
+  shadowUrl: markerShadow.src,
 })
 
 interface Props {

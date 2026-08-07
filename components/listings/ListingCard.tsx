@@ -86,7 +86,15 @@ export function ListingCard({ listing, compact = false, onClick, active, outline
         })()
       ) : listing.image_url ? (
         <div className={cn('relative flex-shrink-0 bg-gray-100 overflow-hidden', compact ? 'w-16 h-16 rounded-xl' : 'w-full h-44 max-h-[35vh]')}>
-          <Image src={listing.image_url} alt={listing.title} fill className={cn('rounded-xl', compact ? 'object-cover' : 'object-contain')} />
+          {/* Sans `sizes`, `fill` fait supposer 100vw à Next, qui sert alors une
+              image de pleine largeur d'écran dans une vignette de 64 px. */}
+          <Image
+            src={listing.image_url}
+            alt={listing.title}
+            fill
+            sizes={compact ? '64px' : '(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw'}
+            className={cn('rounded-xl', compact ? 'object-cover' : 'object-contain')}
+          />
         </div>
       ) : compact ? (
         <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-brand-50 to-brand-100 flex items-center justify-center text-2xl flex-shrink-0">
