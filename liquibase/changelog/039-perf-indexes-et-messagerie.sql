@@ -18,8 +18,18 @@
 --
 -- ── Pourquoi pas `create index concurrently` ─────────────────────────────────
 -- Interdit dans une transaction : il faudrait `runInTransaction:false` sur le
--- changeset, donc perdre son atomicité et le `--rollback` qui va avec (règle 4
--- de CLAUDE.md). À l'échelle d'un lotissement, un `create index` ordinaire dure
+-- changeset, donc perdre son atomicité et la clause de rollback qui va avec
+-- (règle 4 de CLAUDE.md).
+--
+-- ⚠️ « clause de rollback » et non le mot-clé littéral : le parser de changelog
+-- SQL formaté de Liquibase repère un mot-clé (deux tirets suivis de rollback,
+-- changeset, comment, precondition, property…) N'IMPORTE OÙ dans une ligne de
+-- commentaire, y compris entre accents graves au milieu d'une phrase. Placé
+-- avant le premier changeset, il fait échouer tout le fichier :
+-- « Unexpected formatting in formatted changelog … at line N ».
+-- Ne jamais citer ces mots-clés en prose sous leur forme littérale.
+--
+-- À l'échelle d'un lotissement, un `create index` ordinaire dure
 -- quelques millisecondes sous verrou SHARE — les lectures passent, seules les
 -- écritures attendent. Piège associé : `concurrently` + `if not exists`
 -- masquerait silencieusement un index resté INVALID après un échec, puisque le
