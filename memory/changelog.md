@@ -25,6 +25,7 @@ recommandés ont été demandés en live :
 - **Événements (desktop)** : bandeau de titre et volet calendrier en `bg-surface-pane` au lieu de blanc (même traitement que Demandes) ; les cartes d'événement et le mini-calendrier restent blancs, ce sont les cartes.
 - **Carte (desktop)** : bandeau de titre, volet liste et barre de filtres en `bg-surface-pane` (`md:` sur les éléments partagés avec le mobile, qui reste blanc) ; les cartes d'annonce gardent leur fond.
 - **Passe sur toutes les pages** : en-tête et barre de saisie de la conversation (`md:bg-surface-pane`), barre d'outils de la visionneuse PDF (`bg-surface-pane/95`). Les autres blancs restants sont des cartes (tuiles du tableau de bord, cartes d'annonce, formulaires centrés) et restent blancs par construction : carte blanche sur fond brume.
+- **Documents ASL (desktop)** : cartes d'assemblée en `md:bg-surface-pane` (après commit `0f198e1`, demande utilisateur).
 - Au passage, **initiales de l'avatar** : « Fabien & Sophia » → **F&S** (l'esperluette est conservée,
   trois caractères max, `text-xs` au-delà de deux) — demande utilisateur.
 

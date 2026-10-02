@@ -34,7 +34,8 @@ export function AssemblyCard({ assembly, userId, isReferent, onChanged, onEdit, 
 
   return (
     <article className={cn(
-      'bg-surface border rounded-2xl p-4 flex flex-col gap-3',
+      // Desktop : gris très clair des volets plutôt que blanc (demande utilisateur)
+      'bg-surface md:bg-surface-pane border rounded-2xl p-4 flex flex-col gap-3',
       archived ? 'border-edge' : 'border-brand-300',
     )}>
       <div className="flex items-start justify-between gap-3">
