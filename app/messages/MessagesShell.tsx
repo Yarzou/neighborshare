@@ -33,7 +33,7 @@ export function MessagesShell({ userId, children }: Props) {
     <div className="md:flex md:h-[calc(100dvh-4rem)]">
       <aside
         className={cn(
-          'md:flex md:flex-shrink-0 md:flex-col md:bg-surface md:border-r md:border-edge md:overflow-hidden',
+          'md:flex md:flex-shrink-0 md:flex-col md:bg-surface-pane md:border-r md:border-edge md:overflow-hidden',
           SIDE_PANE_WIDTH,
           isIndex ? 'block' : 'hidden',
         )}

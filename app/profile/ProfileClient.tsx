@@ -317,7 +317,7 @@ export default function ProfileClient() {
   // deviennent de vrais volets et `md:order-none` rend la main à l'ordre du DOM.
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 flex flex-col gap-6 md:max-w-none md:mx-0 md:px-0 md:py-0 md:flex-row md:gap-0 md:h-[calc(100dvh-4rem)]">
-      <div className={cn('contents md:flex md:flex-col md:gap-4 md:shrink-0 md:bg-surface md:border-r md:border-edge md:overflow-y-auto md:p-4', SIDE_PANE_WIDTH)}>
+      <div className={cn('contents md:flex md:flex-col md:gap-4 md:shrink-0 md:bg-surface-pane md:border-r md:border-edge md:overflow-y-auto md:p-4', SIDE_PANE_WIDTH)}>
 
       {/* ── Hero ── */}
       <div className="order-1 md:order-none bg-white rounded-3xl border border-gray-200 shadow-sm p-6">

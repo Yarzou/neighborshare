@@ -62,6 +62,7 @@ Création/édition d'événement. Date et heure **séparées** (champs `date` + 
 ## Layout — `components/layout/`
 
 ### `Navbar.tsx`
+**Desktop depuis le 2026-10-02** : logo + nom, sections (Carte, Événements, Quartier) juste à côté, puis à droite Demandes / Messages (compteurs) et la **pastille d'avatar aux initiales** (`getAvatarStyle`, profil lu en léger : `full_name, username, avatar_color`) qui mène au profil, et un bouton icône Déconnexion. Fond `bg-surface-header`, liseré `border-b-[3px] border-brand-600`, pleine largeur. Mobile inchangé.
 Navigation principale. Liens : `/map` (Carte), `/evenements` (Événements). Logo → `/accueil` si connecté, `/` sinon.  
 Badge de messages non lus alimenté en Realtime (canal `navbar_unread`). « Publier » est masqué du menu burger.
 

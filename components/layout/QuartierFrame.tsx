@@ -29,7 +29,7 @@ export function QuartierFrame({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="md:flex md:h-[calc(100dvh-4rem)]">
-      <aside className={cn('hidden md:flex md:shrink-0 md:flex-col md:bg-surface md:border-r md:border-edge md:overflow-y-auto', SIDE_PANE_WIDTH)}>
+      <aside className={cn('hidden md:flex md:shrink-0 md:flex-col md:bg-surface-pane md:border-r md:border-edge md:overflow-y-auto', SIDE_PANE_WIDTH)}>
         <QuartierSidebar />
       </aside>
       <div className="md:flex-1 md:min-w-0 md:overflow-y-auto">

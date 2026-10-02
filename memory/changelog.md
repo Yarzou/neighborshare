@@ -1,5 +1,33 @@
 # Historique des modifications (par session)
 
+## 2026-10-02 (3) — Thème clair « B2 » et barre de navigation
+
+Demande : « trop blanc partout », puis « mieux définir les espaces par des couleurs (header, encart,
+main) ». Canevas Claude Design `https://claude.ai/artifact/CNrCmoCHsPjNjsgiubaEjp` : trois palettes
+(lin, brume/ardoise, vert tonal) jugées « nazes », puis trois déclinaisons de la B avec zones
+distinctes. Validée : **B2** après itérations sur l'en-tête (vert foncé → sauge « tristoune » → vert
+franc → pastel → vert tendre → **gris clair `#e3e8ee` à liseré vert 3 px en bas**, « ambiance
+péchue »).
+
+- **`tailwind.config.ts`** : `gray-*` **redéfinis en ardoise** (50 `#eef1f5` … 900 `#0f172a`). Toutes
+  les classes grises de l'app changent d'un coup, cartes `bg-white` conservées, mode sombre intact
+  (son bloc de surcharges est en hex). Tokens `surface.pane` et `surface.header`.
+- **`app/globals.css`** : tokens clairs alignés sur B2 (`--background #eef1f5`, `--surface-raised`
+  = fond de page, `--surface-sunken #e2e8f0`, bordures `#d7dee6/#b7c1cd`, textes ardoise), nouveaux
+  `--surface-pane #f6f8fa` et `--surface-header #e3e8ee` (sombre : `#1e293b`). La règle
+  `html.dark nav.fixed` ne force plus `border-color` : le liseré vert reste visible en sombre.
+- **Volets** (`QuartierFrame`, `MessagesShell`, `DemandesClient`, `ProfileClient`) : `bg-surface-pane`.
+- **`components/layout/Navbar.tsx`** (desktop, demande utilisateur, mobile inchangé) : logo + nom, puis
+  Carte / Événements / Quartier juste à côté ; à droite Demandes et Messages avec compteurs, puis
+  **pastille d'avatar aux initiales** (couleur du profil, lecture légère de `profiles`) vers le profil
+  et un bouton icône Déconnexion. Fond `bg-surface-header`, `border-b-[3px] border-brand-600`, plus
+  de `max-w-6xl` (pages pleine largeur). Menu burger mobile : fond `bg-surface-raised` (le fond de page, comme le profil) au lieu de blanc, sur demande.
+
+`npm run lint` : 0 erreur, 20 avertissements (inchangé). `typecheck` et `build` passent. À vérifier
+visuellement : contraste des pastilles grises (`bg-gray-100`) sur fond `#eef1f5`, et le rendu de la
+carte Leaflet dont le fond de page a changé.
+
+
 ## 2026-10-02 (2) — Vue desktop élargie : Quartier, Demandes, Messages, Profil
 
 Demande : « retravailler les écrans Quartier, Demandes, Messages et Profil, uniquement pour la vue

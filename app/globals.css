@@ -3,8 +3,8 @@
 @tailwind utilities;
 
 :root {
-  --foreground: #111827;
-  --background: #f9fafb;
+  --foreground: #0f172a;
+  --background: #eef1f5;
 
   /* ─── Tokens sémantiques ──────────────────────────────────────────────────
    * Exposés en utilitaires Tailwind par tailwind.config.ts :
@@ -26,21 +26,28 @@
    * place pour tout ce qui n'est pas encore migré. À utiliser d'office dans les
    * nouveaux composants, et à substituer zone par zone dans l'existant.
    * ───────────────────────────────────────────────────────────────────────── */
+  /* Palette claire « B2 » (2026-10-02) : gamme ardoise, trois zones distinctes —
+   * en-tête gris clair à liseré vert, volets presque blancs, page brume, cartes
+   * blanches. Les valeurs ≈ renvoient aux `gray-*` redéfinis dans tailwind.config.ts. */
   --surface: #ffffff;         /* cartes, panneaux            (≈ bg-white)    */
-  --surface-raised: #f9fafb;  /* fond de page                (≈ bg-gray-50)  */
-  --surface-sunken: #f3f4f6;  /* zones en retrait            (≈ bg-gray-100) */
-  --border: #e5e7eb;          /*                             (≈ border-gray-200) */
-  --border-strong: #d1d5db;   /*                             (≈ border-gray-300) */
-  --text: #111827;            /* titres                      (≈ text-gray-900) */
-  --text-soft: #374151;       /* corps de texte              (≈ text-gray-700) */
-  --text-muted: #6b7280;      /* secondaire                  (≈ text-gray-500) */
-  --text-faint: #9ca3af;      /* tertiaire, placeholders     (≈ text-gray-400) */
+  --surface-raised: #eef1f5;  /* fond de page, lignes        (≈ bg-gray-50)  */
+  --surface-sunken: #e2e8f0;  /* zones en retrait            (≈ bg-gray-100) */
+  --surface-pane: #f6f8fa;    /* volets latéraux desktop                       */
+  --surface-header: #e3e8ee;  /* barre de navigation                           */
+  --border: #d7dee6;          /*                             (≈ border-gray-200) */
+  --border-strong: #b7c1cd;   /*                             (≈ border-gray-300) */
+  --text: #0f172a;            /* titres                      (≈ text-gray-900) */
+  --text-soft: #334155;       /* corps de texte              (≈ text-gray-700) */
+  --text-muted: #64748b;      /* secondaire                  (≈ text-gray-500) */
+  --text-faint: #94a3b8;      /* tertiaire, placeholders     (≈ text-gray-400) */
 }
 
 html.dark {
   --surface: #1e293b;
   --surface-raised: #0f172a;
   --surface-sunken: #0f172a;
+  --surface-pane: #1e293b;
+  --surface-header: #1e293b;
   --border: #334155;
   --border-strong: #475569;
   --text: #f1f5f9;
@@ -218,7 +225,7 @@ html.dark input::placeholder,
 html.dark textarea::placeholder { color: #64748b !important; }
 
 /* Navbar */
-html.dark nav.fixed { background-color: #1e293b !important; border-color: #334155 !important; }
+html.dark nav.fixed { background-color: #1e293b !important; }
 
 /* Divisions / séparateurs */
 html.dark .divide-gray-100 > * + *,

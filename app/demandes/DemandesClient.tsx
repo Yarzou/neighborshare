@@ -577,7 +577,7 @@ export default function DemandesClient() {
 
       {/* ── Desktop : liste à gauche, détail à droite (même schéma que la carte) ── */}
       <div className="hidden md:flex h-[calc(100dvh-4rem)]">
-        <aside className={cn('flex-shrink-0 bg-white border-r border-gray-200 flex flex-col', SIDE_PANE_WIDTH)}>
+        <aside className={cn('flex-shrink-0 bg-surface-pane border-r border-edge flex flex-col', SIDE_PANE_WIDTH)}>
           <div className="px-4 pt-5 pb-3 flex flex-col gap-3">
             <h1 className="text-xl font-bold text-gray-900">Mes demandes</h1>
             <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">

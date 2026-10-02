@@ -11,6 +11,24 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // Palette claire « B2 » (2026-10-02) : les gris Tailwind sont remplacés par
+        // une gamme ardoise, gris bleuté. Toutes les classes `gray-*` de l'app
+        // (fond de page, bordures, textes secondaires) basculent d'un coup, sans
+        // toucher au mode sombre, dont le bloc de surcharges emploie des hex.
+        // gray-50 est le fond de page, gray-100 les zones en retrait, gray-200 les
+        // bordures. Le blanc des cartes (`bg-white`) est volontairement conservé.
+        gray: {
+          50:  '#eef1f5',
+          100: '#e2e8f0',
+          200: '#d7dee6',
+          300: '#b7c1cd',
+          400: '#94a3b8',
+          500: '#64748b',
+          600: '#475569',
+          700: '#334155',
+          800: '#1e293b',
+          900: '#0f172a',
+        },
         brand: {
           50:  '#f0fdf4',
           100: '#dcfce7',
@@ -37,6 +55,9 @@ const config: Config = {
           DEFAULT: 'var(--surface)',
           raised: 'var(--surface-raised)',
           sunken: 'var(--surface-sunken)',
+          // Volets latéraux (Quartier, Demandes, Messages, Profil) et barre de navigation
+          pane: 'var(--surface-pane)',
+          header: 'var(--surface-header)',
         },
         edge: {
           DEFAULT: 'var(--border)',
