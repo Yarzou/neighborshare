@@ -44,7 +44,6 @@ app/
   page.tsx          # Landing publique
   accueil/          # Dashboard post-login (DashboardClient.tsx)
   map/              # Carte principale (MapView)
-  recent/           # Derniers ajouts
   listings/         # new/ · [id]/ · [id]/edit/
   demandes/         # Mes demandes envoyées / reçues (DemandesClient.tsx)
   evenements/       # Liste · new/ · [id]/ · [id]/edit/

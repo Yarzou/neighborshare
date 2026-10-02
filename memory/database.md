@@ -10,7 +10,7 @@
 - `liquibase/liquibase.properties` (gitignoré) ne porte plus que `driver` / `changeLogFile` / `outputDefaultSchema` ; les identifiants viennent du script. Template : `.example`.
 - ⚠️ Liquibase = outil Java : les commandes `db:*` échouent si `JAVA_HOME` est invalide.
 
-## Migrations (ordre chronologique — 001 → 038)
+## Migrations (ordre chronologique — 001 → 040)
 | Fichier | Contenu |
 |---|---|
 | 001 | Schéma initial (profiles, listings, categories, messages, geography, RLS de base) |
@@ -51,7 +51,8 @@
 | 036 | Tables `polls` / `poll_options` / `poll_votes` + RPC `poll_results()`. Votes lisibles uniquement par leur auteur ; les totaux passent par le RPC, qui refuse de répondre avant d'avoir voté (sauf sondage clos ou auteur) |
 | 037 | Delete **et update** d'événement élargis au référent : `events_delete_own` → `events_delete`, `events_update_own` → `events_update` (`user_id = auth.uid() OR is_referent()`), idem pour `events_storage_delete` (images du bucket) |
 | 038 | **Modèle de droits complet** : update `providers`/`group_purchases` = créateur ou référent ; update/delete `announcements`/`polls` (+ gestion `poll_options`) = **tout** référent (plus seulement l'auteur) |
-| 039 | **Performances** — 9 index (le schéma n'en avait que 9 au total, **aucune FK indexée**) + RPC `conversations_overview()`, `unread_message_count()`, `poll_results_bulk()` + `listings` ajoutée à `supabase_realtime`. Purement additive. ⚠️ **écrite, pas encore appliquée** |
+| 039 | **Performances** — 9 index (le schéma n'en avait que 9 au total, **aucune FK indexée**) + RPC `conversations_overview()`, `unread_message_count()`, `poll_results_bulk()` + `listings` ajoutée à `supabase_realtime`. Purement additive. **Appliquée le 2026-08-07** — sur une seule des deux bases : garder le repli de `lib/messaging.ts` tant que l'autre ne l'a pas |
+| 040 | **Documents du lotissement** — `assemblies` + `assembly_documents` (RLS : lecture authentifiée, écriture référents) + bucket Storage **privé** `documents` (50 Mo, PDF/PowerPoint, policies select authentifié / insert-update-delete référent). Purement additive. **Écrite le 2026-10-02, appliquée nulle part** |
 
 Ajouter une migration = créer `0NN-nom.sql` **et** l'inclure dans `db.changelog-master.xml` avec un commentaire. Ne jamais modifier un changeset déjà appliqué.
 
@@ -67,7 +68,7 @@ ne les crée pas tout seul. Ajoutés :
 | `conversation_participants(user_id)` | La PK est `(conversation_id, user_id)`, inutilisable pour `user_id` seul. Bénéficiaire principal : `find_or_create_conversation` (016). **Volontairement non partiel** sur `deleted_at` — 016 interroge délibérément les soft-deleted |
 | `listings(user_id, created_at desc)` | `/profile`, `/profil/[id]`, `/demandes` |
 | `listings(responder_id)` *partiel* | `/demandes`, pastille, suppression de compte |
-| `listings(status, created_at desc)` | `/recent` |
+| `listings(status, created_at desc)` | ex-`/recent` (page supprimée le 2026-10-02, index conservé : utile à toute liste triée par date) |
 | `listings(conversation_id)` *partiel* | `/messages/[id]` |
 | `poll_votes(user_id)` | `PollsSection` lit `poll_votes` **sans filtre** : tout vient de la policy |
 | `poll_votes(option_id)` | `poll_results()` / `poll_results_bulk()` |
@@ -202,6 +203,13 @@ Sondage : `question, description, closes_at (date)` — création **référents 
 Vote : PK `(poll_id, user_id)` → une voix par compte, upsert pour changer d'avis.  
 ⚠️ **« Résultats après vote » est appliqué en base** : `poll_votes` n'est lisible que par son auteur, les totaux passent par le RPC `poll_results(p_poll_id)` (SECURITY DEFINER) qui lève une exception si l'appelant n'a pas voté — sauf sondage clos ou appelant auteur. Conséquence : pas de dépouillement nominatif possible via l'API.
 
+### `assemblies` + `assembly_documents` (040)
+Assemblée : `id, title, held_on (date), created_by (set null à la suppression du profil), created_at, updated_at`.  
+Document : `id, assembly_id (cascade), kind ('agenda'|'presentation'|'minutes', check), file_path, file_name, file_size, mime_type, page_count, source_path, source_name, source_size (PowerPoint d'origine, présentation seulement), uploaded_by, created_at, updated_at` — **unique `(assembly_id, kind)`** : remplacer = update.  
+RLS : lecture authentifiée ; insert par le déposant référent (`uploaded_by = auth.uid()`) ; update/delete par tout référent.  
+**« Seul le PV reste »** est appliqué côté client (`uploadDocument()` dans `lib/documents.ts`) : après insert/update d'un `minutes`, les lignes `agenda`/`presentation` de l'assemblée et leurs fichiers sont supprimés. Une assemblée sans PV est « à venir », avec PV elle est archivée (groupée par année).  
+La route `/api/notifications/quartier` (`new_document`) vérifie `uploaded_by = appelant` avant de pousser ; le client ne l'appelle qu'au premier dépôt.
+
 ## Fonctions / RPC
 | RPC | Rôle |
 |---|---|
@@ -232,6 +240,7 @@ Toujours passer par ces RPC — jamais d'`update` direct sur `status`.
 `reserve` existe dans le type mais n'est pas produit par les RPC actuels.
 
 ## Storage
+- Bucket **privé** : **`documents`** (040) — `file_size_limit` 50 Mo, `allowed_mime_types` PDF + PowerPoint. Chemin `{assemblyId}/{kind}[-source]-{timestamp}.{ext}`. Lecture par `createSignedUrl` (3600 s, option `download` pour forcer l'enregistrement) ; policies : select authentifié, insert/update/delete `is_referent()`. Suppression des anciens fichiers après remplacement, orphelins tolérés (la ligne reste la vérité).
 - Buckets publics : **`listings`** (migration 004) et **`events`** (migration 024)
 - Chemin : `{userId}/{timestamp}.{ext}` — les policies delete s'appuient sur `(storage.foldername(name))[1] = auth.uid()`
 - URL publique stockée dans `listings.image_url` / `events.image_urls[]`

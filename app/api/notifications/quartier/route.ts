@@ -3,6 +3,8 @@ import { createServerClient } from '@supabase/ssr'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { sendPushToAll, sendPushToUsers } from '@/lib/fcm-admin'
+import { formatHeldOn } from '@/lib/documents'
+import type { AssemblyDocumentKind } from '@/lib/types'
 
 /**
  * Notifications push « vie du quartier » — push uniquement, jamais d'email
@@ -21,6 +23,7 @@ import { sendPushToAll, sendPushToUsers } from '@/lib/fcm-admin'
  *   new_provider        → tout le quartier (sauf l'auteur)      · id = providers.id
  *   gp_participation    → créateur de l'achat                   · id = group_purchases.id
  *   gp_target_reached   → créateur + participants (sauf acteur) · id = group_purchases.id
+ *   new_document        → tout le quartier (sauf l'auteur)      · id = assembly_documents.id
  */
 
 type QuartierEvent =
@@ -31,6 +34,7 @@ type QuartierEvent =
   | 'new_provider'
   | 'gp_participation'
   | 'gp_target_reached'
+  | 'new_document'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? ''
 
@@ -195,6 +199,37 @@ export async function POST(req: NextRequest) {
         title: '🎯 Objectif atteint !',
         body: `« ${purchase.title} » : ${total} ${purchase.unit} réunis — l'objectif est atteint.`,
         url: `${APP_URL}/achats`,
+      })
+      break
+    }
+
+    case 'new_document': {
+      // Premier dépôt uniquement (le client ne notifie pas lors d'un remplacement).
+      // Lecture via l'admin : la table est réservée aux comptes connectés, et
+      // c'est `uploaded_by` qui prouve que l'appelant est bien le déposant.
+      const { data } = await admin
+        .from('assembly_documents')
+        .select('kind, uploaded_by, assemblies!assembly_id(title, held_on)')
+        .eq('id', id)
+        .single()
+      if (!data || data.uploaded_by !== user.id) break
+
+      type AssemblyRef = { title: string; held_on: string }
+      const raw = data.assemblies as AssemblyRef | AssemblyRef[] | null
+      const assembly = Array.isArray(raw) ? raw[0] : raw
+      if (!assembly) break
+
+      const kind = data.kind as AssemblyDocumentKind
+      const titles: Record<AssemblyDocumentKind, string> = {
+        agenda: '📋 Ordre du jour disponible',
+        presentation: '📊 Présentation disponible',
+        minutes: '📝 Procès-verbal disponible',
+      }
+
+      await sendPushToAll(user.id, {
+        title: titles[kind] ?? '📄 Nouveau document',
+        body: `${assembly.title} · ${formatHeldOn(assembly.held_on)}`,
+        url: `${APP_URL}/documents/${id}`,
       })
       break
     }

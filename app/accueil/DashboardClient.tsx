@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { MapPin, CalendarDays, MessageCircle, ClipboardList, User, Megaphone, ShoppingCart, Wrench, Sparkles } from 'lucide-react'
+import { MapPin, CalendarDays, MessageCircle, ClipboardList, User, Megaphone, ShoppingCart, Wrench, FileText } from 'lucide-react'
 import { useUnreadCount, usePendingRequests } from '@/lib/hooks'
 import { cn } from '@/lib/utils'
 
@@ -41,12 +41,6 @@ export default function DashboardClient({ firstName, avatarUrl, avatarColor }: P
       href: '/evenements',
     },
     {
-      label: 'Derniers ajouts',
-      description: 'Les annonces les plus récentes',
-      icon: <Sparkles size={32} />,
-      href: '/recent',
-    },
-    {
       label: 'Vie du quartier',
       description: 'Infos officielles et sondages',
       icon: <Megaphone size={32} />,
@@ -63,6 +57,12 @@ export default function DashboardClient({ firstName, avatarUrl, avatarColor }: P
       description: 'Les artisans recommandés',
       icon: <Wrench size={32} />,
       href: '/prestataires',
+    },
+    {
+      label: 'Documents ASL',
+      description: 'Ordres du jour et PV des AG',
+      icon: <FileText size={32} />,
+      href: '/documents',
     },
     {
       label: 'Messages',

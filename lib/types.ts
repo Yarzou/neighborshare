@@ -322,3 +322,51 @@ export const BOOK_GENRES = [
   'Scolaire / Études',
   'Autre',
 ] as const
+
+// ─── Documents du lotissement (migration 040) ────────────────────────────────
+
+/** Nature d'un fichier rattaché à une assemblée générale */
+export type AssemblyDocumentKind = 'agenda' | 'presentation' | 'minutes'
+
+export const ASSEMBLY_DOCUMENT_KIND_LABELS: Record<AssemblyDocumentKind, string> = {
+  agenda: 'Ordre du jour',
+  presentation: 'Présentation',
+  minutes: 'Procès-verbal',
+}
+
+/** Ordre d'affichage des fichiers dans une assemblée */
+export const ASSEMBLY_DOCUMENT_KINDS: AssemblyDocumentKind[] = ['agenda', 'presentation', 'minutes']
+
+/**
+ * Fichier d'une assemblée. `file_*` est le PDF lu par la visionneuse ;
+ * `source_*` est le PowerPoint d'origine (présentation uniquement, téléchargement seul).
+ */
+export interface AssemblyDocument {
+  id: string
+  assembly_id: string
+  kind: AssemblyDocumentKind
+  file_path: string
+  file_name: string
+  file_size: number
+  mime_type: string
+  page_count: number | null
+  source_path: string | null
+  source_name: string | null
+  source_size: number | null
+  uploaded_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+/** Assemblée générale du lotissement : ordre du jour + présentation + PV */
+export interface Assembly {
+  id: string
+  title: string
+  /** Date de tenue au format `YYYY-MM-DD` (colonne `date`) */
+  held_on: string
+  created_by: string | null
+  created_at: string
+  updated_at: string
+  // Join
+  assembly_documents?: AssemblyDocument[]
+}

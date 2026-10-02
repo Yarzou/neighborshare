@@ -44,7 +44,7 @@ export function Navbar() {
     // Section « Quartier » = 3 pages sous onglets (layout du route group (quartier)) :
     // le lien reste actif sur chacune d'elles, pas seulement sur /infos.
     { href: '/infos', label: 'Quartier', icon: <Megaphone size={16} />,
-      matches: ['/infos', '/achats', '/prestataires'] },
+      matches: ['/infos', '/achats', '/prestataires', '/documents'] },
   ]
 
   const isNavLinkActive = (link: { href: string; matches?: string[] }) =>

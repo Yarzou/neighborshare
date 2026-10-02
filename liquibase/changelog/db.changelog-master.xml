@@ -123,4 +123,7 @@
        (conversations_overview, unread_message_count, poll_results_bulk), realtime sur listings -->
   <include file="liquibase/changelog/039-perf-indexes-et-messagerie.sql"/>
 
+  <!-- Documents du lotissement : assemblées générales (ordre du jour, présentation, PV), bucket privé `documents` -->
+  <include file="liquibase/changelog/040-assemblies-documents.sql"/>
+
 </databaseChangeLog>

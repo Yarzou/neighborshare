@@ -77,6 +77,7 @@ export type QuartierNotificationEvent =
   | 'new_provider'
   | 'gp_participation'
   | 'gp_target_reached'
+  | 'new_document'
 
 /**
  * Déclenche une notification push « vie du quartier », en fire-and-forget :

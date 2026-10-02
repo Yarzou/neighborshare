@@ -1,5 +1,43 @@
 # Historique des modifications (par session)
 
+## 2026-10-02 — Documents du lotissement (assemblées générales)
+
+Demande : consulter les documents des AG (ordre du jour, présentation, PV, historique), lisibles sur
+téléphone comme sur le web. Décisions prises avec l'utilisateur : publication par les référents ;
+une AG = ordre du jour + présentation + PV ; **seul le PV reste** une fois publié (ODJ et présentation
+**effacés**) ; PV anciens déposés un par un ; fichiers < 50 Mo ; push à **chaque premier dépôt**
+(pas au remplacement) ; remplacer le fichier suffit (pas de versions) ; PowerPoint d'origine conservé
+en téléchargement à côté du PDF. PowerPoint n'est jamais rendu dans le navigateur : le référent
+exporte en PDF (visionneuse Office/Google en iframe écartée — fichier public exigé, envoi à un tiers).
+
+`npm run lint` : 0 erreur, 25 avertissements (inchangé). `typecheck` et `build` passent.
+`node scripts/measure-bundle.js` : `/documents` 1051,0 Ko vs `/infos` 1044,9 Ko — pdf.js n'y est pas.
+
+- **`liquibase/changelog/040-assemblies-documents.sql`** (+ master XML) : `assemblies`,
+  `assembly_documents` (unique `(assembly_id, kind)`), RLS lecture authentifiée / écriture référents,
+  bucket **privé** `documents` (50 Mo, PDF + PowerPoint) et ses 4 policies Storage. Additive, chaque
+  changeset a sa clause de retour arrière. **Appliquée nulle part** — à lancer par l'utilisateur.
+- **`lib/types.ts`** : `Assembly`, `AssemblyDocument`, `AssemblyDocumentKind`,
+  `ASSEMBLY_DOCUMENT_KIND_LABELS`, `ASSEMBLY_DOCUMENT_KINDS`.
+- **`lib/documents.ts`** (nouveau) : chemins, URL signées, `uploadDocument` (Storage d'abord, base
+  ensuite, anciens fichiers en dernier ; efface ODJ + présentation après un PV), `deleteDocument`,
+  `deleteAssembly`, `loadPdfjs` (import dynamique + worker via `new URL(..., import.meta.url)` +
+  polyfill `Promise.withResolvers` pour Safari < 17.4), `countPdfPages`, formatage taille/date.
+- **`app/(quartier)/documents/`** : `page.tsx`, `AssemblyForm`, `AssemblyCard`, `DocumentSlot`. Case **« Ne pas notifier le quartier »** dans le formulaire de dépôt (premier dépôt seulement, pour la reprise des anciens PV sans rafale de push).
+- **`app/documents/[id]/page.tsx`** : visionneuse hors route group (pleine largeur).
+- **`components/documents/PdfViewer.tsx`** : pdf.js impératif, rendu des seules pages visibles.
+- **`components/layout/QuartierTabs.tsx`** : 4 onglets (`grid-cols-4`), « Presta. » / « Docs » sur mobile.
+- **`components/layout/Navbar.tsx`** : `/documents` dans `matches` du lien Quartier.
+- **`app/accueil/DashboardClient.tsx`** : tuile « Documents ASL » ajoutée (libellé demandé par l'utilisateur, idem onglet et titre de page) ; tuile « Derniers ajouts » retirée à la demande de l'utilisateur, puis **`app/recent/` supprimé** (« pas de code mort ») — aucun composant exclusif, seuls `ListingCard`, `LoginRequiredNotice` et les helpers partagés y étaient importés. L'index `listings(status, created_at desc)` de la 039 reste en base.
+- **`lib/pushNotifications.ts`** + **`app/api/notifications/quartier/route.ts`** : événement
+  `new_document` (vérifie `uploaded_by = appelant`, titre selon la nature, lien vers la visionneuse).
+- **`package.json`** : dépendance `pdfjs-dist` 6.3.
+- Doc : `CLAUDE.md`, `memory/database.md`, `memory/components.md`.
+
+À faire côté utilisateur : `npm run db:tag` puis `npm run db:migrate` (test puis prod), puis un dépôt
+réel pour vérifier le rendu mobile de la visionneuse (MCP Chrome DevTools, `emulate 360x780`).
+
+
 ## 2026-08-07 (2) — Optimisation de la vitesse d'affichage client
 
 Demande : « fait en sorte que tout soit optimisé pour une rapidité d'affichage client », périmètre
@@ -177,26 +215,39 @@ au-dessus de `useUserId`). Un rafraîchissement de jeton ne relance plus la lect
 - L'audit signalait un `href='\accueil'` (antislash) dans `Navbar.tsx` — **vérifié, c'est faux**,
   les deux occurrences sont bien `'/accueil'`. Rien à corriger.
 
-### Correctif post-livraison — parsing Liquibase
+### Correctif post-livraison — parsing Liquibase (migration appliquée depuis)
 
-Premier `db:*` lancé par l'utilisateur : `Unexpected formatting in formatted changelog … at line 21`.
-Cause : l'en-tête du fichier 039 citait le mot-clé `rollback` **en prose**, précédé de deux tirets,
-entre accents graves au milieu d'une phrase — et **avant le premier changeset**. Le parser de
-changelog SQL formaté repère ces mots-clés n'importe où dans une ligne de commentaire, pas seulement
-en début de ligne ; un rollback hors changeset invalide tout le fichier.
+`db:*` lancé par l'utilisateur : `Unexpected formatting in formatted changelog … at line 21`.
 
-Reformulé en « clause de rollback ». Contrôle ajouté à `CLAUDE.md` §6 :
+**Vraie cause** : la ligne 21 de l'en-tête *commençait* par `-- changeset, donc perdre son
+atomicité…`. Le parser de changelog SQL formaté lit le **premier mot après `--`** ; comme c'était
+`changeset`, il a traité la phrase comme une déclaration de changeset malformée. Le piège ne vient
+pas de ce qu'on écrit mais de **là où la phrase se coupe** au retour à la ligne.
+
+⚠️ **Ma première hypothèse était fausse** — j'avais accusé un `--rollback` cité entre accents graves
+au milieu de la même ligne, et conclu que le parser repérait les mots-clés « n'importe où dans la
+ligne ». Il n'en est rien : un mot-clé en milieu de ligne est inoffensif. La correction n'a donc rien
+changé et l'erreur est réapparue **à la même ligne** — ce qui aurait dû me mettre la puce à l'oreille
+immédiatement. Pire, l'avertissement que j'avais ajouté reproduisait la faute (une de ses lignes
+commençait par `-- changeset, comment, precondition…`).
+
+Corrigé en recoupant les phrases. Contrôle inscrit dans `CLAUDE.md` §6, cette fois ancré en début de
+ligne :
 
 ```bash
-grep -rnE '.+--(rollback|changeset|comment|precondition|property)' liquibase/changelog/*.sql
+grep -rnEi '^[[:space:]]*--[[:space:]]+(changeset|rollback|comment|precondition|preconditions|property|validCheckSum|ignoreLines|liquibase)\b' liquibase/changelog/*.sql
 ```
 
-Vérifié : plus aucune occurrence dans 039 **ni dans les 38 migrations précédentes**, les 8 changesets
-portent tous leur rollback, et aucune ligne `--` collée à un mot ne peut être lue comme une directive.
+Une vraie directive s'écrit sans espace (`--changeset …`), donc toute ligne remontée est de la prose
+à reformuler. Vérifié : rien dans 039 ni dans les 38 migrations précédentes.
+
+**`npm run db:migrate` est passé** après ce correctif.
 
 ### Reste à faire (manuel)
 
-1. `npm run db:validate`, `npm run db:tag`, puis `npm run db:migrate` — **sur test d'abord**.
+1. **Appliquer 039 sur la seconde base** (elle ne l'est que sur celle où `db:migrate` a tourné).
+   Tant que les deux ne l'ont pas, garder le repli de `lib/messaging.ts` — sa suppression est la
+   phase *contract*, pour une session ultérieure.
 2. Recette : voir la section « Vérification » du plan de session. Le point le plus important est de
    **voir** le repli fonctionner *avant* d'appliquer 039 (console : « migration 039 non appliquée ? »,
    onglet Réseau : les 4 requêtes historiques), puis les 50 **derniers** messages sur un fil long.

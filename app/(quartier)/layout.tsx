@@ -1,7 +1,7 @@
 import { QuartierTabs } from '@/components/layout/QuartierTabs'
 
 /**
- * Layout commun aux pages « Quartier » : /infos, /achats, /prestataires.
+ * Layout commun aux pages « Quartier » : /infos, /achats, /prestataires, /documents.
  * Le route group `(quartier)` n'affecte pas les URLs — il ne sert qu'à partager
  * ce conteneur et la barre d'onglets.
  */
