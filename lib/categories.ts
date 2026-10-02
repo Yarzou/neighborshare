@@ -22,13 +22,13 @@ export interface CategoryDef {
 
 export const CATEGORY_LIST: CategoryDef[] = [
   { id: 1, slug: 'outils',       label: 'Outils',          filterLabel: 'Outils',   icon: '🔧', color: 'bg-blue-50 border-blue-200',       hoverColor: 'hover:bg-blue-100 hover:border-blue-300',     borderOnly: 'bg-white border-blue-300 hover:border-blue-400' },
-  { id: 2, slug: 'services',     label: 'Services',         filterLabel: 'Services', icon: '🤝', color: 'bg-green-50 border-green-200',     hoverColor: 'hover:bg-green-100 hover:border-green-300',   borderOnly: 'bg-white border-green-300 hover:border-green-400' },
+  { id: 2, slug: 'services',     label: 'Services',         filterLabel: 'Services', icon: '🤝', color: 'bg-amber-50 border-amber-200',     hoverColor: 'hover:bg-amber-100 hover:border-amber-300',   borderOnly: 'bg-white border-amber-300 hover:border-amber-400' },
   { id: 3, slug: 'garde-enfant', label: "Garde d'enfant",   filterLabel: 'Enfants',  icon: '👶', color: 'bg-pink-50 border-pink-200',       hoverColor: 'hover:bg-pink-100 hover:border-pink-300',     borderOnly: 'bg-white border-pink-300 hover:border-pink-400' },
-  { id: 4, slug: 'covoiturage',  label: 'Covoiturage',      filterLabel: 'Trajet',   icon: '🚗', color: 'bg-yellow-50 border-yellow-200',   hoverColor: 'hover:bg-yellow-100 hover:border-yellow-300', borderOnly: 'bg-white border-yellow-400 hover:border-yellow-500' },
+  { id: 4, slug: 'covoiturage',  label: 'Covoiturage',      filterLabel: 'Trajet',   icon: '🚗', color: 'bg-teal-50 border-teal-200',   hoverColor: 'hover:bg-teal-100 hover:border-teal-300', borderOnly: 'bg-white border-teal-400 hover:border-teal-500' },
   { id: 5, slug: 'dons',         label: 'Dons / Objets',    filterLabel: 'Dons',     icon: '📦', color: 'bg-purple-50 border-purple-200',   hoverColor: 'hover:bg-purple-100 hover:border-purple-300', borderOnly: 'bg-white border-purple-300 hover:border-purple-400' },
-  { id: 6, slug: 'jardinage',    label: 'Jardinage',        filterLabel: 'Jardin',   icon: '🌿', color: 'bg-emerald-50 border-emerald-200', hoverColor: 'hover:bg-emerald-100 hover:border-emerald-300', borderOnly: 'bg-white border-emerald-300 hover:border-emerald-400' },
-  { id: 7, slug: 'cuisine',      label: 'Cuisine',          filterLabel: 'Cuisine',  icon: '🍳', color: 'bg-orange-50 border-orange-200',   hoverColor: 'hover:bg-orange-100 hover:border-orange-300', borderOnly: 'bg-white border-orange-300 hover:border-orange-400' },
-  { id: 8, slug: 'livre',        label: 'Livres',           filterLabel: 'Livres',   icon: '📚', color: 'bg-amber-50 border-amber-200',     hoverColor: 'hover:bg-amber-100 hover:border-amber-300',   borderOnly: 'bg-white border-amber-300 hover:border-amber-400' },
+  { id: 6, slug: 'jardinage',    label: 'Jardinage',        filterLabel: 'Jardin',   icon: '🌿', color: 'bg-green-50 border-green-200',     hoverColor: 'hover:bg-green-100 hover:border-green-300',   borderOnly: 'bg-white border-green-300 hover:border-green-400' },
+  { id: 7, slug: 'cuisine',      label: 'Cuisine',          filterLabel: 'Cuisine',  icon: '🍳', color: 'bg-orange-100 border-orange-300',  hoverColor: 'hover:bg-orange-100 hover:border-orange-400', borderOnly: 'bg-white border-orange-300 hover:border-orange-400' },
+  { id: 8, slug: 'livre',        label: 'Livres',           filterLabel: 'Livres',   icon: '📚', color: 'bg-gray-100 border-gray-300',      hoverColor: 'hover:bg-gray-200 hover:border-gray-400',     borderOnly: 'bg-white border-gray-300 hover:border-gray-400' },
 ]
 
 /** Slugs de catégories incompatibles avec le type "vente" */

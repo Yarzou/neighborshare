@@ -106,6 +106,26 @@ body {
   background: #fff7ed;
 }
 
+/* Lettre du type d'annonce (P, D, E, S, V), en plus de la couleur de bordure */
+.custom-marker { position: relative; }
+.custom-marker__type {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
 /* Cluster bubble */
 .cluster-bubble {
   width: 40px;
@@ -293,6 +313,9 @@ html.dark .text-white { color: #e2e8f0 !important; }
 
 /* ─── Couleurs *-50 (filtres catégories) ─────────────────────────────────── */
 html.dark .bg-blue-50    { background-color: rgba(30,58,138,0.30) !important; }
+html.dark .bg-teal-50    { background-color: rgba(19,78,74,0.35) !important; }
+html.dark .hover\:bg-teal-100:hover { background-color: rgba(19,78,74,0.5) !important; }
+html.dark .border-teal-200   { border-color: #115e59 !important; }
 html.dark .bg-green-50   { background-color: rgba(20,83,45,0.25)  !important; }
 html.dark .bg-pink-50    { background-color: rgba(131,24,67,0.25) !important; }
 html.dark .bg-yellow-50  { background-color: rgba(113,63,18,0.30) !important; }
@@ -367,6 +390,7 @@ html.dark .custom-marker {
   box-shadow: 0 2px 8px rgba(0,0,0,0.5) !important;
 }
 html.dark .custom-marker--demande { background: #2d1a0a !important; }
+html.dark .custom-marker__type { border-color: #1e293b !important; }
 
 /* ─── Images : atténuation fond blanc ───────────────────────────────────── */
 html.dark img { filter: brightness(0.85) saturate(0.9); }

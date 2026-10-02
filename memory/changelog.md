@@ -1,5 +1,34 @@
 # Historique des modifications (par session)
 
+## 2026-10-02 (4) — Accessibilité daltonisme (après le commit B2 `8801a0e`)
+
+Question de l'utilisateur : « le ton clair est-il adapté aux daltoniens ? ». Réponse : la palette
+neutre oui (clarté), mais plusieurs endroits reposaient sur la teinte seule. Les quatre correctifs
+recommandés ont été demandés en live :
+
+- **Marqueurs de carte** (`LeafletMap.tsx`, `globals.css`) : pastille **lettre du type** en bas à
+  droite du marqueur (P prêt, D don, E échange, S service, V vente — `LISTING_TYPE_SHORT` dans
+  `lib/types.ts`), couleur du type en fond, contour blanc (ardoise en sombre). Couleurs de type
+  espacées : don **violet** (était bleu-vert, indiscernable du bleu du prêt), échange teal foncé,
+  vente rose foncé ; `LISTING_TYPE_COLORS` (badges) réaligné.
+- **Statuts** (`LISTING_STATUS_COLORS`) : disponible **bleu** (était vert émeraude, proche de
+  l'orange d'« en cours » pour un deutéranope), réservé violet ; en cours orange, validée vert,
+  terminée gris inchangés. Le couple bleu / orange est lisible pour toutes les formes de daltonisme.
+- **Catégories** (`lib/categories.ts`) : services → ambre, covoiturage → teal (nouveaux overrides
+  sombres `bg-teal-50`, `border-teal-200`, `hover:bg-teal-100`), jardinage → vert, cuisine → orange
+  plus soutenu (`-100/-300`, écart de clarté avec l'ambre), livres → gris. Limite assumée : avec
+  huit catégories, deux restent proches pour un dichromate (ambre / orange) ; l'emoji et le
+  libellé portent le sens, la couleur épaule.
+- **Compteurs de la navbar** : `ring-2 ring-surface-header`, contour couleur de la barre qui détache
+  la pastille rouge quelle que soit la perception du rouge.
+- **Demandes (desktop)** : les encarts du détail (voisin + aperçu, Décision) passent de `bg-white` à `bg-surface-pane`, « griser légèrement les blancs comme dans Messages » — demande utilisateur.
+- **Événements (desktop)** : bandeau de titre et volet calendrier en `bg-surface-pane` au lieu de blanc (même traitement que Demandes) ; les cartes d'événement et le mini-calendrier restent blancs, ce sont les cartes.
+- **Carte (desktop)** : bandeau de titre, volet liste et barre de filtres en `bg-surface-pane` (`md:` sur les éléments partagés avec le mobile, qui reste blanc) ; les cartes d'annonce gardent leur fond.
+- **Passe sur toutes les pages** : en-tête et barre de saisie de la conversation (`md:bg-surface-pane`), barre d'outils de la visionneuse PDF (`bg-surface-pane/95`). Les autres blancs restants sont des cartes (tuiles du tableau de bord, cartes d'annonce, formulaires centrés) et restent blancs par construction : carte blanche sur fond brume.
+- Au passage, **initiales de l'avatar** : « Fabien & Sophia » → **F&S** (l'esperluette est conservée,
+  trois caractères max, `text-xs` au-delà de deux) — demande utilisateur.
+
+
 ## 2026-10-02 (3) — Thème clair « B2 » et barre de navigation
 
 Demande : « trop blanc partout », puis « mieux définir les espaces par des couleurs (header, encart,

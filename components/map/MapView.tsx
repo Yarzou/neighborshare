@@ -162,7 +162,7 @@ export function MapView() {
   return (
       <div className="flex flex-col h-full">
         {/* Header desktop — pleine largeur, au-dessus de la carte et de la sidebar */}
-        <div className="hidden md:flex items-center justify-between bg-white border-b border-gray-200 px-4 py-3 shrink-0">
+        <div className="hidden md:flex items-center justify-between bg-surface-pane border-b border-gray-200 px-4 py-3 shrink-0">
           <div className="flex items-center gap-2">
             <LayoutGrid size={18} className="text-brand-600" />
             <h1 className="text-base font-bold text-gray-900">Publications du quartier</h1>
@@ -205,7 +205,7 @@ export function MapView() {
         <div className="flex flex-1 overflow-hidden flex-col md:flex-row">
 
         {/* Sidebar */}
-        <div className={`w-full md:w-96 flex flex-col bg-white border-r border-gray-200 overflow-hidden z-10 ${mobileView === 'map' ? 'hidden md:flex' : 'flex'}`}>
+        <div className={`w-full md:w-96 flex flex-col bg-white md:bg-surface-pane border-r border-gray-200 overflow-hidden z-10 ${mobileView === 'map' ? 'hidden md:flex' : 'flex'}`}>
           <FilterBar
               category={category}
               onCategoryChange={setCategory}

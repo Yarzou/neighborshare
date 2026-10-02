@@ -273,29 +273,43 @@ export const LISTING_STATUS_LABELS: Record<ListingStatus, string> = {
   validee: 'En utilisation',
 }
 
+// Accessibilité : disponible en bleu et en cours en orange, un couple lisible pour
+// toutes les formes de daltonisme (le vert / orange d'avant ne l'était pas).
 export const LISTING_STATUS_COLORS: Record<ListingStatus, string> = {
-  disponible: 'bg-emerald-100 text-emerald-700',
-  reserve: 'bg-amber-100 text-amber-700',
+  disponible: 'bg-sky-100 text-sky-700',
+  reserve: 'bg-violet-100 text-violet-700',
   termine: 'bg-gray-200 text-gray-500',
   en_cours: 'bg-orange-100 text-orange-700',
   validee: 'bg-brand-100 text-brand-700',
 }
 
+// Accessibilité (2026-10-02) : les cinq types se distinguent par la teinte ET par
+// une lettre (LISTING_TYPE_SHORT) ; le don quitte le bleu-vert, trop proche du
+// bleu du prêt pour une vision daltonienne, et prend le violet.
 export const LISTING_TYPE_COLORS: Record<ListingType, string> = {
   pret: 'bg-sky-100 text-sky-700',
-  don: 'bg-teal-100 text-teal-700',
-  echange: 'bg-violet-100 text-violet-700',
+  don: 'bg-violet-100 text-violet-700',
+  echange: 'bg-teal-100 text-teal-700',
   service: 'bg-amber-100 text-amber-800',
   vente: 'bg-rose-100 text-rose-700',
+}
+
+/** Lettre portée par le marqueur de la carte, en plus de la couleur du type */
+export const LISTING_TYPE_SHORT: Record<ListingType, string> = {
+  pret: 'P',
+  don: 'D',
+  echange: 'E',
+  service: 'S',
+  vente: 'V',
 }
 
 /** Couleurs CSS hex pour les marqueurs Leaflet (border-color) */
 export const LISTING_TYPE_MARKER_COLORS: Record<ListingType, string> = {
   pret: '#0284c7',
-  don: '#0d9488',
-  echange: '#7c3aed',
+  don: '#7c3aed',
+  echange: '#0f766e',
   service: '#d97706',
-  vente: '#e11d48',
+  vente: '#be123c',
 }
 
 export const BOOK_CONDITION_LABELS: Record<BookCondition, string> = {

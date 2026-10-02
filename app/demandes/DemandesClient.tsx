@@ -331,7 +331,7 @@ function DemandeDetail({
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_280px] gap-5 items-start flex-1 min-h-0">
         {/* Voisin + aperçu de la conversation */}
-        <div className="bg-white rounded-2xl border border-gray-200 flex flex-col overflow-hidden min-h-[260px]">
+        <div className="bg-surface-pane rounded-2xl border border-gray-200 flex flex-col overflow-hidden min-h-[260px]">
           <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200">
             <div
               className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
@@ -385,7 +385,7 @@ function DemandeDetail({
           {item.conversation_id && (
             <Link
               href={`/messages/${item.conversation_id}`}
-              className="flex items-center justify-center gap-1.5 px-4 py-3 border-t border-gray-200 text-sm font-medium text-brand-700 hover:bg-brand-50 transition-colors"
+              className="flex items-center justify-center gap-1.5 px-4 py-3 border-t border-gray-200 text-sm font-medium text-brand-700 hover:bg-brand-50 transition-colors bg-surface-pane"
             >
               <MessageCircle size={15} /> Ouvrir la conversation
             </Link>
@@ -394,7 +394,7 @@ function DemandeDetail({
 
         {/* Décision */}
         <div className="flex flex-col gap-3">
-          <div className="bg-white rounded-2xl border border-gray-200 p-4 flex flex-col gap-3">
+          <div className="bg-surface-pane rounded-2xl border border-gray-200 p-4 flex flex-col gap-3">
             <p className="text-sm font-semibold text-gray-900">Décision</p>
             <DemandeActions item={item} role={role} onAction={onAction} variant="detail" />
             <p className="text-xs text-gray-400 leading-relaxed">

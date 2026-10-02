@@ -204,7 +204,7 @@ export default function EvenementsPage() {
       {/* ── DESKTOP : layout pleine hauteur avec calendrier ── */}
       <div className="hidden md:flex flex-col h-[calc(100vh-4rem)]">
         {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shrink-0">
+        <div className="bg-surface-pane border-b border-gray-200 px-4 py-3 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
             <CalendarDays size={18} className="text-brand-600" />
             <h1 className="text-base font-bold text-gray-900">Événements du quartier</h1>
@@ -245,7 +245,7 @@ export default function EvenementsPage() {
           </div>
 
           {/* Right: calendar (desktop only, always visible) */}
-          <div className="hidden md:flex flex-col w-72 border-l border-gray-200 bg-white overflow-hidden">
+          <div className="hidden md:flex flex-col w-72 border-l border-gray-200 bg-surface-pane overflow-hidden">
             <div className="p-4 flex flex-col gap-3 shrink-0">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Calendrier</p>
               <MiniCalendar

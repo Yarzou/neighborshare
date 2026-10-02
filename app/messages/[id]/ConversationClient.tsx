@@ -374,7 +374,7 @@ export default function ConversationClient({ conversationId: id, userId }: Props
     // MessagesShell (qui fixe déjà la hauteur), la liste étant à gauche.
     <div className="flex flex-col h-[calc(100dvh-4rem)] md:h-full max-w-5xl md:max-w-none mx-auto w-full">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 bg-white flex-shrink-0">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 bg-white md:bg-surface-pane flex-shrink-0">
         <Link href="/messages" className="md:hidden text-gray-500 hover:text-gray-700 flex-shrink-0" aria-label="Retour aux messages">
           <ArrowLeft size={20} />
         </Link>
@@ -449,7 +449,7 @@ export default function ConversationClient({ conversationId: id, userId }: Props
       </div>
 
       {/* Input */}
-      <div className="flex items-center gap-2 px-4 py-3 border-t border-gray-200 bg-white flex-shrink-0">
+      <div className="flex items-center gap-2 px-4 py-3 border-t border-gray-200 bg-white md:bg-surface-pane flex-shrink-0">
         <input
           ref={inputRef}
           type="text"

@@ -15,7 +15,7 @@ interface Props {
 
 export function FilterBar({ category, onCategoryChange, count, loading, search, onSearchChange }: Props) {
   return (
-    <div className="border-b border-gray-100 bg-white px-3 pt-3 pb-2 flex flex-col gap-2">
+    <div className="border-b border-gray-100 bg-white md:bg-surface-pane px-3 pt-3 pb-2 flex flex-col gap-2">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">

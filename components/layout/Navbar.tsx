@@ -18,10 +18,19 @@ interface NavProfile {
   avatar_color: string | null
 }
 
+/**
+ * « Marie Dupont » → MD · « Fabien & Sophia » → F&S (un foyer à deux prénoms garde
+ * son esperluette) · « fabien » → FA. Trois caractères au plus.
+ */
 function initialsOf(p: NavProfile | null, fallback: string | undefined): string {
   const name = p?.full_name?.trim() || p?.username?.trim() || fallback || ''
   const parts = name.split(/\s+/).filter(Boolean)
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
+  if (parts.length >= 2) {
+    return parts
+      .map(w => (/^[&+]$/.test(w) ? w : w[0].toUpperCase()))
+      .slice(0, 3)
+      .join('')
+  }
   return (name.slice(0, 2) || '?').toUpperCase()
 }
 
@@ -121,7 +130,9 @@ export function Navbar() {
   )
 
   const counter = (n: number) => n > 0 && (
-    <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
+    // `ring` : un contour de la couleur de la barre détache la pastille du fond
+    // quelle que soit la perception du rouge.
+    <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none ring-2 ring-surface-header">
       {n > 9 ? '9+' : n}
     </span>
   )
@@ -164,7 +175,8 @@ export function Navbar() {
                 aria-label="Mon profil"
                 title={profile?.full_name || profile?.username || 'Mon profil'}
                 className={cn(
-                  'ml-2 w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-shadow',
+                  'ml-2 w-10 h-10 rounded-full flex items-center justify-center font-bold transition-shadow',
+                  initialsOf(profile, user.email ?? undefined).length > 2 ? 'text-xs' : 'text-sm',
                   pathname === '/profile' ? 'ring-2 ring-brand-600 ring-offset-2 ring-offset-surface-header' : 'hover:ring-2 hover:ring-brand-300',
                 )}
                 style={getAvatarStyle(profile?.avatar_color)}

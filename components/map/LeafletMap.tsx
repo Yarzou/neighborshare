@@ -10,7 +10,7 @@ import markerIcon from 'leaflet/dist/images/marker-icon.png'
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
 import markerShadow from 'leaflet/dist/images/marker-shadow.png'
 import type { Listing } from '@/lib/types'
-import { LISTING_TYPE_MARKER_COLORS } from '@/lib/types'
+import { LISTING_TYPE_MARKER_COLORS, LISTING_TYPE_SHORT } from '@/lib/types'
 import { getCategoryEmoji } from '@/lib/categories'
 import { NEIGHBORHOOD_CENTER, NEIGHBORHOOD_DEFAULT_ZOOM } from '@/lib/neighborhood'
 
@@ -233,8 +233,11 @@ export default function LeafletMap({ userPosition, listings, onSelectListing, se
 
       const isDemande = listing.listing_intent === 'demande'
       const typeColor = LISTING_TYPE_MARKER_COLORS[listing.type] ?? '#16a34a'
+      // Accessibilité : la lettre du type double la couleur de la bordure, qu'un
+      // daltonien ne distingue pas toujours (prêt / don, service / vente).
+      const typeLetter = LISTING_TYPE_SHORT[listing.type] ?? ''
       const icon = L.divIcon({
-        html: `<div class="custom-marker${isDemande ? ' custom-marker--demande' : ''}" style="border-color:${typeColor}" title="${listing.title}">${getCategoryEmoji(listing.category_id)}</div>`,
+        html: `<div class="custom-marker${isDemande ? ' custom-marker--demande' : ''}" style="border-color:${typeColor}" title="${listing.title}">${getCategoryEmoji(listing.category_id)}<span class="custom-marker__type" style="background:${typeColor}" aria-hidden="true">${typeLetter}</span></div>`,
         iconSize: [36, 36],
         iconAnchor: [18, 18],
         className: '',

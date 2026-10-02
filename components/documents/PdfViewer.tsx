@@ -217,7 +217,7 @@ export function PdfViewer({ url }: Props) {
 
   return (
     <div className="flex flex-col">
-      <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-edge bg-surface/95 px-3 py-1.5 backdrop-blur">
+      <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-edge bg-surface-pane/95 px-3 py-1.5 backdrop-blur">
         <p className="text-sm tabular-nums text-content-soft" aria-live="polite">
           {status === 'ready' ? <>Page {current} / {metas.length}</> : 'Chargement…'}
         </p>
