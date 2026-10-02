@@ -2,15 +2,24 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { MessageCircle, Plus, Loader2 } from 'lucide-react'
 import type { ConversationWithDetails } from '@/lib/types'
 import { fetchConversationsOverview, createDebouncedRefresh } from '@/lib/messaging'
 import { ConversationRow } from '@/components/messages/ConversationRow'
 
-/** `userId` est résolu côté serveur par `page.tsx` (voir son commentaire). */
+/**
+ * Liste des conversations. `userId` est résolu côté serveur (layout / page).
+ *
+ * Deux habillages pour un seul composant : page pleine largeur sur mobile,
+ * volet de 360 px à défilement interne sur desktop (cf. `MessagesShell`). Le
+ * fil ouvert est surligné à partir de l'URL.
+ */
 export default function MessagesClient({ userId }: { userId: string }) {
   const supabase = createClient()
+  const pathname = usePathname()
+  const activeId = pathname?.startsWith('/messages/') ? pathname.split('/')[2] ?? null : null
 
   const [loading, setLoading] = useState(true)
   const [conversations, setConversations] = useState<ConversationWithDetails[]>([])
@@ -76,45 +85,57 @@ export default function MessagesClient({ userId }: { userId: string }) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="flex items-center justify-center min-h-[60vh] md:min-h-0 md:h-full">
         <Loader2 className="animate-spin text-brand-600" size={32} />
       </div>
     )
   }
 
+  const unread = conversations.filter(c => c.unreadCount > 0).length
+
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <MessageCircle className="text-brand-600" size={26} />
-          Messages
-        </h1>
+    <div className="max-w-2xl mx-auto px-4 py-8 md:max-w-none md:mx-0 md:px-0 md:py-0 md:h-full md:flex md:flex-col">
+      <div className="flex items-center justify-between mb-6 md:mb-0 md:px-4 md:py-3.5 md:border-b md:border-edge md:flex-shrink-0">
+        <div>
+          <h1 className="text-2xl md:text-xl font-bold flex items-center gap-2">
+            <MessageCircle className="text-brand-600 md:hidden" size={26} />
+            Messages
+          </h1>
+          {unread > 0 && (
+            <p className="hidden md:block text-xs text-gray-500 mt-0.5">
+              {unread} non lue{unread > 1 ? 's' : ''}
+            </p>
+          )}
+        </div>
         <Link
           href="/messages/new"
           className="flex items-center justify-center gap-1.5
                      w-10 h-10 rounded-full
                      sm:w-auto sm:h-auto sm:px-4 sm:py-2 sm:rounded-xl
+                     md:px-3 md:py-2
                      bg-brand-600 text-white hover:bg-brand-700 transition-colors
                      text-sm font-medium flex-shrink-0"
           aria-label="Nouvelle conversation"
         >
           <Plus size={18} />
-          <span className="hidden sm:inline">Nouvelle conversation</span>
+          <span className="hidden sm:inline md:hidden lg:inline">Nouvelle conversation</span>
+          <span className="hidden md:inline lg:hidden">Nouvelle</span>
         </Link>
       </div>
 
       {conversations.length === 0 ? (
-        <div className="text-center py-16 text-gray-400 bg-white rounded-2xl border border-gray-200">
+        <div className="text-center py-16 text-gray-400 bg-white rounded-2xl border border-gray-200 md:border-0 md:rounded-none">
           <MessageCircle size={48} className="mx-auto mb-3 opacity-20" />
           <p className="font-medium">Aucune conversation pour l&apos;instant</p>
         </div>
       ) : (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2 md:gap-1 md:flex-1 md:overflow-y-auto md:p-2">
           {conversations.map(conv => (
             <ConversationRow
               key={conv.id}
               conv={conv}
               userId={userId}
+              active={conv.id === activeId}
               onDelete={handleDeleteConversation}
             />
           ))}

@@ -103,3 +103,11 @@ export function getAvatarStyle(color?: string | null): { backgroundColor: string
   const bg = color || DEFAULT_AVATAR_COLOR
   return { backgroundColor: bg, color: getAvatarTextColor(bg) }
 }
+
+/**
+ * Largeur du volet gauche des pages « volet + pleine page » sur desktop
+ * (Quartier, Demandes, Messages) : la même partout, pour que le contenu ne
+ * saute pas d'un onglet à l'autre. 320 px à partir de md, 360 px à partir de lg.
+ * Chaîne littérale : Tailwind ne génère que les classes qu'il lit dans le source.
+ */
+export const SIDE_PANE_WIDTH = 'md:w-[320px] lg:w-[360px]'

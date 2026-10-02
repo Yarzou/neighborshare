@@ -7,6 +7,7 @@ import type { Assembly } from '@/lib/types'
 import { useCurrentUser } from '@/lib/hooks'
 import { LoginRequiredNotice } from '@/components/layout/LoginRequiredNotice'
 import { hasMinutes, heldOnYear } from '@/lib/documents'
+import { cn } from '@/lib/utils'
 import { AssemblyForm } from './AssemblyForm'
 import { AssemblyCard } from './AssemblyCard'
 
@@ -123,7 +124,12 @@ export default function DocumentsPage() {
               )}
             </div>
           ) : (
-            <>
+            <div className={cn(
+              'flex flex-col gap-8',
+              // Grand écran (lg) : prochaine assemblée à gauche, historique des PV à droite.
+              // Sans assemblée à venir, l'historique prend toute la largeur.
+              upcoming.length > 0 && 'lg:grid lg:grid-cols-2 lg:gap-6 lg:items-start',
+            )}>
               {upcoming.length > 0 && (
                 <section className="flex flex-col gap-3">
                   <h2 className="flex items-center gap-2 text-base font-bold text-content">
@@ -156,7 +162,7 @@ export default function DocumentsPage() {
                   </div>
                 ))}
               </section>
-            </>
+            </div>
           )}
         </>
       )}

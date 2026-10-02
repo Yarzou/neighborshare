@@ -305,7 +305,7 @@ export default function GroupPurchasesPage() {
               <p className="text-xs mt-1">Proposez le premier — fioul, pellets, élagage…</p>
             </div>
           ) : (
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3 lg:grid lg:grid-cols-2 lg:items-start">
               {purchases.map(p => {
                 const participants = p.group_purchase_participants ?? []
                 const total = participants.reduce((sum, x) => sum + Number(x.quantity), 0)

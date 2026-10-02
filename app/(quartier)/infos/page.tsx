@@ -41,9 +41,16 @@ export default function InfosPage() {
         </div>
       ) : (
         <>
-          <AnnouncementsSection userId={userId} isReferent={isReferent} />
-          <div className="border-t border-edge" />
-          <PollsSection userId={userId} isReferent={isReferent} />
+          {/* Grand écran (lg) : infos sur deux tiers, sondages sur le tiers droit. Sinon empilés. */}
+          <div className="flex flex-col gap-8 lg:grid lg:grid-cols-3 lg:gap-6 lg:items-start">
+            <div className="lg:col-span-2">
+              <AnnouncementsSection userId={userId} isReferent={isReferent} />
+            </div>
+            <div className="border-t border-edge lg:hidden" />
+            <div>
+              <PollsSection userId={userId} isReferent={isReferent} />
+            </div>
+          </div>
         </>
       )}
     </div>

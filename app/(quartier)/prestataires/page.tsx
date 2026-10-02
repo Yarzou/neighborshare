@@ -277,7 +277,7 @@ export default function ProvidersPage() {
                layout (quartier) plafonne à max-w-2xl, donc `sm:` donnerait des
                colonnes trop étroites pour les pastilles de contact.
                `items-start` : chaque card garde sa hauteur propre. */
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3 items-start">
               {filtered.map(p => (
                 <article key={p.id}
                   className="bg-surface border border-edge rounded-2xl p-4 flex flex-col gap-3 transition-colors hover:border-brand-300">

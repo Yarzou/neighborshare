@@ -1,5 +1,57 @@
 # Historique des modifications (par session)
 
+## 2026-10-02 (2) — Vue desktop élargie : Quartier, Demandes, Messages, Profil
+
+Demande : « retravailler les écrans Quartier, Demandes, Messages et Profil, uniquement pour la vue
+web, pas mobile », ces quatre écrans étant serrés dans une colonne de 672 px (`max-w-2xl`) alors
+que Carte et Événements occupent toute la fenêtre. Douze maquettes (3 par écran) publiées sur un
+canevas Claude Design ; choix de l'utilisateur : **Quartier 1, Demandes 2, Messages 1, Profil 1**.
+Tout passe par des classes `md:` : **le rendu mobile est inchangé**.
+
+- **Quartier (volet gauche + pleine page)** — après un premier essai « colonnes larges »
+  (`md:max-w-5xl`), l'utilisateur a demandé le **même cadre que Messages et Événements**.
+  `app/(quartier)/layout.tsx` : `md:flex md:h-[calc(100dvh-4rem)]`, volet `QuartierSidebar`
+  (nouveau, `components/layout/`, 256 px puis 300 px en lg, menu vertical des 4 sections avec
+  description) à gauche, contenu pleine largeur à droite avec défilement propre. `QuartierTabs`
+  redevient **mobile uniquement** et exporte `QUARTIER_SECTIONS`, source unique des deux. Les
+  colonnes internes passent à **lg** (à 768 px le volet ne laisse que ~500 px) : `/infos`
+  `lg:grid-cols-3`, `/achats` `lg:grid-cols-2`, `/prestataires` `lg:grid-cols-2 xl:grid-cols-3`,
+  `/documents` `lg:grid-cols-2` (si assemblée à venir).
+- **Demandes (liste et détail)** — `app/demandes/DemandesClient.tsx` réécrit. Mobile : onglets +
+  cartes, inchangé (`md:hidden`). Desktop (`hidden md:flex`, hauteur `100dvh-4rem` comme la
+  carte) : volet de 380 px avec Reçues/Envoyées et une ligne par demande, panneau de détail à droite
+  (annonce avec image, voisin, **aperçu des 4 derniers messages** via `fetchRecentMessages`, bloc
+  Décision). La logique RPC + notification est extraite dans `DemandeActions` (variantes `card` /
+  `detail`) : un seul endroit pour valider / refuser / clôturer. Le select ramène en plus
+  `description, image_url, updated_at`. Sélection : première demande de l'onglet par défaut,
+  conservée après rechargement si elle existe encore.
+- **Messages (boîte de réception)** — nouveau `app/messages/MessagesShell.tsx` (client) monté par
+  `app/messages/layout.tsx` (qui résout maintenant la session côté serveur). Desktop : liste dans un
+  volet fixe de 360 px, page courante à droite. Mobile : sur `/messages` le volet liste EST l'écran,
+  ailleurs la page seule. **La liste n'est montée qu'une fois** (abonnement Realtime). `page.tsx`
+  ne rend plus que l'invite « Sélectionnez une conversation » (visible desktop seulement).
+  `MessagesClient` : habillage `md:` en volet (en-tête compact, défilement interne), fil actif
+  surligné via `usePathname` → prop `active` de `ConversationRow`. `ConversationClient` :
+  `md:h-full md:max-w-none`, flèche retour `md:hidden`.
+- **Profil (volet gauche + pleine page)** — `app/profile/ProfileClient.tsx` : d'abord livré en deux
+  colonnes `md:grid-cols-[360px_1fr]`, puis aligné à la demande de l'utilisateur sur le cadre des
+  autres sections : racine `md:flex md:h-[calc(100dvh-4rem)]`, volet gauche `SIDE_PANE_WIDTH` à
+  défilement propre (hero, paramètres, compte), contenu à droite (annonces, événements en
+  `lg:grid-cols-2 xl:grid-cols-3`). Les blocs Paramètres et Compte ont été
+  **déplacés dans le JSX** avant Mes annonces ; l'ordre mobile est préservé par `order-1…5` sur des
+  wrappers en `contents` (cf. commentaire en tête du `return`).
+
+**Retour utilisateur après test** : en mode sombre, le volet gauche de Messages était blanc —
+les classes `md:bg-white` / `md:border-gray-200` échappent au bloc de surcharges `html.dark .bg-white`
+(sélecteur sans variante). Remplacées par les tokens `md:bg-surface` / `md:border-edge`. **Règle** : une
+couleur sous variante responsive doit être un token sémantique. Largeurs intermédiaires (768–1024 px)
+resserrées au passage : volet Messages 300 px puis 360 px en lg, volet Demandes 320 px puis 380 px, grille
+du détail de demande empilée sous xl. **Visionneuse dans le cadre Quartier** (demande utilisateur) : `app/documents/[id]` déplacé en `app/(quartier)/documents/[id]` (URL inchangée). Nouveau `components/layout/QuartierFrame.tsx` (client) porte tout le cadre et détecte `/documents/<id>` : desktop = visionneuse à la place de la page Documents ASL, volet des sections conservé ; mobile = page plein écran comme avant (ni colonne ni onglets). Bouton « Fermer » ajouté dans l'en-tête sur desktop, en plus de la flèche. **Largeur commune des volets gauches** (demande utilisateur) : `SIDE_PANE_WIDTH` dans `lib/utils.ts` (`md:w-[320px] lg:w-[360px]`), utilisée par le layout Quartier, `MessagesShell` et `DemandesClient` — le contenu ne saute plus d'un onglet à l'autre. Serveur de dev : un cache `.next/dev` périmé renvoyait 404 sur
+le groupe `(quartier)` (il listait encore `/recent`) — supprimé et relancé, réglé.
+
+`npm run lint` : 0 erreur, 20 avertissements (21 avant : la refonte de DemandesClient en a retiré un). `typecheck` et `build` passent.
+
+
 ## 2026-10-02 — Documents du lotissement (assemblées générales)
 
 Demande : consulter les documents des AG (ordre du jour, présentation, PV, historique), lisibles sur

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { useParams } from 'next/navigation'
-import { ArrowLeft, Download, Loader2, FileQuestion } from 'lucide-react'
+import { ArrowLeft, Download, Loader2, FileQuestion, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Assembly, AssemblyDocument } from '@/lib/types'
 import { ASSEMBLY_DOCUMENT_KIND_LABELS } from '@/lib/types'
@@ -31,8 +31,11 @@ type DocumentWithAssembly = AssemblyDocument & { assemblies: Assembly | null }
 /**
  * Visionneuse d'un document d'assemblée.
  *
- * Hors du route group `(quartier)` : pas d'onglets ni de colonne étroite, la
- * page utilise toute la largeur disponible pour la lecture. Le PDF est lu via
+ * Dans le route group `(quartier)` : sur desktop elle remplace la page Documents
+ * ASL dans le volet de droite, le volet des sections restant visible à gauche ;
+ * `QuartierFrame` la rend sans colonne de lecture ni onglets, donc le mobile reste
+ * une page plein écran. Sortie par la flèche (mobile et desktop) ou le bouton
+ * « Fermer » (desktop). Le PDF est lu via
  * une URL signée d'une heure (bucket privé) ; le PowerPoint d'origine, s'il
  * existe, n'est proposé qu'en téléchargement.
  */
@@ -117,8 +120,8 @@ export default function DocumentViewerPage() {
   const downloadChip = 'inline-flex items-center gap-1.5 rounded-lg border border-edge px-2.5 py-1.5 text-xs font-medium text-content-soft hover:border-brand-300 hover:text-brand-700 disabled:opacity-60 transition-colors'
 
   return (
-    <div className="max-w-5xl mx-auto">
-      <header className="flex flex-col gap-2 px-4 pt-4 pb-3">
+    <div className="max-w-5xl mx-auto md:max-w-none">
+      <header className="flex flex-col gap-2 px-4 pt-4 pb-3 md:px-6">
         <div className="flex items-start gap-2">
           <Link href="/documents" aria-label="Retour aux documents"
             className="-ml-2 w-10 h-10 flex shrink-0 items-center justify-center rounded-xl text-content-soft hover:bg-surface-sunken transition-colors">
@@ -132,6 +135,10 @@ export default function DocumentViewerPage() {
               </p>
             )}
           </div>
+          <Link href="/documents"
+            className="hidden md:inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-edge px-3 py-2 text-sm font-medium text-content-soft hover:border-brand-300 hover:text-brand-700 transition-colors">
+            <X size={15} /> Fermer
+          </Link>
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5 pl-8">

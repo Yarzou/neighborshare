@@ -9,12 +9,14 @@ import type { ConversationWithDetails, Profile } from '@/lib/types'
 interface Props {
   conv: ConversationWithDetails
   userId: string
+  /** Fil actuellement ouvert à côté de la liste (desktop) — surligné */
+  active?: boolean
   onDelete: (id: string) => void
 }
 
 const SWIPE_THRESHOLD = 72 // px — largeur de la zone rouge
 
-export function ConversationRow({ conv, userId, onDelete }: Props) {
+export function ConversationRow({ conv, userId, active = false, onDelete }: Props) {
   const router = useRouter()
   const [swipeX, setSwipeX] = useState(0)
   const [swiping, setSwiping] = useState(false)
@@ -90,8 +92,11 @@ export function ConversationRow({ conv, userId, onDelete }: Props) {
 
       {/* Carte principale */}
       <div
+        aria-current={active ? 'page' : undefined}
         className={`relative bg-white rounded-2xl border p-4 flex items-center gap-3 w-full cursor-pointer hover:border-brand-300 transition-colors ${
-          hasUnread ? 'border-brand-200 bg-brand-50/40' : 'border-gray-200'
+          active
+            ? 'border-brand-400 bg-brand-50'
+            : hasUnread ? 'border-brand-200 bg-brand-50/40' : 'border-gray-200'
         }`}
         style={{
           transform: `translateX(${swipeX}px)`,

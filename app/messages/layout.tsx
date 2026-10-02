@@ -1,17 +1,27 @@
+import { createClient } from '@/lib/supabase/server'
 import PushNotificationBanner from '@/components/layout/PushNotificationBanner'
+import { MessagesShell } from './MessagesShell'
 
 /**
- * Portée réelle de la bannière d'activation des notifications.
+ * Layout de la section Messages.
  *
- * Elle était montée par le layout racine, donc sur toutes les routes, alors que
- * son effet s'interrompt immédiatement hors de `/messages`. Tout son arbre de
- * modules (`lib/pushNotifications`, et par ricochet le SDK Firebase avant que
- * son import ne devienne paresseux) était expédié partout pour ne rien faire.
+ * 1. `MessagesShell` : la boîte de réception à deux volets sur desktop (liste à
+ *    gauche, fil à droite), un écran à la fois sur mobile. La session est
+ *    résolue ici, côté serveur, comme dans les `page.tsx` de la section — les
+ *    cookies sont déjà lus par `proxy.ts`, la vérification est gratuite. Sans
+ *    session, la coquille rend la page seule et c'est elle qui redirige.
+ *
+ * 2. Portée réelle de la bannière d'activation des notifications : elle était
+ *    montée par le layout racine, donc sur toutes les routes, alors que son
+ *    effet s'interrompt immédiatement hors de `/messages`.
  */
-export default function MessagesLayout({ children }: { children: React.ReactNode }) {
+export default async function MessagesLayout({ children }: { children: React.ReactNode }) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
   return (
     <>
-      {children}
+      <MessagesShell userId={user?.id ?? null}>{children}</MessagesShell>
       <PushNotificationBanner />
     </>
   )

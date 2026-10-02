@@ -9,7 +9,7 @@ import type { Profile, Listing, Event } from '@/lib/types'
 import { getCategoryEmoji } from '@/lib/categories'
 import { EventActions } from '@/components/map/EventActions'
 import { formatDate } from '@/lib/utils'
-import { cn } from '@/lib/utils'
+import { cn, SIDE_PANE_WIDTH } from '@/lib/utils'
 import { getAvatarStyle, DEFAULT_AVATAR_COLOR } from '@/lib/utils'
 import { TypeBadge } from '@/components/listings/TypeBadge'
 import {
@@ -308,11 +308,19 @@ export default function ProfileClient() {
   const displayName = profile.full_name || profile.username
   const initials = displayName?.[0]?.toUpperCase() || '?'
 
+  // Desktop (md+) : même cadre que Quartier, Demandes et Messages — volet gauche
+  // fixe (hero, paramètres, compte ; largeur commune SIDE_PANE_WIDTH, défilement
+  // propre), contenu pleine largeur à droite (annonces, événements). Mobile : une
+  // colonne, dans l'ordre hero → annonces → événements → paramètres → compte. Les
+  // deux wrappers sont en `contents` sur mobile : leurs enfants restent des items
+  // du flex racine et c'est `order-*` qui fixe l'ordre ; à partir de md ils
+  // deviennent de vrais volets et `md:order-none` rend la main à l'ordre du DOM.
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8 flex flex-col gap-6">
+    <div className="max-w-2xl mx-auto px-4 py-8 flex flex-col gap-6 md:max-w-none md:mx-0 md:px-0 md:py-0 md:flex-row md:gap-0 md:h-[calc(100dvh-4rem)]">
+      <div className={cn('contents md:flex md:flex-col md:gap-4 md:shrink-0 md:bg-surface md:border-r md:border-edge md:overflow-y-auto md:p-4', SIDE_PANE_WIDTH)}>
 
       {/* ── Hero ── */}
-      <div className="bg-white rounded-3xl border border-gray-200 shadow-sm p-6">
+      <div className="order-1 md:order-none bg-white rounded-3xl border border-gray-200 shadow-sm p-6">
         {!editMode ? (
           <div className="flex flex-col items-center text-center gap-3">
             <div
@@ -443,170 +451,8 @@ export default function ProfileClient() {
         )}
       </div>
 
-      {/* ── Mes annonces ── */}
-      <div className="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="flex items-center border-b border-gray-100">
-          <button
-            onClick={() => setListingsOpen(o => !o)}
-            className="flex-1 flex items-center justify-between px-6 py-4 text-left hover:bg-gray-50 transition-colors"
-          >
-            <span className="flex items-center gap-3">
-              <Package size={17} className="text-brand-600 flex-shrink-0" />
-              <span className="text-sm font-medium text-gray-800">
-                Mes annonces
-                {listings.length > 0 && (
-                  <span className="ml-2 text-xs font-semibold text-brand-600 bg-brand-50 px-2 py-0.5 rounded-full">
-                    {listings.length}
-                  </span>
-                )}
-              </span>
-            </span>
-            <ChevronDown size={16} className={cn('text-gray-400 transition-transform', listingsOpen && 'rotate-180')} />
-          </button>
-        </div>
-
-        {listingsOpen && (
-          <div className="p-4 flex flex-col gap-3">
-            {deleteError && (
-              <div className="flex items-center gap-2 text-sm text-red-500 bg-red-50 rounded-xl px-4 py-2">
-                <AlertCircle size={14} /> {deleteError}
-              </div>
-            )}
-
-            {listings.length === 0 ? (
-              <div className="text-center py-10 text-gray-400">
-                <Package size={36} className="mx-auto mb-2 opacity-20" />
-                <p className="font-medium">Vous n&apos;avez pas encore d&apos;annonces</p>
-              </div>
-            ) : (
-              listings.map(listing => (
-                <div key={listing.id} className="bg-gray-50 rounded-2xl border border-gray-200 overflow-hidden">
-                  <div className="flex gap-3 p-3">
-                    <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-brand-50 to-brand-100 flex items-center justify-center text-2xl flex-shrink-0 overflow-hidden">
-                      {listing.image_url ? (
-                        <Image src={listing.image_url} alt={listing.title} width={64} height={64} className="object-cover w-full h-full" />
-                      ) : (
-                        getCategoryEmoji(listing.category_id)
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="font-semibold text-sm text-gray-900 line-clamp-1">{listing.title}</p>
-                        <TypeBadge type={listing.type} className="flex-shrink-0" />
-                      </div>
-                      {listing.city && <p className="text-xs text-gray-400 mt-0.5">{listing.city}</p>}
-                      <p className="text-xs text-gray-400 mt-0.5">{formatDate(listing.created_at)}</p>
-                    </div>
-                  </div>
-
-                  <div className="border-t border-gray-100 flex">
-                    <Link
-                      href={`/listings/${listing.id}/edit`}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors border-r border-gray-100"
-                    >
-                      <Edit2 size={14} /> Modifier
-                    </Link>
-
-                    {confirmDeleteId === listing.id ? (
-                      <div className="flex-1 flex items-center justify-center gap-3 py-2.5 bg-red-50">
-                        <button onClick={() => setConfirmDeleteId(null)} className="text-xs text-gray-500 hover:text-gray-700 font-medium">
-                          Annuler
-                        </button>
-                        <button
-                          onClick={() => handleDelete(listing.id)}
-                          disabled={deletingId === listing.id}
-                          className="flex items-center gap-1 text-xs font-semibold text-red-600 hover:text-red-700"
-                        >
-                          {deletingId === listing.id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
-                          Confirmer
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => setConfirmDeleteId(listing.id)}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium text-red-500 hover:bg-red-50 transition-colors"
-                      >
-                        <Trash2 size={14} /> Supprimer
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* ── Mes événements ── */}
-      <div className="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="flex items-center border-b border-gray-100">
-          <button
-            onClick={() => setEventsOpen(o => !o)}
-            className="flex-1 flex items-center justify-between px-6 py-4 text-left hover:bg-gray-50 transition-colors"
-          >
-            <span className="flex items-center gap-3">
-              <CalendarDays size={17} className="text-brand-600 flex-shrink-0" />
-              <span className="text-sm font-medium text-gray-800">
-                Mes événements
-                {events.length > 0 && (
-                  <span className="ml-2 text-xs font-semibold text-brand-600 bg-brand-50 px-2 py-0.5 rounded-full">
-                    {events.length}
-                  </span>
-                )}
-              </span>
-            </span>
-            <ChevronDown size={16} className={cn('text-gray-400 transition-transform', eventsOpen && 'rotate-180')} />
-          </button>
-        </div>
-
-        {eventsOpen && (
-          <div className="p-4 flex flex-col gap-3">
-            {events.length === 0 ? (
-              <div className="text-center py-10 text-gray-400">
-                <CalendarDays size={36} className="mx-auto mb-2 opacity-20" />
-                <p className="font-medium">Vous n&apos;avez pas encore créé d&apos;événements</p>
-              </div>
-            ) : (
-              events.map(event => {
-                const eventDate = new Date(event.event_date)
-                const dateStr = eventDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })
-                const timeStr = eventDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-                return (
-                  <div key={event.id} className="bg-gray-50 rounded-2xl border border-gray-200 overflow-hidden">
-                    <div className="flex gap-3 p-3">
-                      <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-brand-50 to-brand-100 flex items-center justify-center text-2xl flex-shrink-0 overflow-hidden">
-                        {event.image_urls?.[0] ? (
-                          <Image src={event.image_urls[0]} alt={event.title} width={64} height={64} className="object-cover w-full h-full" />
-                        ) : (
-                          <CalendarDays size={24} className="text-brand-400" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-sm text-gray-900 line-clamp-1">{event.title}</p>
-                        <p className="text-xs text-brand-600 mt-0.5">{dateStr} · {timeStr}</p>
-                        {event.location_text && (
-                          <p className="text-xs text-gray-400 mt-0.5 truncate">{event.location_text}</p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Actions modifier/supprimer : UN SEUL composant, partagé avec la
-                        page détail et le popup — ne rien rajouter en dur ici (cf. EventActions) */}
-                    <EventActions
-                      variant="row"
-                      event={event}
-                      onDeleted={id => setEvents(l => l.filter(x => x.id !== id))}
-                    />
-                  </div>
-                )
-              })
-            )}
-          </div>
-        )}
-      </div>
-
       {/* ── Paramètres ── */}
-      <div className="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="order-4 md:order-none bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100">
           <h2 className="text-base font-semibold text-gray-800">Paramètres</h2>
         </div>
@@ -773,7 +619,7 @@ export default function ProfileClient() {
       </div>
 
       {/* ── Supprimer le compte ── */}
-      <div className="bg-white rounded-3xl border border-red-100 shadow-sm overflow-hidden">
+      <div className="order-5 md:order-none bg-white rounded-3xl border border-red-100 shadow-sm overflow-hidden">
         <button
           onClick={() => { setDeleteAccountOpen(o => !o); setDeleteConfirmText(''); setDeleteAccountError(null) }}
           className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-red-50 transition-colors"
@@ -812,7 +658,171 @@ export default function ProfileClient() {
           </div>
         )}
       </div>
+      </div>
 
+      <div className="contents md:flex md:flex-col md:gap-6 md:flex-1 md:min-w-0 md:overflow-y-auto md:p-8">
+      {/* ── Mes annonces ── */}
+      <div className="order-2 md:order-none bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="flex items-center border-b border-gray-100">
+          <button
+            onClick={() => setListingsOpen(o => !o)}
+            className="flex-1 flex items-center justify-between px-6 py-4 text-left hover:bg-gray-50 transition-colors"
+          >
+            <span className="flex items-center gap-3">
+              <Package size={17} className="text-brand-600 flex-shrink-0" />
+              <span className="text-sm font-medium text-gray-800">
+                Mes annonces
+                {listings.length > 0 && (
+                  <span className="ml-2 text-xs font-semibold text-brand-600 bg-brand-50 px-2 py-0.5 rounded-full">
+                    {listings.length}
+                  </span>
+                )}
+              </span>
+            </span>
+            <ChevronDown size={16} className={cn('text-gray-400 transition-transform', listingsOpen && 'rotate-180')} />
+          </button>
+        </div>
+
+        {listingsOpen && (
+          <div className="p-4 flex flex-col gap-3 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:items-start">
+            {deleteError && (
+              <div className="flex items-center gap-2 text-sm text-red-500 bg-red-50 rounded-xl px-4 py-2">
+                <AlertCircle size={14} /> {deleteError}
+              </div>
+            )}
+
+            {listings.length === 0 ? (
+              <div className="text-center py-10 text-gray-400">
+                <Package size={36} className="mx-auto mb-2 opacity-20" />
+                <p className="font-medium">Vous n&apos;avez pas encore d&apos;annonces</p>
+              </div>
+            ) : (
+              listings.map(listing => (
+                <div key={listing.id} className="bg-gray-50 rounded-2xl border border-gray-200 overflow-hidden">
+                  <div className="flex gap-3 p-3">
+                    <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-brand-50 to-brand-100 flex items-center justify-center text-2xl flex-shrink-0 overflow-hidden">
+                      {listing.image_url ? (
+                        <Image src={listing.image_url} alt={listing.title} width={64} height={64} className="object-cover w-full h-full" />
+                      ) : (
+                        getCategoryEmoji(listing.category_id)
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-semibold text-sm text-gray-900 line-clamp-1">{listing.title}</p>
+                        <TypeBadge type={listing.type} className="flex-shrink-0" />
+                      </div>
+                      {listing.city && <p className="text-xs text-gray-400 mt-0.5">{listing.city}</p>}
+                      <p className="text-xs text-gray-400 mt-0.5">{formatDate(listing.created_at)}</p>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-gray-100 flex">
+                    <Link
+                      href={`/listings/${listing.id}/edit`}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors border-r border-gray-100"
+                    >
+                      <Edit2 size={14} /> Modifier
+                    </Link>
+
+                    {confirmDeleteId === listing.id ? (
+                      <div className="flex-1 flex items-center justify-center gap-3 py-2.5 bg-red-50">
+                        <button onClick={() => setConfirmDeleteId(null)} className="text-xs text-gray-500 hover:text-gray-700 font-medium">
+                          Annuler
+                        </button>
+                        <button
+                          onClick={() => handleDelete(listing.id)}
+                          disabled={deletingId === listing.id}
+                          className="flex items-center gap-1 text-xs font-semibold text-red-600 hover:text-red-700"
+                        >
+                          {deletingId === listing.id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                          Confirmer
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmDeleteId(listing.id)}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium text-red-500 hover:bg-red-50 transition-colors"
+                      >
+                        <Trash2 size={14} /> Supprimer
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Mes événements ── */}
+      <div className="order-3 md:order-none bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="flex items-center border-b border-gray-100">
+          <button
+            onClick={() => setEventsOpen(o => !o)}
+            className="flex-1 flex items-center justify-between px-6 py-4 text-left hover:bg-gray-50 transition-colors"
+          >
+            <span className="flex items-center gap-3">
+              <CalendarDays size={17} className="text-brand-600 flex-shrink-0" />
+              <span className="text-sm font-medium text-gray-800">
+                Mes événements
+                {events.length > 0 && (
+                  <span className="ml-2 text-xs font-semibold text-brand-600 bg-brand-50 px-2 py-0.5 rounded-full">
+                    {events.length}
+                  </span>
+                )}
+              </span>
+            </span>
+            <ChevronDown size={16} className={cn('text-gray-400 transition-transform', eventsOpen && 'rotate-180')} />
+          </button>
+        </div>
+
+        {eventsOpen && (
+          <div className="p-4 flex flex-col gap-3 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:items-start">
+            {events.length === 0 ? (
+              <div className="text-center py-10 text-gray-400">
+                <CalendarDays size={36} className="mx-auto mb-2 opacity-20" />
+                <p className="font-medium">Vous n&apos;avez pas encore créé d&apos;événements</p>
+              </div>
+            ) : (
+              events.map(event => {
+                const eventDate = new Date(event.event_date)
+                const dateStr = eventDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })
+                const timeStr = eventDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+                return (
+                  <div key={event.id} className="bg-gray-50 rounded-2xl border border-gray-200 overflow-hidden">
+                    <div className="flex gap-3 p-3">
+                      <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-brand-50 to-brand-100 flex items-center justify-center text-2xl flex-shrink-0 overflow-hidden">
+                        {event.image_urls?.[0] ? (
+                          <Image src={event.image_urls[0]} alt={event.title} width={64} height={64} className="object-cover w-full h-full" />
+                        ) : (
+                          <CalendarDays size={24} className="text-brand-400" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm text-gray-900 line-clamp-1">{event.title}</p>
+                        <p className="text-xs text-brand-600 mt-0.5">{dateStr} · {timeStr}</p>
+                        {event.location_text && (
+                          <p className="text-xs text-gray-400 mt-0.5 truncate">{event.location_text}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Actions modifier/supprimer : UN SEUL composant, partagé avec la
+                        page détail et le popup — ne rien rajouter en dur ici (cf. EventActions) */}
+                    <EventActions
+                      variant="row"
+                      event={event}
+                      onDeleted={id => setEvents(l => l.filter(x => x.id !== id))}
+                    />
+                  </div>
+                )
+              })
+            )}
+          </div>
+        )}
+      </div>
+      </div>
     </div>
   )
 }
