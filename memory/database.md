@@ -10,7 +10,7 @@
 - `liquibase/liquibase.properties` (gitignoré) ne porte plus que `driver` / `changeLogFile` / `outputDefaultSchema` ; les identifiants viennent du script. Template : `.example`.
 - ⚠️ Liquibase = outil Java : les commandes `db:*` échouent si `JAVA_HOME` est invalide.
 
-## Migrations (ordre chronologique — 001 → 040)
+## Migrations (ordre chronologique — 001 → 041)
 | Fichier | Contenu |
 |---|---|
 | 001 | Schéma initial (profiles, listings, categories, messages, geography, RLS de base) |
@@ -52,7 +52,8 @@
 | 037 | Delete **et update** d'événement élargis au référent : `events_delete_own` → `events_delete`, `events_update_own` → `events_update` (`user_id = auth.uid() OR is_referent()`), idem pour `events_storage_delete` (images du bucket) |
 | 038 | **Modèle de droits complet** : update `providers`/`group_purchases` = créateur ou référent ; update/delete `announcements`/`polls` (+ gestion `poll_options`) = **tout** référent (plus seulement l'auteur) |
 | 039 | **Performances** — 9 index (le schéma n'en avait que 9 au total, **aucune FK indexée**) + RPC `conversations_overview()`, `unread_message_count()`, `poll_results_bulk()` + `listings` ajoutée à `supabase_realtime`. Purement additive. **Appliquée le 2026-08-07** — sur une seule des deux bases : garder le repli de `lib/messaging.ts` tant que l'autre ne l'a pas |
-| 040 | **Documents du lotissement** — `assemblies` + `assembly_documents` (RLS : lecture authentifiée, écriture référents) + bucket Storage **privé** `documents` (50 Mo, PDF/PowerPoint, policies select authentifié / insert-update-delete référent). Purement additive. **Écrite le 2026-10-02, appliquée nulle part** |
+| 040 | **Documents du lotissement** — `assemblies` + `assembly_documents` (RLS : lecture authentifiée, écriture référents) + bucket Storage **privé** `documents` (50 Mo, PDF/PowerPoint, policies select authentifié / insert-update-delete référent). Purement additive. **Appliquée le 2026-10-02** (migration lancée par l'utilisateur, base non précisée) |
+| 041 | **Documents permanents de l'ASL** — `asl_documents` (`kind` statuts/reglement/autre, unique par nature, même RLS que 040, même bucket privé `documents`, chemin `asl/…`). Purement additive. **Appliquée le 2026-10-02** (migration lancée par l'utilisateur, base non précisée) |
 
 Ajouter une migration = créer `0NN-nom.sql` **et** l'inclure dans `db.changelog-master.xml` avec un commentaire. Ne jamais modifier un changeset déjà appliqué.
 
@@ -209,6 +210,9 @@ Document : `id, assembly_id (cascade), kind ('agenda'|'presentation'|'minutes', 
 RLS : lecture authentifiée ; insert par le déposant référent (`uploaded_by = auth.uid()`) ; update/delete par tout référent.  
 **« Seul le PV reste »** est appliqué côté client (`uploadDocument()` dans `lib/documents.ts`) : après insert/update d'un `minutes`, les lignes `agenda`/`presentation` de l'assemblée et leurs fichiers sont supprimés. Une assemblée sans PV est « à venir », avec PV elle est archivée (groupée par année).  
 La route `/api/notifications/quartier` (`new_document`) vérifie `uploaded_by = appelant` avant de pousser ; le client ne l'appelle qu'au premier dépôt.
+
+### `asl_documents` (041)
+`id, kind ('statuts'|'reglement'|'autre', check, **unique**), title, file_path, file_name, file_size, mime_type, page_count, uploaded_by (set null), created_at, updated_at`. Un fichier par nature : remplacer = update + suppression de l'ancien fichier. RLS identique à `assembly_documents`. Lecture par la visionneuse `/documents/[id]` en second recours (après `assembly_documents`).
 
 ## Fonctions / RPC
 | RPC | Rôle |

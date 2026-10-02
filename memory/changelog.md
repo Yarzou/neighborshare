@@ -1,5 +1,51 @@
 # Historique des modifications (par session)
 
+## 2026-10-02 (6) — Plus de blanc pur : homogénéisation
+
+Demande : « repasse sur toutes les pages et les onglets pour homogénéiser les blancs en légèrement
+grisé » (après Prestataires remarqué encore blanc). Réglé à la racine plutôt que page par page :
+
+- **`tailwind.config.ts`** : `white` redéfini en **`#f9fafb`** — tous les `bg-white` (cartes, lignes,
+  formulaires, mobile compris) deviennent un gris à peine teinté ; `text-white` des boutons verts
+  en hérite sans différence visible. `gray-50` (fond de page) descend à `#e9edf2`.
+- **`app/globals.css`** : `--surface #f9fafb`, `--surface-raised` / `--background #e9edf2`,
+  `--surface-pane #f1f4f7`. Trois niveaux lisibles : page < volets < cartes, sans blanc.
+- Mode sombre inchangé (hex explicites). Les marqueurs Leaflet gardent `background: white` en CSS
+  brut (le mot-clé, pas la couleur Tailwind) : seul blanc pur restant, voulu pour la carte.
+
+
+## 2026-10-02 (5) — Statuts de l'ASL dans Documents
+
+Demande : « rajouter dans documents les statuts de l'ASL en pdf (visualisation / téléchargement) ».
+Un document permanent, indépendant des assemblées : nouvelle table plutôt qu'un `assembly_id`
+nullable (la 040 est poussée, on n'y touche plus).
+
+- **`liquibase/changelog/041-asl-documents.sql`** (+ master XML) : `asl_documents`, `kind` unique
+  (`statuts | reglement | autre`), RLS comme 040, même bucket privé, chemin `asl/{kind}-{ts}.pdf`.
+  Additive, clauses de retour arrière. **Appliquée nulle part.**
+- **`lib/types.ts`** : `AslDocument`, `AslDocumentKind`, `ASL_DOCUMENT_KIND_LABELS`,
+  `ASL_DOCUMENT_KINDS` (= `['statuts']` : seul emplacement proposé, la table en accepte d'autres).
+- **`lib/documents.ts`** : `uploadAslDocument` (Storage → base → ancien fichier), `deleteAslDocument`.
+- **`app/(quartier)/documents/AslDocumentsSection.tsx`** (nouveau) : section « Documents de l'ASL »
+  en tête de `/documents`, emplacement Statuts (consulter / PDF ; référent : déposer / remplacer /
+  supprimer, case « Ne pas notifier »). `page.tsx` charge `asl_documents` en parallèle (table absente
+  = section vide) ; l'état vide des assemblées devient « Aucune assemblée pour l'instant ».
+- **`app/(quartier)/documents/[id]/page.tsx`** : visionneuse générique (`ViewerDoc`) — cherche l'id
+  dans `assembly_documents` puis dans `asl_documents` ; sous-titre « Document permanent de l'ASL ·
+  mis à jour le … ».
+- **Push** : événement `new_asl_document` (`lib/pushNotifications.ts`, route quartier) — premier dépôt.
+- Doc : `CLAUDE.md`, `memory/database.md`, `memory/components.md`.
+
+
+- **Redesign des cartes d'assemblée** (demande utilisateur : « plus visuel et rapide, sans cartes dans des cartes ») : nouveau `components/documents/DocumentChip.tsx` — une **puce** par fichier (icône, libellé, pages · poids ; le corps ouvre la visionneuse, le bord droit télécharge le PDF, un second bord « PPT » pour la présentation). `AssemblyCard` : date en surtitre, titre (badge d'état retiré à la demande de l'utilisateur), rangée de puces, emplacements manquants en pointillé ; pour les référents un bouton **« Gérer · n à déposer »** déplie les `DocumentSlot` (dépôt / remplacement / suppression), repliés par défaut. Même traitement pour `AslDocumentsSection`.
+
+- Section « Procès-verbaux » renommée **« Assemblées générales »** (demande utilisateur), état vide « Aucune assemblée générale passée pour l'instant ».
+
+- **Mise en page de /documents** (demande utilisateur) : plus de grille à deux colonnes — « Prochaine assemblée » (toujours au singulier) pleine largeur en premier, puis **« Assemblées générales » en accordéon replié par défaut** (bouton avec compteur « n passées » et chevron), années à l'intérieur. Cartes d'assemblée : titre puis date.
+
+- **Accordéon « Assemblées générales » sur le modèle du profil** (demande utilisateur, après un essai de trait vert jugé trop flash) : bloc `rounded-3xl` au ton volet, en-tête `px-6 py-4` avec icône, libellé, compteur en pastille brand et chevron, corps `p-4`. Les cartes d'assemblée prennent le ton page à l'intérieur (`inset`) et le ton volet dehors.
+- **Profil (desktop)** : plus de blanc — cartes du volet gauche au ton page (`md:bg-surface-raised`), cartes de droite au ton volet (`md:bg-surface-pane`). L'utilisateur l'avait demandé (« griser légèrement les blancs ») et je l'avais exclu à tort au titre des « cartes ».
+
 ## 2026-10-02 (4) — Accessibilité daltonisme (après le commit B2 `8801a0e`)
 
 Question de l'utilisateur : « le ton clair est-il adapté aux daltoniens ? ». Réponse : la palette

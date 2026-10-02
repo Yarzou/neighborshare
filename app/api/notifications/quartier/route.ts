@@ -24,6 +24,7 @@ import type { AssemblyDocumentKind } from '@/lib/types'
  *   gp_participation    → créateur de l'achat                   · id = group_purchases.id
  *   gp_target_reached   → créateur + participants (sauf acteur) · id = group_purchases.id
  *   new_document        → tout le quartier (sauf l'auteur)      · id = assembly_documents.id
+ *   new_asl_document    → tout le quartier (sauf l'auteur)      · id = asl_documents.id
  */
 
 type QuartierEvent =
@@ -35,6 +36,7 @@ type QuartierEvent =
   | 'gp_participation'
   | 'gp_target_reached'
   | 'new_document'
+  | 'new_asl_document'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? ''
 
@@ -229,6 +231,23 @@ export async function POST(req: NextRequest) {
       await sendPushToAll(user.id, {
         title: titles[kind] ?? '📄 Nouveau document',
         body: `${assembly.title} · ${formatHeldOn(assembly.held_on)}`,
+        url: `${APP_URL}/documents/${id}`,
+      })
+      break
+    }
+
+    case 'new_asl_document': {
+      // Document permanent (statuts, règlement) : premier dépôt uniquement.
+      const { data } = await admin
+        .from('asl_documents')
+        .select('title, uploaded_by')
+        .eq('id', id)
+        .single()
+      if (!data || data.uploaded_by !== user.id) break
+
+      await sendPushToAll(user.id, {
+        title: '📜 Document de l\'ASL disponible',
+        body: data.title,
         url: `${APP_URL}/documents/${id}`,
       })
       break

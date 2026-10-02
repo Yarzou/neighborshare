@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic'
 import { useParams } from 'next/navigation'
 import { ArrowLeft, Download, Loader2, FileQuestion, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import type { Assembly, AssemblyDocument } from '@/lib/types'
+import type { Assembly, AssemblyDocument, AslDocument } from '@/lib/types'
 import { ASSEMBLY_DOCUMENT_KIND_LABELS } from '@/lib/types'
 import { useCurrentUser } from '@/lib/hooks'
 import { LoginRequiredNotice } from '@/components/layout/LoginRequiredNotice'
@@ -28,23 +28,65 @@ const PdfViewer = dynamic(
 
 type DocumentWithAssembly = AssemblyDocument & { assemblies: Assembly | null }
 
+/** Ce que la visionneuse affiche, quelle que soit la table d'origine */
+interface ViewerDoc {
+  title: string
+  subtitle: string | null
+  file_path: string
+  file_name: string
+  file_size: number
+  /** PowerPoint d'origine (présentation d'assemblée uniquement) */
+  source_path: string | null
+  source_name: string | null
+  source_size: number | null
+}
+
+function fromAssemblyDocument(row: DocumentWithAssembly): ViewerDoc {
+  return {
+    title: ASSEMBLY_DOCUMENT_KIND_LABELS[row.kind],
+    subtitle: row.assemblies ? `${row.assemblies.title} · ${formatHeldOn(row.assemblies.held_on)}` : null,
+    file_path: row.file_path,
+    file_name: row.file_name,
+    file_size: row.file_size,
+    source_path: row.source_path,
+    source_name: row.source_name,
+    source_size: row.source_size,
+  }
+}
+
+function fromAslDocument(row: AslDocument): ViewerDoc {
+  const updated = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+    .format(new Date(row.updated_at))
+  return {
+    title: row.title,
+    subtitle: `Document permanent de l'ASL · mis à jour le ${updated}`,
+    file_path: row.file_path,
+    file_name: row.file_name,
+    file_size: row.file_size,
+    source_path: null,
+    source_name: null,
+    source_size: null,
+  }
+}
+
 /**
- * Visionneuse d'un document d'assemblée.
+ * Visionneuse d'un document : fichier d'assemblée (040) ou document permanent
+ * de l'ASL (041), la même URL `/documents/[id]` pour les deux — l'id est
+ * cherché dans la première table, puis dans la seconde.
  *
  * Dans le route group `(quartier)` : sur desktop elle remplace la page Documents
  * ASL dans le volet de droite, le volet des sections restant visible à gauche ;
  * `QuartierFrame` la rend sans colonne de lecture ni onglets, donc le mobile reste
  * une page plein écran. Sortie par la flèche (mobile et desktop) ou le bouton
- * « Fermer » (desktop). Le PDF est lu via
- * une URL signée d'une heure (bucket privé) ; le PowerPoint d'origine, s'il
- * existe, n'est proposé qu'en téléchargement.
+ * « Fermer » (desktop). Le PDF est lu via une URL signée d'une heure (bucket
+ * privé) ; le PowerPoint d'origine, s'il existe, n'est proposé qu'en téléchargement.
  */
 export default function DocumentViewerPage() {
   const { id } = useParams<{ id: string }>()
   const supabase = createClient()
   const { userId, resolved } = useCurrentUser()
 
-  const [doc, setDoc] = useState<DocumentWithAssembly | null>(null)
+  const [doc, setDoc] = useState<ViewerDoc | null>(null)
   const [url, setUrl] = useState<string | null>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'missing' | 'error'>('loading')
   const [downloading, setDownloading] = useState(false)
@@ -54,16 +96,29 @@ export default function DocumentViewerPage() {
     if (!resolved || !userId || !id) return
     let cancelled = false
     ;(async () => {
-      const { data } = await supabase
+      let view: ViewerDoc | null = null
+
+      const { data: assemblyRow } = await supabase
         .from('assembly_documents')
         .select('*, assemblies!assembly_id(*)')
         .eq('id', id)
         .maybeSingle()
       if (cancelled) return
-      if (!data) { setState('missing'); return }
-      const row = data as DocumentWithAssembly
-      setDoc(row)
-      const signed = await createDocumentUrl(supabase, row.file_path)
+      if (assemblyRow) {
+        view = fromAssemblyDocument(assemblyRow as DocumentWithAssembly)
+      } else {
+        const { data: aslRow } = await supabase
+          .from('asl_documents')
+          .select('*')
+          .eq('id', id)
+          .maybeSingle()
+        if (cancelled) return
+        if (aslRow) view = fromAslDocument(aslRow as AslDocument)
+      }
+
+      if (!view) { setState('missing'); return }
+      setDoc(view)
+      const signed = await createDocumentUrl(supabase, view.file_path)
       if (cancelled) return
       if (!signed) { setState('error'); return }
       setUrl(signed)
@@ -115,8 +170,6 @@ export default function DocumentViewerPage() {
     )
   }
 
-  const label = ASSEMBLY_DOCUMENT_KIND_LABELS[doc.kind]
-  const assembly = doc.assemblies
   const downloadChip = 'inline-flex items-center gap-1.5 rounded-lg border border-edge px-2.5 py-1.5 text-xs font-medium text-content-soft hover:border-brand-300 hover:text-brand-700 disabled:opacity-60 transition-colors'
 
   return (
@@ -128,11 +181,9 @@ export default function DocumentViewerPage() {
             <ArrowLeft size={20} />
           </Link>
           <div className="min-w-0 flex-1">
-            <h1 className="text-lg font-bold text-content leading-tight truncate">{label}</h1>
-            {assembly && (
-              <p className="text-sm text-content-muted truncate">
-                {assembly.title} · {formatHeldOn(assembly.held_on)}
-              </p>
+            <h1 className="text-lg font-bold text-content leading-tight truncate">{doc.title}</h1>
+            {doc.subtitle && (
+              <p className="text-sm text-content-muted truncate">{doc.subtitle}</p>
             )}
           </div>
           <Link href="/documents"

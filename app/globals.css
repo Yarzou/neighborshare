@@ -4,7 +4,7 @@
 
 :root {
   --foreground: #0f172a;
-  --background: #eef1f5;
+  --background: #e9edf2;
 
   /* ─── Tokens sémantiques ──────────────────────────────────────────────────
    * Exposés en utilitaires Tailwind par tailwind.config.ts :
@@ -27,12 +27,13 @@
    * nouveaux composants, et à substituer zone par zone dans l'existant.
    * ───────────────────────────────────────────────────────────────────────── */
   /* Palette claire « B2 » (2026-10-02) : gamme ardoise, trois zones distinctes —
-   * en-tête gris clair à liseré vert, volets presque blancs, page brume, cartes
-   * blanches. Les valeurs ≈ renvoient aux `gray-*` redéfinis dans tailwind.config.ts. */
-  --surface: #ffffff;         /* cartes, panneaux            (≈ bg-white)    */
-  --surface-raised: #eef1f5;  /* fond de page, lignes        (≈ bg-gray-50)  */
+   * en-tête gris clair à liseré vert, puis trois niveaux sans blanc pur :
+   * page #e9edf2 < volets #f1f4f7 < cartes #f9fafb (demande utilisateur : « homogénéiser
+   * les blancs en légèrement grisé »). Les valeurs ≈ renvoient aux `gray-*` redéfinis dans tailwind.config.ts. */
+  --surface: #f9fafb;         /* cartes, panneaux            (= `white` Tailwind) */
+  --surface-raised: #e9edf2;  /* fond de page, lignes        (≈ bg-gray-50)  */
   --surface-sunken: #e2e8f0;  /* zones en retrait            (≈ bg-gray-100) */
-  --surface-pane: #f6f8fa;    /* volets latéraux desktop                       */
+  --surface-pane: #f1f4f7;    /* volets latéraux desktop                       */
   --surface-header: #e3e8ee;  /* barre de navigation                           */
   --border: #d7dee6;          /*                             (≈ border-gray-200) */
   --border-strong: #b7c1cd;   /*                             (≈ border-gray-300) */

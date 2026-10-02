@@ -126,4 +126,7 @@
   <!-- Documents du lotissement : assemblées générales (ordre du jour, présentation, PV), bucket privé `documents` -->
   <include file="liquibase/changelog/040-assemblies-documents.sql"/>
 
+  <!-- Documents permanents de l'ASL (statuts, règlement) : table asl_documents, même bucket privé -->
+  <include file="liquibase/changelog/041-asl-documents.sql"/>
+
 </databaseChangeLog>

@@ -78,6 +78,7 @@ export type QuartierNotificationEvent =
   | 'gp_participation'
   | 'gp_target_reached'
   | 'new_document'
+  | 'new_asl_document'
 
 /**
  * Déclenche une notification push « vie du quartier », en fire-and-forget :

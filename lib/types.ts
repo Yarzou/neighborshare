@@ -384,3 +384,32 @@ export interface Assembly {
   // Join
   assembly_documents?: AssemblyDocument[]
 }
+
+// ─── Documents permanents de l'ASL (migration 041) ───────────────────────────
+
+/** Nature d'un document permanent, indépendant des assemblées */
+export type AslDocumentKind = 'statuts' | 'reglement' | 'autre'
+
+export const ASL_DOCUMENT_KIND_LABELS: Record<AslDocumentKind, string> = {
+  statuts: "Statuts de l'ASL",
+  reglement: 'Règlement intérieur',
+  autre: 'Autre document',
+}
+
+/** Emplacements proposés sur la page Documents ASL (un fichier de chaque) */
+export const ASL_DOCUMENT_KINDS: AslDocumentKind[] = ['statuts']
+
+/** Document permanent de l'ASL : un seul par nature, remplacé au fil des mises à jour */
+export interface AslDocument {
+  id: string
+  kind: AslDocumentKind
+  title: string
+  file_path: string
+  file_name: string
+  file_size: number
+  mime_type: string
+  page_count: number | null
+  uploaded_by: string | null
+  created_at: string
+  updated_at: string
+}

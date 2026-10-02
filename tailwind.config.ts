@@ -16,9 +16,14 @@ const config: Config = {
         // (fond de page, bordures, textes secondaires) basculent d'un coup, sans
         // toucher au mode sombre, dont le bloc de surcharges emploie des hex.
         // gray-50 est le fond de page, gray-100 les zones en retrait, gray-200 les
-        // bordures. Le blanc des cartes (`bg-white`) est volontairement conservé.
+        // bordures. Trois niveaux depuis le 2026-10-02 : page #e9edf2 < volets
+        // #f1f4f7 < cartes #f9fafb (cf. `white` ci-dessus et les tokens de globals.css).
+        // Plus aucun blanc pur : `bg-white` (cartes, lignes, formulaires) devient un
+        // gris à peine teinté, sur toutes les pages d'un coup. `text-white` sur les
+        // boutons verts en hérite sans différence perceptible.
+        white: '#f9fafb',
         gray: {
-          50:  '#eef1f5',
+          50:  '#e9edf2',
           100: '#e2e8f0',
           200: '#d7dee6',
           300: '#b7c1cd',

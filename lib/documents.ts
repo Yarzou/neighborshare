@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Assembly, AssemblyDocument, AssemblyDocumentKind } from '@/lib/types'
+import type { Assembly, AssemblyDocument, AssemblyDocumentKind, AslDocument, AslDocumentKind } from '@/lib/types'
+import { ASL_DOCUMENT_KIND_LABELS } from '@/lib/types'
 
 /**
  * Documents du lotissement (migration 040) : assemblées générales et fichiers.
@@ -325,5 +326,83 @@ export async function deleteAssembly(supabase: SupabaseClient, assembly: Assembl
   const { data } = await supabase.from('assemblies').delete().eq('id', assembly.id).select('id')
   const ok = (data?.length ?? 0) > 0
   if (ok) await removePaths(supabase, docs.flatMap(d => [d.file_path, d.source_path]))
+  return ok
+}
+
+// ─── Documents permanents de l'ASL (041) ─────────────────────────────────────
+
+export interface UploadAslDocumentInput {
+  kind: AslDocumentKind
+  pdf: File
+  /** Document existant à remplacer (même nature) */
+  existing?: AslDocument
+  userId: string
+}
+
+/** Chemin `asl/{kind}-{timestamp}.{ext}`, dans le même bucket privé que les assemblées */
+function buildAslPath(kind: AslDocumentKind, ext: string): string {
+  return `asl/${kind}-${Date.now()}.${ext}`
+}
+
+/**
+ * Dépose ou remplace un document permanent (statuts, règlement). Même ordre
+ * que `uploadDocument` : Storage, puis base, puis suppression de l'ancien fichier.
+ */
+export async function uploadAslDocument(
+  supabase: SupabaseClient,
+  input: UploadAslDocumentInput,
+): Promise<{ result: UploadDocumentResult | null; error: string | null }> {
+  const { kind, pdf, existing, userId } = input
+
+  const pdfError = validateDocumentFile(pdf, 'pdf')
+  if (pdfError) return { result: null, error: pdfError }
+
+  const filePath = buildAslPath(kind, extensionOf(pdf, 'pdf'))
+  const { error: upErr } = await supabase.storage
+    .from(DOCUMENTS_BUCKET)
+    .upload(filePath, pdf, { contentType: PDF_MIME, upsert: false })
+  if (upErr) {
+    return { result: null, error: 'Envoi du PDF impossible. Vérifiez votre connexion et réessayez.' }
+  }
+
+  const pageCount = await countPdfPages(pdf)
+  const values = {
+    title: ASL_DOCUMENT_KIND_LABELS[kind],
+    file_path: filePath,
+    file_name: pdf.name,
+    file_size: pdf.size,
+    mime_type: PDF_MIME,
+    page_count: pageCount,
+  }
+
+  const { data: row, error: dbErr } = existing
+    ? await supabase.from('asl_documents')
+        .update({ ...values, updated_at: new Date().toISOString() })
+        .eq('id', existing.id)
+        .select('id')
+        .single()
+    : await supabase.from('asl_documents')
+        .insert({ kind, uploaded_by: userId, ...values })
+        .select('id')
+        .single()
+
+  if (dbErr || !row) {
+    await removePaths(supabase, [filePath])
+    return {
+      result: null,
+      error: existing ? 'Remplacement impossible. Réessayez.' : 'Enregistrement impossible. Réessayez.',
+    }
+  }
+
+  if (existing) await removePaths(supabase, [existing.file_path])
+
+  return { result: { id: row.id, created: !existing }, error: null }
+}
+
+/** Supprime un document permanent (ligne puis fichier). `false` si le RLS a refusé. */
+export async function deleteAslDocument(supabase: SupabaseClient, doc: AslDocument): Promise<boolean> {
+  const { data } = await supabase.from('asl_documents').delete().eq('id', doc.id).select('id')
+  const ok = (data?.length ?? 0) > 0
+  if (ok) await removePaths(supabase, [doc.file_path])
   return ok
 }
