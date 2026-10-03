@@ -103,6 +103,15 @@ soumission du nouveau mot de passe**, aucune session avant.
 - **`components/layout/Navbar.tsx`** : `return null` sur `/auth/*` (après tous les hooks) — les
   écrans d'authentification sont conçus plein écran et n'ont jamais eu besoin de la barre.
 
+**Mot de passe refusé = lien grillé** (vécu : « identique à l'ancien » puis, à la bonne tentative,
+« lien invalide »). `verifyOtp` consomme le token avant que `updateUser` ne refuse. Correctif dans
+`app/api/auth/reset-password/route.ts` : sur refus **corrigeable** (`same_password`,
+`weak_password`), après le `signOut`, `freshRecoveryToken(email)` régénère un token par
+`admin.generateLink(recovery)` et le renvoie dans le 400 (`token_hash`) ; `ResetPasswordClient`
+le substitue (`tokenHash` passé en state) et la resoumission aboutit. Sans rechange (pas de service
+role, échec de génération, refus non corrigeable) → écran « Lien invalide ». Pas de session qui
+survit, et on ne remet un token qu'à qui vient d'en prouver la possession.
+
 **Unicité du lien, précision demandée par l'utilisateur** : le lien de renouvellement se **clique**
 autant de fois qu'on veut (il n'affiche qu'un formulaire) mais ne permet **qu'un seul changement**
 de mot de passe — après, la soumission répond `invalid_link`. Impossible de faire mieux sans

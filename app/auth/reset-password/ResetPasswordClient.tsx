@@ -13,7 +13,10 @@ import { AlertCircle, CheckCircle, Loader2, Lock } from 'lucide-react'
  */
 export default function ResetPasswordClient() {
   const searchParams = useSearchParams()
-  const tokenHash = searchParams.get('token_hash')
+  // Peut être remplacé par un token neuf renvoyé par la route quand Supabase
+  // refuse le mot de passe (identique à l'ancien, trop faible) : le premier
+  // token est consommé par la tentative, la resoumission en a besoin d'un autre.
+  const [tokenHash, setTokenHash] = useState(() => searchParams.get('token_hash'))
 
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -41,11 +44,20 @@ export default function ResetPasswordClient() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token_hash: tokenHash, password }),
       })
-      const json = (await res.json().catch(() => null)) as { error?: string; code?: string } | null
+      const json = (await res.json().catch(() => null)) as
+        | { error?: string; code?: string; token_hash?: string }
+        | null
       if (!res.ok) {
-        if (json?.code === 'invalid_link') {
+        if (json?.token_hash) {
+          // Mot de passe refusé mais token de rechange fourni : on resoumet avec.
+          setTokenHash(json.token_hash)
+          setError(json.error ?? 'Mot de passe refusé. Essayez-en un autre.')
+        } else if (json?.code) {
+          // invalid_link, ou refus après validation sans rechange : le token est
+          // consommé, seul un nouveau lien peut aboutir.
           setLinkDead(true)
         } else {
+          // Erreur de validation avant toute validation du token : il reste utilisable.
           setError(json?.error ?? 'La mise à jour a échoué. Réessayez.')
         }
         return

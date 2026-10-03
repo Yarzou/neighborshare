@@ -1,5 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
+
+// Refus de mot de passe que l'utilisateur peut corriger en resoumettant.
+const CORRECTABLE = new Set(['same_password', 'weak_password'])
+
+/**
+ * `verifyOtp` a consommé le token avant que `updateUser` ne refuse le mot de
+ * passe : sans ça, la seconde tentative tomberait sur « lien invalide ».
+ * On ne remet un token qu'à quelqu'un qui vient d'en prouver la possession.
+ */
+async function freshRecoveryToken(email: string): Promise<string | null> {
+  const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!serviceRole) return null
+  const admin = createSupabaseClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRole, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  })
+  const { data, error } = await admin.auth.admin.generateLink({ type: 'recovery', email })
+  if (error) {
+    console.error('[ResetPassword] could not regenerate recovery token:', error.code, error.message)
+    return null
+  }
+  return data.properties?.hashed_token ?? null
+}
 
 /**
  * Soumission du nouveau mot de passe (parcours « mot de passe oublié »).
@@ -28,7 +51,10 @@ export async function POST(req: NextRequest) {
 
   const supabase = await createClient()
 
-  const { error: verifyError } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' })
+  const { data: verified, error: verifyError } = await supabase.auth.verifyOtp({
+    token_hash: tokenHash,
+    type: 'recovery',
+  })
   if (verifyError) {
     console.error('[ResetPassword] verifyOtp failed:', verifyError.code, verifyError.message)
     return NextResponse.json(
@@ -39,17 +65,26 @@ export async function POST(req: NextRequest) {
 
   const { error: updateError } = await supabase.auth.updateUser({ password })
   if (updateError) {
-    // Le token est consommé mais le mot de passe inchangé : l'utilisateur est
-    // connecté avec l'ancien — on le signale, il refera une demande si besoin.
+    // Le token est consommé mais le mot de passe inchangé. On ne laisse pas de
+    // session avec l'ancien mot de passe, et si le refus est corrigeable on
+    // renvoie un token neuf pour que la resoumission du formulaire aboutisse.
     console.error('[ResetPassword] updateUser failed:', updateError.code, updateError.message)
+    const code = updateError.code ?? 'update_failed'
+    const email = verified.user?.email
+    await supabase.auth.signOut()
+
+    const retryToken = CORRECTABLE.has(code) && email ? await freshRecoveryToken(email) : null
     const message =
-      updateError.code === 'same_password'
+      code === 'same_password'
         ? "Le nouveau mot de passe doit être différent de l'ancien."
-        : updateError.code === 'weak_password'
+        : code === 'weak_password'
           ? 'Mot de passe trop faible.'
           : 'La mise à jour a échoué. Refaites une demande de renouvellement.'
-    await supabase.auth.signOut()
-    return NextResponse.json({ error: message, code: updateError.code ?? 'update_failed' }, { status: 400 })
+
+    return NextResponse.json(
+      retryToken ? { error: message, code, token_hash: retryToken } : { error: message, code },
+      { status: 400 }
+    )
   }
 
   return NextResponse.json({ ok: true })
