@@ -143,8 +143,8 @@ export async function sendPasswordResetEmail(
       Cliquez sur le bouton ci-dessous pour en choisir un nouveau.
     </p>
     <p style="color:#374151;line-height:1.6">
-      Ce lien est <strong>valable une heure</strong> et <strong>à usage unique</strong> : il ne fonctionnera qu'au premier clic.
-      Passé ce délai, refaites simplement une demande depuis la page de connexion.
+      Ce lien est <strong>valable une heure</strong> et ne permet <strong>qu'un seul changement</strong> de mot de passe.
+      Passé ce délai, ou si vous l'avez déjà utilisé, refaites simplement une demande depuis la page de connexion.
     </p>
     ${ctaButton(resetUrl, 'Choisir un nouveau mot de passe')}
     <p style="color:#6b7280;font-size:13px;line-height:1.6;margin-top:20px">

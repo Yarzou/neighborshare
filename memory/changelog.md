@@ -103,6 +103,13 @@ soumission du nouveau mot de passe**, aucune session avant.
 - **`components/layout/Navbar.tsx`** : `return null` sur `/auth/*` (après tous les hooks) — les
   écrans d'authentification sont conçus plein écran et n'ont jamais eu besoin de la barre.
 
+**Unicité du lien, précision demandée par l'utilisateur** : le lien de renouvellement se **clique**
+autant de fois qu'on veut (il n'affiche qu'un formulaire) mais ne permet **qu'un seul changement**
+de mot de passe — après, la soumission répond `invalid_link`. Impossible de faire mieux sans
+registre maison : Supabase n'a pas d'API de consultation d'un token, le tester = le consommer.
+Email de renouvellement et écran « Lien invalide » reformulés en ce sens (l'email d'inscription
+garde « premier clic », ce lien-là est bien consommé au clic par `/auth/confirm`).
+
 Vérifié sur le dev : page sans token → « Lien invalide », avec token bidon → formulaire (rien
 consommé), POST token bidon → 400 `invalid_link`, mot de passe court → 400, `<nav>` absent sur
 `/auth/login` et `/auth/reset-password` mais présent sur `/map`, `/auth/confirm?type=recovery` →

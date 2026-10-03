@@ -76,8 +76,8 @@ export default function ResetPasswordClient() {
         <AlertCircle className="mx-auto mb-4 text-orange-500" size={56} />
         <h2 className="text-2xl font-bold mb-2">Lien invalide ou expiré</h2>
         <p className="text-gray-500 mb-6">
-          Ce lien de renouvellement n&apos;est plus valable (une heure, un seul usage). Vous pouvez en
-          demander un nouveau.
+          Ce lien de renouvellement n&apos;est plus valable : il a déjà servi, ou son délai d&apos;une heure
+          est dépassé. Vous pouvez en demander un nouveau.
         </p>
         <Link href="/auth/forgot-password" className="inline-flex items-center gap-2 bg-brand-600 text-white font-semibold px-8 py-3 rounded-2xl hover:bg-brand-700 transition-colors">
           Demander un nouveau lien
