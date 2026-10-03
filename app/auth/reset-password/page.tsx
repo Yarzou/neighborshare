@@ -3,12 +3,15 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { clearPasswordResetCookie } from '@/lib/auth-flow'
 import { AlertCircle, CheckCircle, Loader2, Lock } from 'lucide-react'
 
 /**
  * Page d'arrivée du lien « mot de passe oublié ».
  * /auth/confirm (type=recovery) a déjà posé la session : il ne reste qu'à
  * enregistrer le nouveau mot de passe via `updateUser`.
+ * Tant que le cookie de renouvellement est là, proxy.ts ramène ici toute
+ * navigation ; on l'efface au succès, ou à la sortie « me déconnecter ».
  */
 export default function ResetPasswordPage() {
   const supabase = createClient()
@@ -63,12 +66,22 @@ export default function ResetPasswordPage() {
       return
     }
 
+    clearPasswordResetCookie()
     setDone(true)
     setLoading(false)
     // Navigation complète : les Server Components relisent le cookie de session
     setTimeout(() => {
       window.location.href = '/accueil'
     }, 1500)
+  }
+
+  // Clic par erreur sur le lien : on ferme la session ouverte par le lien
+  // plutôt que de laisser l'utilisateur coincé sur cette page.
+  const handleCancel = async () => {
+    setLoading(true)
+    clearPasswordResetCookie()
+    await supabase.auth.signOut()
+    window.location.href = '/auth/login'
   }
 
   const shell = (children: React.ReactNode) => (
@@ -177,6 +190,14 @@ export default function ResetPasswordPage() {
             )}
           </button>
         </form>
+
+        <p className="text-center text-sm text-gray-500 mt-6">
+          Vous n&apos;avez rien demandé ?{' '}
+          <button type="button" onClick={handleCancel} disabled={loading}
+            className="text-brand-600 font-medium hover:underline disabled:opacity-60">
+            Ne pas changer, me déconnecter
+          </button>
+        </p>
       </div>
     </>
   )

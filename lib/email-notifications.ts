@@ -109,6 +109,10 @@ export async function sendConfirmationEmail(
     <p style="color:#374151;line-height:1.6">
       Il ne reste qu'une étape pour activer votre compte : confirmez votre adresse email en cliquant sur le bouton ci-dessous.
     </p>
+    <p style="color:#374151;line-height:1.6">
+      Ce lien est <strong>valable une heure</strong> et <strong>à usage unique</strong> : il ne fonctionnera qu'au premier clic.
+      Passé ce délai, réinscrivez-vous avec les mêmes identifiants pour en recevoir un nouveau.
+    </p>
     ${ctaButton(confirmUrl, 'Confirmer mon adresse email')}
     <p style="color:#6b7280;font-size:13px;line-height:1.6;margin-top:20px">
       Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :<br>
@@ -136,7 +140,11 @@ export async function sendPasswordResetEmail(
     <p style="color:#374151;line-height:1.6">Bonjour ${name},</p>
     <p style="color:#374151;line-height:1.6">
       Vous avez demandé à renouveler le mot de passe de votre compte Les voisins du Cèdre.
-      Cliquez sur le bouton ci-dessous pour en choisir un nouveau. Ce lien est valable une heure.
+      Cliquez sur le bouton ci-dessous pour en choisir un nouveau.
+    </p>
+    <p style="color:#374151;line-height:1.6">
+      Ce lien est <strong>valable une heure</strong> et <strong>à usage unique</strong> : il ne fonctionnera qu'au premier clic.
+      Passé ce délai, refaites simplement une demande depuis la page de connexion.
     </p>
     ${ctaButton(resetUrl, 'Choisir un nouveau mot de passe')}
     <p style="color:#6b7280;font-size:13px;line-height:1.6;margin-top:20px">

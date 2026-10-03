@@ -57,6 +57,32 @@ poste. Le réseau n'est pas corrigeable par le code ; l'attente utilisateur, si 
   et **une seconde tentative** sur erreur de transport (`ETIMEDOUT`, `ECONNECTION`, `ESOCKET`,
   `ECONNRESET`, `EPIPE`), jamais sur refus SMTP. Profite aussi aux notifications existantes.
 
+**Formulation des emails** : les deux gabarits précisent que le lien est **valable une heure et
+à usage unique** (premier clic seulement), avec la marche à suivre passé ce délai.
+
+**Double clic sur le lien de récupération** (constaté : 1er clic → page nouveau mot de passe,
+2e clic → arrivée connecté sur l'accueil sans avoir rien changé). Cause : le lien de récupération
+ouvre une session Supabase (c'est le fonctionnement normal) ; le 2e clic échoue (token consommé) →
+`/auth/login?erreur=…` → LoginClient voit la session et renvoie `/accueil`. Correction : **la
+session de récupération ne sert plus qu'à changer le mot de passe**.
+
+- **`lib/auth-flow.ts`** (nouveau) : `PASSWORD_RESET_COOKIE = 'vdc_pwd_reset'`,
+  `PASSWORD_RESET_PATH`, `clearPasswordResetCookie()`. Constantes seulement (importé par le
+  middleware Edge, une route serveur et une page client).
+- **`app/auth/confirm/route.ts`** : sur `recovery` réussi, pose le cookie (1 h, non httpOnly, sans
+  secret) ; sur token invalide/consommé : session + cookie → page de renouvellement, session seule →
+  `/accueil`, sinon → login avec bandeau. Un antispam qui pré-visite le lien ne casse plus le parcours.
+- **`proxy.ts`** : si cookie présent **et** session → toute navigation hors `/auth/reset-password`,
+  `/api/`, `/auth/confirm` est redirigée vers la page de renouvellement ; cookie sans session →
+  effacé (orphelin). `protectedPaths` reste vide : ce n'est pas une protection de route, c'est un
+  verrou de parcours.
+- **`app/auth/reset-password/page.tsx`** : efface le cookie au succès ; lien « Vous n'avez rien
+  demandé ? Ne pas changer, me déconnecter » (`signOut` + cookie effacé → login).
+
+Vérifié sans session sur le dev : cookie orphelin effacé (`Set-Cookie … Max-Age=0`), `/auth/confirm`
+sans token → 307 login, pages inchangées pour les autres. Le cas session + cookie reste à valider
+en réel (double clic sur un vrai mail).
+
 À faire côté dashboard/hébergeur : `NEXT_PUBLIC_APP_URL=https://voisinsducedre.vercel.app` et
 `GMAIL_USER` / `GMAIL_APP_PASSWORD` sur Vercel (déjà requis pour les notifications). Les comptes
 déjà bloqués : `update auth.users set email_confirmed_at = now() where email in (…)`.
