@@ -2,19 +2,15 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import { Mail, Lock, User, Loader2, AlertCircle, CheckCircle } from 'lucide-react'
 import AddressAutocomplete, { type ResolvedAddress } from '@/components/forms/AddressAutocomplete'
 
 export default function RegisterPage() {
-  const router = useRouter()
   const [form, setForm] = useState({ email: '', password: '', username: '', full_name: '' })
   const [addressResolved, setAddressResolved] = useState<ResolvedAddress | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
-  const supabase = createClient()
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm(f => ({ ...f, [e.target.name]: e.target.value }))
@@ -28,11 +24,15 @@ export default function RegisterPage() {
     setLoading(true)
     setError(null)
 
-    const { error } = await supabase.auth.signUp({
-      email: form.email,
-      password: form.password,
-      options: {
-        data: {
+    // L'inscription passe par une route serveur : c'est l'app qui envoie
+    // l'email de confirmation (SMTP Gmail), pas le mailer intégré de Supabase.
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: form.email,
+          password: form.password,
           username: form.username,
           full_name: form.full_name,
           address_display: addressResolved.displayName,
@@ -40,15 +40,17 @@ export default function RegisterPage() {
           address_city: addressResolved.city,
           address_lat: addressResolved.lat,
           address_lng: addressResolved.lon,
-        },
-      },
-    })
-
-    if (error) {
-      setError(error.message)
-      setLoading(false)
-    } else {
-      setSuccess(true)
+        }),
+      })
+      const json = (await res.json().catch(() => null)) as { error?: string } | null
+      if (!res.ok) {
+        setError(json?.error ?? "L'inscription a échoué. Réessayez dans un instant.")
+      } else {
+        setSuccess(true)
+      }
+    } catch {
+      setError('Impossible de joindre le serveur. Vérifiez votre connexion.')
+    } finally {
       setLoading(false)
     }
   }
@@ -61,7 +63,9 @@ export default function RegisterPage() {
         <div className="w-full max-w-md text-center">
           <CheckCircle className="mx-auto mb-4 text-brand-600" size={56} />
           <h2 className="text-2xl font-bold mb-2">Inscription réussie !</h2>
-          <p className="text-gray-500 mb-6">Vérifiez votre email pour confirmer votre compte, puis connectez-vous.</p>
+          <p className="text-gray-500 mb-2">Un email de confirmation vient de vous être envoyé à <strong className="text-gray-700">{form.email}</strong>.</p>
+          <p className="text-gray-500 mb-2 text-sm">Cliquez sur le lien qu&apos;il contient pour activer votre compte (pensez à vérifier vos courriers indésirables).</p>
+          <p className="text-gray-400 mb-6 text-xs">Rien reçu après quelques minutes ? Réinscrivez-vous avec les mêmes identifiants pour recevoir un nouveau lien.</p>
           <Link href="/auth/login" className="inline-flex items-center gap-2 bg-brand-600 text-white font-semibold px-8 py-3 rounded-2xl hover:bg-brand-700 transition-colors">
             Aller à la connexion
           </Link>

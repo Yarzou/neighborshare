@@ -19,6 +19,8 @@ export default function LoginClient() {
   const searchParams = useSearchParams()
 
   const redirect = useMemo(() => safeRedirectPath(searchParams.get('redirect')), [searchParams])
+  // Posé par /auth/confirm quand le lien de confirmation est invalide ou expiré
+  const confirmFailed = searchParams.get('erreur') === 'confirmation'
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -66,7 +68,13 @@ export default function LoginClient() {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
 
     if (error) {
-      setError(error.message || 'Email ou mot de passe incorrect.')
+      if (error.code === 'email_not_confirmed') {
+        setError("Votre email n'est pas encore confirmé. Cliquez sur le lien reçu à l'inscription, ou réinscrivez-vous pour en recevoir un nouveau.")
+      } else if (error.code === 'invalid_credentials') {
+        setError('Email ou mot de passe incorrect.')
+      } else {
+        setError(error.message || 'Email ou mot de passe incorrect.')
+      }
       setLoading(false)
       return
     }
@@ -87,6 +95,15 @@ export default function LoginClient() {
         </div>
 
         <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8">
+          {confirmFailed && !error && (
+            <div className="flex items-start gap-2 bg-orange-50 text-orange-800 rounded-xl px-4 py-3 mb-5 text-sm">
+              <AlertCircle size={16} className="mt-0.5 shrink-0" />
+              <span>
+                Ce lien de confirmation est invalide ou a expiré. Réinscrivez-vous avec la même adresse
+                pour en recevoir un nouveau.
+              </span>
+            </div>
+          )}
           {error && (
             <div className="flex items-center gap-2 bg-red-50 text-red-700 rounded-xl px-4 py-3 mb-5 text-sm">
               <AlertCircle size={16} />
@@ -144,6 +161,12 @@ export default function LoginClient() {
             Pas encore de compte ?{' '}
             <Link href="/auth/register" className="text-brand-600 font-medium hover:underline">
               S&apos;inscrire
+            </Link>
+          </p>
+          <p className="text-center text-sm text-gray-500 mt-2">
+            Mot de passe oublié ?{' '}
+            <Link href="/auth/forgot-password" className="text-brand-600 font-medium hover:underline">
+              Le renouveler
             </Link>
           </p>
         </div>

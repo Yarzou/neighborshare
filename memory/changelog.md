@@ -1,5 +1,66 @@
 # Historique des modifications (par session)
 
+## 2026-10-03 — Emails de confirmation d'inscription envoyés par l'app (Gmail)
+
+Constat : des voisins bloqués dans Supabase en « Waiting for verification » — le mailer intégré
+de Supabase ne livre plus qu'aux membres de l'équipe du projet (et en anglais), le lien de
+confirmation n'arrivait donc jamais. Correction : l'app envoie elle-même l'email par le SMTP
+Gmail déjà utilisé pour les notifications.
+
+- **`app/api/auth/register/route.ts`** (nouveau) : `POST`, remplace `supabase.auth.signUp()` côté
+  client. Valide les champs, crée le compte via `auth.admin.generateLink({ type: 'signup' })`
+  (service role, mêmes clés de métadonnées pour le trigger `handle_new_user`), puis envoie le
+  lien `/auth/confirm?token_hash=…&type=signup` par `sendConfirmationEmail()`. `email_exists` →
+  409 en français. Si l'envoi échoue → 502 explicite (le compte existe non confirmé ; renvoyer le
+  formulaire régénère un token — `generateLink` met à jour un compte existant non confirmé).
+  **Repli** sans `GMAIL_*` ou sans service role : `signUp()` classique (mailer Supabase, OK en dev).
+- **`app/auth/confirm/route.ts`** (nouveau) : `GET`, `verifyOtp({ token_hash, type })` via le
+  client serveur → email confirmé + cookies de session posés, redirection `/accueil` (ou `next`
+  relatif). Échec → `/auth/login?erreur=confirmation`.
+- **`lib/email-notifications.ts`** : `sendEmail` renvoie désormais un `boolean` (appelants
+  existants inchangés) ; `isEmailConfigured()` ; `sendConfirmationEmail()` sur le gabarit commun,
+  pied de page paramétrable ; `escapeHtml` pour le nom.
+- **`app/auth/register/page.tsx`** : `fetch('/api/auth/register')`, plus de client Supabase ;
+  écran de succès nomme l'adresse et rappelle les indésirables.
+- **`app/auth/login/LoginClient.tsx`** : bandeau orange pour `?erreur=confirmation` ; messages
+  français pour `email_not_confirmed` et `invalid_credentials`.
+
+**Mot de passe oublié** (même session, même mécanique) :
+
+- **`app/api/auth/forgot-password/route.ts`** (nouveau) : `POST { email }`, `generateLink({ type:
+  'recovery' })` → lien `/auth/confirm?token_hash=…&type=recovery&next=/auth/reset-password`,
+  envoyé par `sendPasswordResetEmail()`. **Toujours 200 pour un email inconnu** (pas d'énumération
+  des comptes) ; seul un échec SMTP remonte en 502. Repli sans `GMAIL_*` : `resetPasswordForEmail()`.
+- **`app/auth/forgot-password/page.tsx`** (nouveau) : saisie de l'email, écran « Email envoyé »
+  neutre (« si un compte existe… »).
+- **`app/auth/reset-password/page.tsx`** (nouveau) : attend la résolution de la session (`null` →
+  spinner, pas de faux « lien invalide »), puis `updateUser({ password })` avec confirmation ;
+  `same_password` traduit ; redirection `/accueil` en navigation complète. Sans session → invite à
+  redemander un lien.
+- **`lib/email-notifications.ts`** : `sendPasswordResetEmail()`.
+- **`app/auth/login/LoginClient.tsx`** : ligne « Mot de passe oublié ? Le renouveler » sous
+  « Pas encore de compte ? ».
+
+**Latence d'envoi** (« ça a mis 3 plombes ») — diagnostic chiffré avec nodemailer en `debug` :
+un envoi Gmail met ~2 s en temps normal (dont 1,2 s d'attente du `354` après `DATA`, côté
+Google), mais un **décrochage TCP intermittent de ~21 s** (3 + 6 + 12 s de retransmission, un
+paquet perdu vers Gmail, indépendant du port 465/587) survenait sur ~1 connexion sur 3 depuis le
+poste. Le réseau n'est pas corrigeable par le code ; l'attente utilisateur, si :
+
+- **`app/api/auth/register` et `forgot-password`** : l'envoi passe dans **`after()`** de
+  `next/server` → la route répond dès que `generateLink` a rendu (mesuré **0,16 s** avec envoi
+  réel, 0,07 s sans). `export const maxDuration = 30` pour que Vercel laisse l'arrière-plan finir.
+  Conséquence assumée : un échec SMTP n'est plus remonté à l'utilisateur (journalisé), les écrans
+  de succès disent « Rien reçu ? refaites la demande / réinscrivez-vous ».
+- **`lib/email-notifications.ts`** : `connectionTimeout` / `greetingTimeout` **10 s**,
+  `socketTimeout` 30 s (défaut nodemailer : 2 min — c'est ce qui rendait l'attente interminable)
+  et **une seconde tentative** sur erreur de transport (`ETIMEDOUT`, `ECONNECTION`, `ESOCKET`,
+  `ECONNRESET`, `EPIPE`), jamais sur refus SMTP. Profite aussi aux notifications existantes.
+
+À faire côté dashboard/hébergeur : `NEXT_PUBLIC_APP_URL=https://voisinsducedre.vercel.app` et
+`GMAIL_USER` / `GMAIL_APP_PASSWORD` sur Vercel (déjà requis pour les notifications). Les comptes
+déjà bloqués : `update auth.users set email_confirmed_at = now() where email in (…)`.
+
 ## 2026-10-02 (6) — Plus de blanc pur : homogénéisation
 
 Demande : « repasse sur toutes les pages et les onglets pour homogénéiser les blancs en légèrement
