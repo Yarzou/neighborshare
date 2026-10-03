@@ -83,6 +83,31 @@ Vérifié sans session sur le dev : cookie orphelin effacé (`Set-Cookie … Max
 sans token → 307 login, pages inchangées pour les autres. Le cas session + cookie reste à valider
 en réel (double clic sur un vrai mail).
 
+**→ Remplacé le soir même** (capture : barre de navigation avec avatar « F&S » et compteur de
+demandes **sur le formulaire de nouveau mot de passe**). Le verrou contenait la session de
+récupération au lieu de l'empêcher. Nouveau principe : **le token n'est consommé qu'à la
+soumission du nouveau mot de passe**, aucune session avant.
+
+- **`app/api/auth/reset-password/route.ts`** (nouveau) : `POST { token_hash, password }` →
+  `verifyOtp(recovery)` puis `updateUser` dans la même requête ; `invalid_link` (400) si le token
+  est invalide/expiré/consommé ; si `updateUser` échoue après un `verifyOtp` réussi, `signOut()`
+  pour ne pas laisser une session avec l'ancien mot de passe.
+- **`forgot-password`** : le lien mène directement à `/auth/reset-password?token_hash=…&type=recovery`.
+- **`app/auth/reset-password/`** : `page.tsx` = frontière `Suspense` (exigée par `useSearchParams`
+  au prérendu) + **`ResetPasswordClient.tsx`** qui lit le token dans l'URL, affiche le formulaire
+  sans rien valider, et bascule sur « Lien invalide ou expiré » sur `invalid_link`. Plus de
+  `getUser()`, plus de bouton « me déconnecter » (rien à fermer).
+- **Retiré** : `lib/auth-flow.ts`, le cookie `vdc_pwd_reset`, la logique ajoutée dans `proxy.ts`
+  (revenu à sa version d'origine, `protectedPaths` vide sans exception), et `recovery` dans les
+  types acceptés par `/auth/confirm` (qui garde : lien consommé + session → `/accueil`).
+- **`components/layout/Navbar.tsx`** : `return null` sur `/auth/*` (après tous les hooks) — les
+  écrans d'authentification sont conçus plein écran et n'ont jamais eu besoin de la barre.
+
+Vérifié sur le dev : page sans token → « Lien invalide », avec token bidon → formulaire (rien
+consommé), POST token bidon → 400 `invalid_link`, mot de passe court → 400, `<nav>` absent sur
+`/auth/login` et `/auth/reset-password` mais présent sur `/map`, `/auth/confirm?type=recovery` →
+307 login.
+
 À faire côté dashboard/hébergeur : `NEXT_PUBLIC_APP_URL=https://voisinsducedre.vercel.app` et
 `GMAIL_USER` / `GMAIL_APP_PASSWORD` sur Vercel (déjà requis pour les notifications). Les comptes
 déjà bloqués : `update auth.users set email_confirmed_at = now() where email in (…)`.

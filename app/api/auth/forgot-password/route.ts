@@ -11,8 +11,10 @@ export const maxDuration = 30
  *
  * Génère un lien de récupération via l'API admin (`generateLink` type
  * `recovery`) et l'envoie par le SMTP Gmail de l'app, le mailer intégré de
- * Supabase ne livrant qu'aux membres de l'équipe. Le lien passe par
- * /auth/confirm (qui pose la session) puis /auth/reset-password.
+ * Supabase ne livrant qu'aux membres de l'équipe. Le lien mène directement au
+ * formulaire /auth/reset-password avec le token en paramètre : rien n'est
+ * validé au clic, le token n'est consommé qu'à la soumission du nouveau mot de
+ * passe (POST /api/auth/reset-password). Aucune session n'existe avant.
  *
  * Répond toujours 200 pour un email inconnu : on ne révèle pas quelles adresses
  * ont un compte. L'envoi SMTP se fait après la réponse (`after`), donc un échec
@@ -69,9 +71,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "La demande a échoué. Réessayez dans un instant." }, { status: 500 })
   }
 
-  const resetUrl =
-    `${appUrl}/auth/confirm?token_hash=${encodeURIComponent(tokenHash)}` +
-    `&type=recovery&next=${encodeURIComponent(RESET_PATH)}`
+  const resetUrl = `${appUrl}${RESET_PATH}?token_hash=${encodeURIComponent(tokenHash)}&type=recovery`
 
   const fullName =
     (data.user?.user_metadata?.full_name as string | undefined) ??
