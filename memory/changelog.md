@@ -1,5 +1,18 @@
 # Historique des modifications (par session)
 
+## 2026-10-05 — Bulle de la page Profil : mêmes initiales que la Navbar
+
+- **`lib/utils.ts`** : `getInitials(name)` reprend la règle de l'ex-`initialsOf()` de la Navbar
+  (« Marie Dupont » → MD, « Fabien & Sophia » → F&S, « fabien » → FA, 3 caractères max).
+- **`components/layout/Navbar.tsx`** : `initialsOf()` ne fait plus que choisir le nom (complet,
+  pseudo, email) et délègue à `getInitials()`.
+- **`app/profile/ProfileClient.tsx`** : la bulle du hero et son aperçu en édition affichaient
+  `displayName[0]` (« F », « J »). Sur mobile, c'est la seule bulle du profil visible, la pastille de
+  la Navbar étant `md:` uniquement. Elles passent à `getInitials()`, avec `text-2xl` au lieu de
+  `text-3xl` pour 3 caractères.
+- Restent à une lettre, non touchés : profil public `/profil/[id]`, liste et fil des conversations,
+  Demandes, créateur d'un événement, nouvelle conversation. Les cercles y font de 28 à 44 px.
+
 ## 2026-10-05 — Page Documents : moins de cartes, grille sur desktop
 
 Demande : « réduire le nombre de cards » (mobile : accordéon > carte d'assemblée > puce, trois

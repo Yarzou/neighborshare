@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { MapPin, MessageCircle, User, LogOut, Menu, X, ClipboardList, CalendarDays, Home, Megaphone } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { cn, getAvatarStyle } from '@/lib/utils'
+import { cn, getAvatarStyle, getInitials } from '@/lib/utils'
 import { useUnreadCount, usePendingRequests } from '@/lib/hooks'
 import { useTheme } from '@/components/theme/ThemeProvider'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
@@ -18,20 +18,9 @@ interface NavProfile {
   avatar_color: string | null
 }
 
-/**
- * « Marie Dupont » → MD · « Fabien & Sophia » → F&S (un foyer à deux prénoms garde
- * son esperluette) · « fabien » → FA. Trois caractères au plus.
- */
+/** Initiales de la pastille : nom complet, sinon pseudo, sinon email. */
 function initialsOf(p: NavProfile | null, fallback: string | undefined): string {
-  const name = p?.full_name?.trim() || p?.username?.trim() || fallback || ''
-  const parts = name.split(/\s+/).filter(Boolean)
-  if (parts.length >= 2) {
-    return parts
-      .map(w => (/^[&+]$/.test(w) ? w : w[0].toUpperCase()))
-      .slice(0, 3)
-      .join('')
-  }
-  return (name.slice(0, 2) || '?').toUpperCase()
+  return getInitials(p?.full_name?.trim() || p?.username?.trim() || fallback)
 }
 
 /**

@@ -10,7 +10,7 @@ import { getCategoryEmoji } from '@/lib/categories'
 import { EventActions } from '@/components/map/EventActions'
 import { formatDate } from '@/lib/utils'
 import { cn, SIDE_PANE_WIDTH } from '@/lib/utils'
-import { getAvatarStyle, DEFAULT_AVATAR_COLOR } from '@/lib/utils'
+import { getAvatarStyle, getInitials, DEFAULT_AVATAR_COLOR } from '@/lib/utils'
 import { TypeBadge } from '@/components/listings/TypeBadge'
 import {
   Package, Pencil, Trash2, Edit2,
@@ -307,7 +307,10 @@ export default function ProfileClient() {
   if (!profile) return null
 
   const displayName = profile.full_name || profile.username
-  const initials = displayName?.[0]?.toUpperCase() || '?'
+  // Mêmes initiales que la pastille de la Navbar (« F&S », « JD »), pas la seule première lettre
+  const initials = getInitials(displayName)
+  // Trois caractères (« F&S ») : un cran plus petit, comme la pastille de la Navbar
+  const initialsSize = initials.length > 2 ? 'text-2xl' : 'text-3xl'
 
   // Desktop (md+) : même cadre que Quartier, Demandes et Messages — volet gauche
   // fixe (hero, paramètres, compte ; largeur commune SIDE_PANE_WIDTH, défilement
@@ -325,7 +328,7 @@ export default function ProfileClient() {
         {!editMode ? (
           <div className="flex flex-col items-center text-center gap-3">
             <div
-              className="w-20 h-20 rounded-full flex items-center justify-center font-bold text-3xl select-none"
+              className={cn('w-20 h-20 rounded-full flex items-center justify-center font-bold select-none', initialsSize)}
               style={getAvatarStyle(profile.avatar_color)}
             >
               {initials}
@@ -367,7 +370,7 @@ export default function ProfileClient() {
             {/* Aperçu avatar + palette */}
             <div className="flex flex-col items-center gap-3">
               <div
-                className="w-20 h-20 rounded-full flex items-center justify-center font-bold text-3xl select-none"
+                className={cn('w-20 h-20 rounded-full flex items-center justify-center font-bold select-none', initialsSize)}
                 style={getAvatarStyle(form.avatar_color)}
               >
                 {initials}

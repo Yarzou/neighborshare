@@ -98,6 +98,24 @@ function getAvatarTextColor(hex: string): string {
   return luminance > 0.6 ? '#1a3c2a' : '#ffffff'
 }
 
+/**
+ * Initiales d'un cercle d'avatar : « Marie Dupont » → MD · « Fabien & Sophia » → F&S (un foyer
+ * à deux prénoms garde son esperluette) · « fabien » → FA. Trois caractères au plus.
+ * Partagé par la pastille de la Navbar (desktop) et la bulle de la page Profil : la page Profil
+ * n'affichait que la première lettre, et c'est la seule bulle du profil visible sur mobile.
+ */
+export function getInitials(name: string | null | undefined): string {
+  const clean = name?.trim() ?? ''
+  const parts = clean.split(/\s+/).filter(Boolean)
+  if (parts.length >= 2) {
+    return parts
+      .map(w => (/^[&+]$/.test(w) ? w : w[0].toUpperCase()))
+      .slice(0, 3)
+      .join('')
+  }
+  return (clean.slice(0, 2) || '?').toUpperCase()
+}
+
 /** Style inline à appliquer sur un cercle d'avatar (initiales). */
 export function getAvatarStyle(color?: string | null): { backgroundColor: string; color: string } {
   const bg = color || DEFAULT_AVATAR_COLOR
