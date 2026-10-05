@@ -4,12 +4,13 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { AlertCircle, Loader2, Lock, Mail } from 'lucide-react'
+import { isPasskeyCancel, passkeyErrorMessage, usePasskeySupport } from '@/lib/passkeys'
+import { AlertCircle, Fingerprint, Loader2, Lock, Mail } from 'lucide-react'
 
 function safeRedirectPath(value: string | null) {
   if (!value) return '/accueil'
-  // Empêche les redirections externes (open redirect)
-  if (!value.startsWith('/')) return '/accueil'
+  // Empêche les redirections externes (open redirect) — `//site.com` est une URL absolue
+  if (!value.startsWith('/') || value.startsWith('//')) return '/accueil'
   // Optionnel: éviter la boucle vers login
   if (value.startsWith('/auth/login')) return '/accueil'
   return value
@@ -25,7 +26,9 @@ export default function LoginClient() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [passkeyLoading, setPasskeyLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const passkeySupported = usePasskeySupport()
 
   const supabase = createClient()
 
@@ -80,6 +83,22 @@ export default function LoginClient() {
     }
 
     // Full page navigation so the middleware reads the fresh session cookie
+    window.location.href = redirect
+  }
+
+  // Passkey : pas d'email à saisir, l'appareil retrouve lui-même le compte
+  const handlePasskeyLogin = async () => {
+    setPasskeyLoading(true)
+    setError(null)
+
+    const { error } = await supabase.auth.signInWithPasskey()
+
+    if (error) {
+      if (!isPasskeyCancel(error)) setError(passkeyErrorMessage(error))
+      setPasskeyLoading(false)
+      return
+    }
+
     window.location.href = redirect
   }
 
@@ -144,7 +163,7 @@ export default function LoginClient() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || passkeyLoading}
               className="w-full py-3 bg-brand-600 text-white font-semibold rounded-xl hover:bg-brand-700 transition-colors disabled:opacity-60 flex items-center justify-center gap-2 mt-2"
             >
               {loading ? (
@@ -156,6 +175,27 @@ export default function LoginClient() {
               )}
             </button>
           </form>
+
+          {passkeySupported && (
+            <>
+              <div className="flex items-center gap-3 my-5 text-xs text-content-faint">
+                <span className="h-px flex-1 bg-edge" />
+                ou
+                <span className="h-px flex-1 bg-edge" />
+              </div>
+              <button
+                type="button"
+                onClick={handlePasskeyLogin}
+                disabled={loading || passkeyLoading}
+                className="w-full py-3 rounded-xl border border-edge-strong text-content-soft font-medium text-sm hover:bg-surface-sunken transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                {passkeyLoading
+                  ? <Loader2 size={18} className="animate-spin" />
+                  : <Fingerprint size={18} className="text-brand-600" />}
+                Se connecter avec l&apos;empreinte ou Face ID
+              </button>
+            </>
+          )}
 
           <p className="text-center text-sm text-gray-500 mt-6">
             Pas encore de compte ?{' '}

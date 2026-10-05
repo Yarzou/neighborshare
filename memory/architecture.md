@@ -141,6 +141,7 @@ Exclues du `tsconfig.json` — les erreurs de type de l'éditeur y sont normales
 - Auth client-side via `supabase.auth`
 - **`proxy.ts` à la racine** est le middleware (Next 16 a renommé `middleware.ts` → `proxy.ts`). Il rafraîchit les cookies via `getSession()` (volontairement, pas `getUser()` : pas d'appel réseau, donc pas de faux logout). `protectedPaths` est **vide** — la protection est faite dans les composants.
 - Dans les pages créant de la data : appeler `supabase.auth.getUser()` **après** `onAuthStateChange` pour éviter les faux nulls
+- **Passkeys (empreinte, Face ID, Windows Hello — 2026-10-05)** : fonction native de Supabase Auth (bêta), aucun code serveur ni table chez nous. Enregistrement depuis le profil (`components/profile/PasskeySection.tsx`), connexion par un bouton du login (`signInWithPasskey()`, sans email : identifiants découvrables). Exige `@supabase/supabase-js` ≥ 2.105 ; depuis 2.117 plus besoin du drapeau `auth.experimental.passkey` (ignoré). À activer **dans le dashboard de chaque projet** (Authentication → Passkeys) avec un Relying Party ID = le domaine servi : prod `voisinsducedre.vercel.app`, test `localhost`. Changer le RP ID invalide toutes les passkeys ; pas de passkeys sur les previews Vercel (autre domaine).
 
 ## Leaflet / SSR
 - Leaflet ne peut pas tourner côté serveur

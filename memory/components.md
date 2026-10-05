@@ -216,7 +216,11 @@ La classe vit dans `globals.css` (avec sa variante `html.dark`) et non en utilit
 
 - `components/profil/PublicProfileAccordion.tsx` — accordéon annonces + événements du profil public.
 - `components/profile/NotificationSettings.tsx` — bascules email / push ; s'appuie sur `isPushSupported`, `activatePushNotifications`, `deactivatePushNotifications` de `lib/pushNotifications.ts`.
-- `app/profile/ProfileClient.tsx` (879 l.) — mon profil : infos, adresse par défaut, couleur d'avatar, mes annonces, mes événements, préférences de notification, suppression de compte.
+- `components/profile/PasskeySection.tsx` (2026-10-05) — ligne-accordéon « Empreinte digitale ou Face ID » de la carte Paramètres, insérée entre Push et Mot de passe. Liste les passkeys (`supabase.auth.passkey.list()` : `friendly_name` auto, date d'ajout, dernière connexion), « Retirer » (`passkey.delete`, avec `confirm()`), « Activer sur cet appareil » (`registerPasskey()`). Se masque si le navigateur ignore WebAuthn ou si le projet répond `passkey_disabled`. En tokens sémantiques.
+- `app/profile/ProfileClient.tsx` (~830 l.) — mon profil : infos, adresse par défaut, couleur d'avatar, mes annonces, mes événements, préférences de notification, passkeys (`<PasskeySection />`), suppression de compte.
+
+### `lib/passkeys.ts` (2026-10-05)
+Helpers partagés login / profil : `usePasskeySupport()` (`useSyncExternalStore`, `false` au SSR — pas de `setState` dans un effet), `isPasskeyCancel()` (invite fermée → aucun message ; `NotAllowedError` / `AbortError` dans `name` ou `cause`, ou `ERROR_CEREMONY_ABORTED`), `isPasskeyDisabled()`, `passkeyErrorMessage()` (codes Supabase `webauthn_*`, `passkey_disabled`, `too_many_passkeys`… → français).
 
 ---
 

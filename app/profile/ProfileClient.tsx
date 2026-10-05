@@ -20,6 +20,7 @@ import {
 import { isPushSupported, activatePushNotifications, deactivatePushNotifications } from '@/lib/pushNotifications'
 import AddressAutocomplete, { type ResolvedAddress } from '@/components/forms/AddressAutocomplete'
 import { useTheme, type ThemeChoice } from '@/components/theme/ThemeProvider'
+import PasskeySection from '@/components/profile/PasskeySection'
 
 const AVATAR_COLORS = [
   '#dcfce7', // vert (défaut)
@@ -452,7 +453,7 @@ export default function ProfileClient() {
       </div>
 
       {/* ── Paramètres ── */}
-      <div className="order-4 md:order-none bg-white md:bg-surface-raised rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="order-4 md:order-none md:shrink-0 bg-white md:bg-surface-raised rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100">
           <h2 className="text-base font-semibold text-gray-800">Paramètres</h2>
         </div>
@@ -554,6 +555,9 @@ export default function ProfileClient() {
           )}
         </div>
 
+        {/* Connexion par passkey (empreinte, Face ID…) */}
+        <PasskeySection />
+
         {/* Changer le mot de passe */}
         <div>
           <button
@@ -619,7 +623,7 @@ export default function ProfileClient() {
       </div>
 
       {/* ── Supprimer le compte ── */}
-      <div className="order-5 md:order-none bg-white md:bg-surface-raised rounded-3xl border border-red-100 shadow-sm overflow-hidden">
+      <div className="order-5 md:order-none md:shrink-0 bg-white md:bg-surface-raised rounded-3xl border border-red-100 shadow-sm overflow-hidden">
         <button
           onClick={() => { setDeleteAccountOpen(o => !o); setDeleteConfirmText(''); setDeleteAccountError(null) }}
           className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-red-50 transition-colors"
@@ -662,7 +666,7 @@ export default function ProfileClient() {
 
       <div className="contents md:flex md:flex-col md:gap-6 md:flex-1 md:min-w-0 md:overflow-y-auto md:p-8">
       {/* ── Mes annonces ── */}
-      <div className="order-2 md:order-none bg-white md:bg-surface-pane rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="order-2 md:order-none md:shrink-0 bg-white md:bg-surface-pane rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="flex items-center border-b border-gray-100">
           <button
             onClick={() => setListingsOpen(o => !o)}
@@ -756,7 +760,7 @@ export default function ProfileClient() {
       </div>
 
       {/* ── Mes événements ── */}
-      <div className="order-3 md:order-none bg-white md:bg-surface-pane rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="order-3 md:order-none md:shrink-0 bg-white md:bg-surface-pane rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="flex items-center border-b border-gray-100">
           <button
             onClick={() => setEventsOpen(o => !o)}

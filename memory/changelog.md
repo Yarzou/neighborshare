@@ -1,5 +1,45 @@
 # Historique des modifications (par session)
 
+## 2026-10-05 — Connexion par empreinte digitale / Face ID (passkeys Supabase)
+
+Demande : se connecter par empreinte ou Face ID, activation depuis le profil. Choix validés :
+passkeys **natives de Supabase Auth** (bêta depuis le 2026-05-28) plutôt qu'un WebAuthn maison
+(table + routes + vérification crypto) ; activation **depuis le profil uniquement**, pas de bandeau
+après login. Aucune migration, aucune route API, CSP inchangée (tout passe par `*.supabase.co`).
+
+- **`package.json` / `package-lock.json`** : `@supabase/supabase-js` 2.103.0 → **2.117.2** (passkeys
+  à partir de 2.105 ; en 2.117 le drapeau `auth.experimental.passkey` est déprécié et ignoré, d'où
+  `lib/supabase/client.ts` inchangé). `ws` et `@types/ws` sortent de l'arbre (plus dépendances de
+  realtime-js). `@supabase/ssr` 0.10.2 inchangé (peer `^2.102.1`).
+- **`lib/passkeys.ts`** (nouveau) : `usePasskeySupport()`, `isPasskeyCancel()`, `isPasskeyDisabled()`,
+  `passkeyErrorMessage()` — voir `memory/components.md`.
+- **`app/auth/login/LoginClient.tsx`** : séparateur « ou » + bouton « Se connecter avec l'empreinte
+  ou Face ID » (rendu seulement si WebAuthn existe), `signInWithPasskey()` puis même redirection que
+  le mot de passe. Invite fermée → aucun message. **Correctif** : `safeRedirectPath` laissait passer
+  `//site.com` (redirection ouverte) — rejeté désormais, comme `safeNext` de `/auth/confirm`.
+- **`components/profile/PasskeySection.tsx`** (nouveau) + **`app/profile/ProfileClient.tsx`**
+  (import + insertion dans la carte Paramètres, entre Push et Mot de passe).
+- Pas de ressaisie du mot de passe avant `registerPasskey()` : l'API Supabase ne l'exige pas, un
+  contrôle d'UI se contournerait. Garde-fou retenu : la liste visible des appareils et leur retrait.
+
+- **Correctif `app/profile/ProfileClient.tsx` (desktop)** : signalé par l'utilisateur, l'accordéon
+  passkey ouvert était rogné et masqué par « Supprimer mon compte ». Bug latent du volet : les cartes
+  en `overflow-hidden` d'une colonne flex à hauteur fixe rétrécissaient (hauteur min. ramenée à 0)
+  au lieu de faire défiler le volet — l'accordéon « Changer le mot de passe » y était exposé aussi.
+  Ajout de `md:shrink-0` aux quatre cartes (Paramètres, Supprimer le compte, Mes annonces, Mes
+  événements). Mobile inchangé. Seul autre volet du même type : `QuartierFrame` (onglets, sans risque).
+
+**Poids** (`measure-bundle.js`, non compressé) : la montée de supabase-js coûte **+28,6 Ko de JS sur
+toutes les pages** (HEAD 1031-1071 Ko → 1060-1100 Ko) ; le code passkey lui-même +3 Ko sur
+`/auth/login`, +6 Ko sur `/profile`. Mesuré par `git stash` en deux temps (code seul, puis dépendances).
+
+**Vérifié** : `typecheck`, `build` OK ; lint 0 erreur, 20 avertissements (aucun dans les nouveaux
+fichiers). **Non testé en réel** : les passkeys doivent d'abord être activées dans le dashboard
+Supabase (Authentication → Passkeys) — prod : RP ID `voisinsducedre.vercel.app`, origine
+`https://voisinsducedre.vercel.app` ; test : RP ID `localhost`, origine `http://localhost:3000`.
+Tant que ce n'est pas fait, la section du profil reste masquée (`passkey_disabled`) et le bouton du
+login affiche « La connexion par empreinte n'est pas encore disponible. »
+
 ## 2026-10-03 — Emails de confirmation d'inscription envoyés par l'app (Gmail)
 
 Constat : des voisins bloqués dans Supabase en « Waiting for verification » — le mailer intégré
