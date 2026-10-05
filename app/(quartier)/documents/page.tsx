@@ -122,84 +122,93 @@ export default function DocumentsPage() {
             </p>
           )}
 
-          {!loading && (
-            <AslDocumentsSection docs={aslDocs} userId={userId} isReferent={isReferent}
-              onChanged={load} onError={setActionError} />
-          )}
-
           {loading ? (
             <div className="flex items-center justify-center py-10">
               <Loader2 className="animate-spin text-brand-600" size={24} />
             </div>
-          ) : assemblies.length === 0 ? (
-            <div className="text-center py-10 text-content-faint bg-surface border border-edge rounded-2xl">
-              <FileText size={32} className="mx-auto mb-2 opacity-30" />
-              <p className="text-sm font-medium">Aucune assemblée pour l&apos;instant</p>
-              {isReferent && (
-                <p className="text-xs mt-1">Créez une assemblée pour y déposer ses fichiers.</p>
-              )}
-            </div>
           ) : (
-            <div className="flex flex-col gap-8">
-              {/* La prochaine assemblée d'abord, pleine largeur, titre toujours au singulier */}
-              {upcoming.length > 0 && (
-                <section className="flex flex-col gap-3">
-                  <h2 className="flex items-center gap-2 text-base font-bold text-content">
-                    <FileText size={18} className="text-brand-600" />
-                    Prochaine assemblée
-                  </h2>
-                  {upcoming.map(a => (
-                    <AssemblyCard key={a.id} assembly={a} userId={userId} isReferent={isReferent}
-                      onChanged={load} onEdit={openEdit} onError={setActionError} />
-                  ))}
+            <>
+              {/* Desktop : statuts et prochaine assemblée côte à côte. Pleine largeur, une carte
+                  qui ne porte qu'une ou deux puces laissait presque toute la ligne vide. */}
+              <div className="flex flex-col gap-8 lg:grid lg:grid-cols-2 lg:gap-6 lg:items-start">
+                <AslDocumentsSection docs={aslDocs} userId={userId} isReferent={isReferent}
+                  onChanged={load} onError={setActionError} />
+
+                {/* Titre toujours au singulier */}
+                {upcoming.length > 0 && (
+                  <section className="flex flex-col gap-3">
+                    <h2 className="flex items-center gap-2 text-base font-bold text-content">
+                      <FileText size={18} className="text-brand-600" />
+                      Prochaine assemblée
+                    </h2>
+                    {upcoming.map(a => (
+                      <AssemblyCard key={a.id} assembly={a} userId={userId} isReferent={isReferent}
+                        onChanged={load} onEdit={openEdit} onError={setActionError} />
+                    ))}
+                  </section>
+                )}
+              </div>
+
+              {assemblies.length === 0 ? (
+                <div className="text-center py-10 text-content-faint bg-surface border border-edge rounded-2xl">
+                  <FileText size={32} className="mx-auto mb-2 opacity-30" />
+                  <p className="text-sm font-medium">Aucune assemblée pour l&apos;instant</p>
+                  {isReferent && (
+                    <p className="text-xs mt-1">Créez une assemblée pour y déposer ses fichiers.</p>
+                  )}
+                </div>
+              ) : (
+                // Les assemblées passées, en accordéon replié par défaut,
+                // sur le modèle des sections du profil (Mes annonces, Mes événements)
+                <section className="bg-surface md:bg-surface-pane rounded-3xl border border-edge shadow-sm overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setShowPast(v => !v)}
+                    aria-expanded={showPast}
+                    className={cn(
+                      'w-full flex items-center justify-between px-6 py-4 text-left hover:bg-surface-sunken transition-colors',
+                      showPast && 'border-b border-edge',
+                    )}
+                  >
+                    <span className="flex items-center gap-3">
+                      <ScrollText size={17} className="text-brand-600 flex-shrink-0" />
+                      <span className="text-sm font-medium text-content-soft">
+                        Assemblées générales
+                        {archivedCount > 0 && (
+                          <span className="ml-2 text-xs font-semibold text-brand-600 bg-brand-50 px-2 py-0.5 rounded-full">
+                            {archivedCount}
+                          </span>
+                        )}
+                      </span>
+                    </span>
+                    <ChevronDown size={16} className={cn('text-content-faint transition-transform', showPast && 'rotate-180')} />
+                  </button>
+
+                  {showPast && (
+                    // Desktop : une tuile par année, en grille comme /prestataires — à plat sur toute
+                    // la largeur, chaque assemblée laissait une ligne vide entre sa puce et « Gérer »
+                    <div className="p-4 flex flex-col gap-6 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4 lg:items-start">
+                      {archivedByYear.length === 0 ? (
+                        <p className="text-sm text-content-faint text-center py-6 lg:col-span-full">
+                          Aucune assemblée générale passée pour l&apos;instant.
+                        </p>
+                      ) : archivedByYear.map(([year, list]) => (
+                        <div key={year} className="flex flex-col gap-3 lg:rounded-2xl lg:border lg:border-edge lg:bg-surface lg:p-4">
+                          <h3 className="text-sm font-semibold uppercase tracking-wide text-content-faint">{year}</h3>
+                          {/* Assemblées à plat, séparées par un filet : pas de carte dans l'accordéon (mobile) */}
+                          <div className="flex flex-col divide-y divide-edge">
+                            {list.map(a => (
+                              <AssemblyCard key={a.id} assembly={a} userId={userId} isReferent={isReferent} inset
+                                onChanged={load} onEdit={openEdit} onError={setActionError} />
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </section>
               )}
-
-              {/* Les assemblées passées, en accordéon replié par défaut */}
-              {/* Accordéon sur le modèle des sections du profil (Mes annonces, Mes événements) */}
-              <section className="bg-surface md:bg-surface-pane rounded-3xl border border-edge shadow-sm overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => setShowPast(v => !v)}
-                  aria-expanded={showPast}
-                  className={cn(
-                    'w-full flex items-center justify-between px-6 py-4 text-left hover:bg-surface-sunken transition-colors',
-                    showPast && 'border-b border-edge',
-                  )}
-                >
-                  <span className="flex items-center gap-3">
-                    <ScrollText size={17} className="text-brand-600 flex-shrink-0" />
-                    <span className="text-sm font-medium text-content-soft">
-                      Assemblées générales
-                      {archivedCount > 0 && (
-                        <span className="ml-2 text-xs font-semibold text-brand-600 bg-brand-50 px-2 py-0.5 rounded-full">
-                          {archivedCount}
-                        </span>
-                      )}
-                    </span>
-                  </span>
-                  <ChevronDown size={16} className={cn('text-content-faint transition-transform', showPast && 'rotate-180')} />
-                </button>
-
-                {showPast && (
-                  <div className="p-4 flex flex-col gap-4">
-                    {archivedByYear.length === 0 ? (
-                      <p className="text-sm text-content-faint text-center py-6">
-                        Aucune assemblée générale passée pour l&apos;instant.
-                      </p>
-                    ) : archivedByYear.map(([year, list]) => (
-                      <div key={year} className="flex flex-col gap-3">
-                        <h3 className="text-sm font-semibold uppercase tracking-wide text-content-faint">{year}</h3>
-                        {list.map(a => (
-                          <AssemblyCard key={a.id} assembly={a} userId={userId} isReferent={isReferent} inset
-                            onChanged={load} onEdit={openEdit} onError={setActionError} />
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </section>
-            </div>
+            </>
           )}
         </>
       )}

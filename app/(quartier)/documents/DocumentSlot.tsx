@@ -203,7 +203,8 @@ export function DocumentSlot({ assembly, kind, doc, userId, isReferent, onChange
   ].filter(Boolean).join(' · ')
 
   return (
-    <div className="flex flex-col gap-2 rounded-xl border border-edge bg-surface-raised px-3 py-2.5">
+    // À plat, sans cadre : l'emplacement vit déjà dans la carte de l'assemblée
+    <div className="flex flex-col gap-2">
       <div className="flex items-start gap-3">
         <Icon size={20} className="mt-0.5 shrink-0 text-brand-600" />
         <div className="min-w-0 flex-1">

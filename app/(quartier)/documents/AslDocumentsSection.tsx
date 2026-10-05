@@ -44,9 +44,10 @@ export function AslDocumentsSection({ docs, userId, isReferent, onChanged, onErr
         Documents de l&apos;ASL
       </h2>
       <div className="bg-surface md:bg-surface-pane border border-edge rounded-2xl p-4 flex flex-col gap-3">
-        {/* Rangée de puces, comme sur une assemblée : la visionneuse d'un clic, le bord droit télécharge */}
+        {/* Rangée de puces, comme sur une assemblée : la visionneuse d'un clic, le bord droit télécharge.
+            Masquées en mode « Gérer », où l'emplacement reprend le fichier (cf. AssemblyCard) */}
         <div className="flex flex-wrap items-center gap-2">
-          {ASL_DOCUMENT_KINDS.map(kind => {
+          {!managing && ASL_DOCUMENT_KINDS.map(kind => {
             const doc = docs.find(d => d.kind === kind)
             const label = ASL_DOCUMENT_KIND_LABELS[kind]
             if (doc) {
@@ -90,7 +91,7 @@ export function AslDocumentsSection({ docs, userId, isReferent, onChanged, onErr
         </div>
 
         {isReferent && managing && (
-          <div className="flex flex-col gap-2 border-t border-edge pt-3">
+          <div className="flex flex-col gap-4 border-t border-edge pt-3">
             {ASL_DOCUMENT_KINDS.map(kind => (
               <AslDocumentSlot
                 key={kind}
@@ -237,7 +238,8 @@ function AslDocumentSlot({
   ].filter(Boolean).join(' · ')
 
   return (
-    <div className="flex flex-col gap-2 rounded-xl border border-edge bg-surface-raised px-3 py-2.5">
+    // À plat, sans cadre : l'emplacement vit déjà dans la carte de la section
+    <div className="flex flex-col gap-2">
       <div className="flex items-start gap-3">
         <ScrollText size={20} className="mt-0.5 shrink-0 text-brand-600" />
         <div className="min-w-0 flex-1">

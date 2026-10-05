@@ -1,5 +1,27 @@
 # Historique des modifications (par session)
 
+## 2026-10-05 — Page Documents : moins de cartes, grille sur desktop
+
+Demande : « réduire le nombre de cards » (mobile : accordéon > carte d'assemblée > puce, trois
+niveaux), puis « trop de place laissée à rien » sur la vue web.
+
+- **`app/(quartier)/documents/AssemblyCard.tsx`** : en `inset` (accordéon des assemblées passées),
+  plus de cadre — rangée à plat `py-4 first:pt-0 last:pb-0`, séparée par le `divide-y` de la page.
+  Hors accordéon (« Prochaine assemblée »), carte inchangée. En mode « Gérer », la rangée de puces
+  est masquée : chaque `DocumentSlot` reprend le fichier avec Consulter / PDF, c'était un doublon.
+- **`DocumentSlot.tsx`** et **`AslDocumentSlot`** (dans `AslDocumentsSection.tsx`) : l'emplacement
+  « fichier présent » perd son cadre (`border bg-surface-raised`), il est déjà dans la carte ; écart
+  porté à `gap-4` entre emplacements. Même masquage des puces en « Gérer » côté ASL.
+- **`page.tsx`** : à partir de `lg`, « Documents de l'ASL » et « Prochaine assemblée » côte à côte
+  (`lg:grid-cols-2`) ; dans l'accordéon, une **tuile par année** en grille `lg:grid-cols-2
+  xl:grid-cols-3`, comme `/prestataires`. Les tuiles ne portent cadre et fond qu'en `lg:` (tokens
+  `lg:border-edge lg:bg-surface`, couverts en sombre) : le mobile garde la liste à plat.
+- ⚠️ **Constaté : en `npm run dev` (Turbopack + Tailwind 3), modifier un `.tsx` ne recompile pas le
+  CSS.** Une classe jamais utilisée ailleurs (`divide-edge`, `first:pt-0`) est absente de la feuille
+  servie, même après un `touch app/globals.css` ; modifier `tailwind.config.ts` ou redémarrer le
+  serveur la fait apparaître. C'est très probablement le « `pr-[52px]` non généré » du commentaire de
+  `MessageBubble.tsx`. Ajouté aux points de vigilance de `CLAUDE.md`.
+
 ## 2026-10-05 — Suppression d'un message (mobile) : zone rouge collée à la bulle
 
 - **`components/messages/MessageBubble.tsx`** : la poubelle était posée à droite de la position

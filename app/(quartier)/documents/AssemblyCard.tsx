@@ -19,7 +19,8 @@ interface Props {
   onChanged: () => Promise<void> | void
   onEdit: (assembly: Assembly) => void
   onError: (message: string) => void
-  /** Carte posée dans un bloc au ton « volet » (accordéon) : prend le ton « page » pour rester distincte */
+  /** Posée dans l'accordéon des assemblées passées : rangée à plat, sans cadre — la page
+   *  la sépare de ses voisines par un filet. Pas de carte dans la carte. */
   inset?: boolean
 }
 
@@ -55,11 +56,11 @@ export function AssemblyCard({ assembly, userId, isReferent, onChanged, onEdit, 
 
   return (
     <article className={cn(
-      'bg-surface border rounded-2xl p-4 flex flex-col gap-3',
-      // Desktop : gris plutôt que blanc (demande utilisateur) — ton « volet » sur le fond
-      // de page, ton « page » à l'intérieur de l'accordéon qui est déjà au ton « volet »
-      inset ? 'md:bg-surface-raised' : 'md:bg-surface-pane',
-      archived ? 'border-edge' : 'border-brand-300',
+      'flex flex-col gap-3',
+      inset
+        ? 'py-4 first:pt-0 last:pb-0'
+        // Desktop : ton « volet » plutôt que blanc sur le fond de page (demande utilisateur)
+        : cn('bg-surface md:bg-surface-pane border rounded-2xl p-4', archived ? 'border-edge' : 'border-brand-300'),
     )}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -83,9 +84,11 @@ export function AssemblyCard({ assembly, userId, isReferent, onChanged, onEdit, 
         </div>
       </div>
 
-      {/* Rangée de puces : un clic = la visionneuse, le bord droit = téléchargement */}
+      {/* Rangée de puces : un clic = la visionneuse, le bord droit = téléchargement.
+          Masquées en mode « Gérer » : chaque emplacement ci-dessous reprend déjà le fichier,
+          avec Consulter et PDF — les garder faisait doublon. */}
       <div className="flex flex-wrap items-center gap-2">
-        {kinds.map(kind => {
+        {!managing && kinds.map(kind => {
           const doc = findDocument(assembly, kind)
           const label = ASSEMBLY_DOCUMENT_KIND_LABELS[kind]
           if (doc) {
@@ -132,7 +135,7 @@ export function AssemblyCard({ assembly, userId, isReferent, onChanged, onEdit, 
 
       {/* Référent : dépôt / remplacement / suppression, replié par défaut */}
       {isReferent && managing && (
-        <div className="flex flex-col gap-2 border-t border-edge pt-3">
+        <div className="flex flex-col gap-4 border-t border-edge pt-3">
           {kinds.map(kind => (
             <DocumentSlot
               key={kind}
