@@ -35,7 +35,12 @@
   --surface-sunken: #e2e8f0;  /* zones en retrait            (≈ bg-gray-100) */
   --surface-pane: #f1f4f7;    /* volets latéraux desktop                       */
   --surface-header: #e3e8ee;  /* barre de navigation                           */
-  --border: #d7dee6;          /*                             (≈ border-gray-200) */
+  /* En-tête d'accordéon ouvert (profil). Pastel du vert du titre de la Navbar : même teinte que
+   * `brand-700` #15803d (142°), saturation 45 %, luminosité 72 %. La gamme Tailwind n'a rien
+   * entre `brand-300`, trop pâle, et `brand-400`, trop saturé (« ça fait flash ») ; un simple
+   * mélange avec du blanc (#add3bb, saturation 30 %) tirait au gris. */
+  --surface-accent: #97d8af;
+  --border: #d7dee6;         /*                             (≈ border-gray-200) */
   --border-strong: #b7c1cd;   /*                             (≈ border-gray-300) */
   --text: #0f172a;            /* titres                      (≈ text-gray-900) */
   --text-soft: #334155;       /* corps de texte              (≈ text-gray-700) */
@@ -49,6 +54,7 @@ html.dark {
   --surface-sunken: #0f172a;
   --surface-pane: #1e293b;
   --surface-header: #1e293b;
+  --surface-accent: rgba(20, 83, 45, 0.55); /* brand-900 à 55 %, validé en sombre */
   --border: #334155;
   --border-strong: #475569;
   --text: #f1f5f9;

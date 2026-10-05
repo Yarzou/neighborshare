@@ -90,16 +90,19 @@ export default function PasskeySection() {
     <div className="border-b border-edge">
       <button
         onClick={() => { setOpen(o => !o); setError(null); setSuccess(null) }}
-        className="w-full flex items-center justify-between gap-4 px-6 py-4 text-left hover:bg-surface-sunken transition-colors"
+        className={cn(
+          'w-full flex items-center justify-between gap-4 px-6 py-4 text-left transition-colors',
+          open ? 'bg-surface-accent' : 'hover:bg-surface-sunken',
+        )}
       >
         <span className="flex items-start gap-3">
-          <Fingerprint size={17} className="text-content-faint mt-0.5 flex-shrink-0" />
+          <Fingerprint size={17} className={cn('mt-0.5 flex-shrink-0', open ? 'text-content-soft' : 'text-content-faint')} />
           <span>
             <span className="block text-sm font-medium text-content">Empreinte digitale ou Face ID</span>
-            <span className="block text-xs text-content-faint">{subtitle}</span>
+            <span className={cn('block text-xs', open ? 'text-content-soft' : 'text-content-faint')}>{subtitle}</span>
           </span>
         </span>
-        <ChevronDown size={16} className={cn('text-content-faint transition-transform flex-shrink-0', open && 'rotate-180')} />
+        <ChevronDown size={16} className={cn('transition-transform flex-shrink-0', open ? 'rotate-180 text-content-soft' : 'text-content-faint')} />
       </button>
 
       {open && (
@@ -138,7 +141,7 @@ export default function PasskeySection() {
                   <button
                     onClick={() => handleDelete(p)}
                     disabled={busy !== null}
-                    className="flex items-center gap-1 text-xs text-content-muted hover:text-red-700 disabled:opacity-50 transition-colors flex-shrink-0"
+                    className="flex items-center gap-1 text-xs text-red-700 hover:text-red-800 disabled:opacity-50 transition-colors flex-shrink-0"
                   >
                     {busy === p.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
                     Retirer

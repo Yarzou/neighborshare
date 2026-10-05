@@ -562,13 +562,16 @@ export default function ProfileClient() {
         <div>
           <button
             onClick={() => { setPwdOpen(o => !o); setPwdError(null); setPwdSuccess(false) }}
-            className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-gray-50 transition-colors"
+            className={cn(
+              'w-full flex items-center justify-between px-6 py-4 text-left transition-colors',
+              pwdOpen ? 'bg-surface-accent' : 'hover:bg-gray-50',
+            )}
           >
             <span className="flex items-center gap-3">
-              <Lock size={17} className="text-gray-400 flex-shrink-0" />
+              <Lock size={17} className={cn('flex-shrink-0', pwdOpen ? 'text-content-soft' : 'text-gray-400')} />
               <span className="text-sm font-medium text-gray-800">Changer le mot de passe</span>
             </span>
-            <ChevronDown size={16} className={cn('text-gray-400 transition-transform', pwdOpen && 'rotate-180')} />
+            <ChevronDown size={16} className={cn('transition-transform', pwdOpen ? 'rotate-180 text-content-soft' : 'text-gray-400')} />
           </button>
 
           {pwdOpen && (
@@ -670,10 +673,13 @@ export default function ProfileClient() {
         <div className="flex items-center border-b border-gray-100">
           <button
             onClick={() => setListingsOpen(o => !o)}
-            className="flex-1 flex items-center justify-between px-6 py-4 text-left hover:bg-gray-50 transition-colors"
+            className={cn(
+              'flex-1 flex items-center justify-between px-6 py-4 text-left transition-colors',
+              listingsOpen ? 'bg-surface-accent' : 'hover:bg-gray-50',
+            )}
           >
             <span className="flex items-center gap-3">
-              <Package size={17} className="text-brand-600 flex-shrink-0" />
+              <Package size={17} className={cn('flex-shrink-0', listingsOpen ? 'text-brand-800' : 'text-brand-600')} />
               <span className="text-sm font-medium text-gray-800">
                 Mes annonces
                 {listings.length > 0 && (
@@ -683,7 +689,7 @@ export default function ProfileClient() {
                 )}
               </span>
             </span>
-            <ChevronDown size={16} className={cn('text-gray-400 transition-transform', listingsOpen && 'rotate-180')} />
+            <ChevronDown size={16} className={cn('transition-transform', listingsOpen ? 'rotate-180 text-content-soft' : 'text-gray-400')} />
           </button>
         </div>
 
@@ -764,10 +770,13 @@ export default function ProfileClient() {
         <div className="flex items-center border-b border-gray-100">
           <button
             onClick={() => setEventsOpen(o => !o)}
-            className="flex-1 flex items-center justify-between px-6 py-4 text-left hover:bg-gray-50 transition-colors"
+            className={cn(
+              'flex-1 flex items-center justify-between px-6 py-4 text-left transition-colors',
+              eventsOpen ? 'bg-surface-accent' : 'hover:bg-gray-50',
+            )}
           >
             <span className="flex items-center gap-3">
-              <CalendarDays size={17} className="text-brand-600 flex-shrink-0" />
+              <CalendarDays size={17} className={cn('flex-shrink-0', eventsOpen ? 'text-brand-800' : 'text-brand-600')} />
               <span className="text-sm font-medium text-gray-800">
                 Mes événements
                 {events.length > 0 && (
@@ -777,7 +786,7 @@ export default function ProfileClient() {
                 )}
               </span>
             </span>
-            <ChevronDown size={16} className={cn('text-gray-400 transition-transform', eventsOpen && 'rotate-180')} />
+            <ChevronDown size={16} className={cn('transition-transform', eventsOpen ? 'rotate-180 text-content-soft' : 'text-gray-400')} />
           </button>
         </div>
 

@@ -20,7 +20,10 @@ interface Props {
   onReact: (messageId: string, emoji: MessageEmoji) => void
 }
 
-const SWIPE_THRESHOLD = 60 // px
+const SWIPE_THRESHOLD = 72 // px — largeur de la zone rouge, comme `ConversationRow`
+/* La zone rouge déborde sous la bulle de la valeur de son arrondi (`rounded-2xl`), sinon le
+   coin arrondi laisse voir le fond entre la bulle et la zone. */
+const BUBBLE_RADIUS = 16 // px
 
 export function MessageBubble({
   msg,
@@ -40,6 +43,8 @@ export function MessageBubble({
   const [showPicker, setShowPicker] = useState(false)
   const [pickerPos, setPickerPos] = useState<{ top: number; left: number } | null>(null)
   const touchStartX = useRef<number | null>(null)
+  const swipeStartX = useRef(0)
+  const didMove = useRef(false)
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pickerRef = useRef<HTMLDivElement>(null)
   const bubbleRef = useRef<HTMLDivElement>(null)
@@ -97,6 +102,9 @@ export function MessageBubble({
   // ── Touch handlers (mobile swipe to delete + long press to react) ──────────
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX
+    // Repartir de la position courante : on peut refermer une bulle ouverte en la glissant à droite
+    swipeStartX.current = swipeX
+    didMove.current = false
     setSwiping(true)
 
     if (!isTemp) {
@@ -120,12 +128,15 @@ export function MessageBubble({
 
     const dx = e.touches[0].clientX - touchStartX.current
     // Si l'utilisateur glisse, annule le long press
-    if (Math.abs(dx) > 10 && longPressTimer.current) {
-      clearTimeout(longPressTimer.current)
-      longPressTimer.current = null
+    if (Math.abs(dx) > 10) {
+      didMove.current = true
+      if (longPressTimer.current) {
+        clearTimeout(longPressTimer.current)
+        longPressTimer.current = null
+      }
     }
     // Seulement glisser vers la gauche pour mes messages (suppression)
-    if (canDelete && dx < 0) setSwipeX(Math.max(dx, -SWIPE_THRESHOLD - 20))
+    if (canDelete) setSwipeX(Math.min(0, Math.max(swipeStartX.current + dx, -SWIPE_THRESHOLD - 16)))
   }
 
   const handleTouchEnd = () => {
@@ -134,7 +145,8 @@ export function MessageBubble({
       longPressTimer.current = null
     }
     setSwiping(false)
-    if (swipeX < -SWIPE_THRESHOLD) {
+    // Un simple tap sur une bulle ouverte la referme
+    if (didMove.current && swipeX < -SWIPE_THRESHOLD * 0.6) {
       setSwipeX(-SWIPE_THRESHOLD)
     } else {
       setSwipeX(0)
@@ -174,18 +186,22 @@ export function MessageBubble({
 
         {/* Wrapper relatif pour le bouton supprimer (mobile swipe) */}
         <div className="relative">
+          {/* Zone rouge derrière la bulle, collée à son bord droit, comme pour une conversation.
+              Sa largeur suit le glissement (0 au repos) plutôt qu'un masque `overflow-hidden` :
+              une bulle courte serait rognée en glissant hors d'un masque à sa propre largeur.
+              L'icône est calée à droite dans 72 px fixes, donc dévoilée au fil du geste. */}
           {canDelete && (
             <button
               onClick={handleDeleteClick}
-              aria-label="Supprimer"
-              className="md:hidden absolute right-0 top-1/2 -translate-y-1/2 translate-x-full pr-1 h-full flex items-center"
+              aria-label="Supprimer ce message"
+              className="md:hidden absolute inset-y-0 right-0 flex items-center justify-end overflow-hidden rounded-r-2xl bg-red-500 text-white"
               style={{
-                opacity: Math.min(1, Math.max(0, (-swipeX - 20) / 40)),
-                pointerEvents: swipeX < -SWIPE_THRESHOLD * 0.7 ? 'auto' : 'none',
+                width: swipeX < 0 ? -swipeX + BUBBLE_RADIUS : 0,
+                transition: swiping ? 'none' : 'width 0.2s ease',
               }}
             >
-              <span className="flex items-center justify-center w-10 h-8 rounded-xl bg-red-500 text-white">
-                <Trash2 size={15} />
+              <span className="flex items-center justify-center flex-shrink-0" style={{ width: SWIPE_THRESHOLD }}>
+                <Trash2 size={18} />
               </span>
             </button>
           )}
@@ -205,7 +221,7 @@ export function MessageBubble({
                 `w-11 h-11` : au-dessus de `md:` le bouton de swipe est masqué, donc sur
                 une tablette tactile c'est la seule cible — elle doit faire 44 px. Sur
                 mobile ce bouton n'est pas rendu (`hidden`), la cible tactile y est le
-                bouton de swipe, qui fait déjà 44 px de large sur la hauteur de la bulle. */}
+                bouton de swipe, qui fait 72 px de large sur la hauteur de la bulle. */}
             {canDelete && (
               <button
                 onClick={handleDeleteClick}

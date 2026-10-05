@@ -1,5 +1,53 @@
 # Historique des modifications (par session)
 
+## 2026-10-05 — Suppression d'un message (mobile) : zone rouge collée à la bulle
+
+- **`components/messages/MessageBubble.tsx`** : la poubelle était posée à droite de la position
+  **initiale** de la bulle (`translate-x-full`) et ne bougeait pas, alors que la bulle glissait de
+  60 px : 60 px de vide entre le message et le bouton. Elle devient une zone rouge derrière la bulle,
+  ancrée à son bord droit, comme `ConversationRow` : largeur = distance glissée + 16 px (l'arrondi
+  `rounded-2xl`, pour que le coin de la bulle ne laisse pas voir le fond), 0 au repos, icône calée
+  dans 72 px fixes à droite donc dévoilée au fil du geste. Pas de masque `overflow-hidden` comme sur
+  la conversation : une bulle courte (« Ok ») glisserait hors d'un masque à sa propre largeur.
+- Réglages alignés sur `ConversationRow` : 72 px, butée à 88 px, ouverture au-delà de 60 %.
+- Le glissement repart de la position courante (`swipeStartX`) : on referme une bulle ouverte en la
+  glissant à droite. Un tap sans mouvement (`didMove`, seuil 10 px déjà utilisé pour annuler l'appui
+  long) la referme — avant, c'était un effet de bord du seuil d'ouverture strict, qu'abaisser à 60 %
+  aurait cassé.
+
+## 2026-10-05 — Accordéons du profil : en-tête vert une fois ouvert
+
+- **`app/profile/ProfileClient.tsx`** (« Changer le mot de passe », « Mes annonces »,
+  « Mes événements ») et **`components/profile/PasskeySection.tsx`** (« Empreinte digitale ou
+  Face ID ») : l'en-tête de l'accordéon passe en `bg-surface-accent` tant qu'il est ouvert, avec le
+  `transition-colors` existant pour le fondu. Le survol neutre (`hover:bg-gray-50` /
+  `hover:bg-surface-sunken`) n'est posé que fermé : sinon, le survol qui reste collé après un tap sur
+  mobile masquerait le vert.
+- **Nouveau token `--surface-accent`** (`app/globals.css` + `surface.accent` dans
+  `tailwind.config.ts`) : clair `#97d8af` = pastel du vert du titre de la Navbar (teinte de
+  `brand-700` `#15803d`, 142°, en HSL 45 % / 72 %), sombre `rgba(20,83,45,0.55)` (`brand-900` à 55 %).
+- Teinte réglée à l'œil par l'utilisateur. En clair, `brand-50` à `300` ont été jugés trop pâles et
+  `brand-400` (`#4ade80`) « fait flash » : la gamme Tailwind saute d'un pastel très clair à un vert
+  très saturé, d'où une valeur propre plutôt qu'un cran de la gamme. Un premier essai par mélange
+  avec du blanc (`#add3bb`, saturation 30 %) était « un peu trop gris » : on garde sa luminance
+  (~0,59) et on remonte la saturation. En sombre, le vert a été validé tel quel dès le `brand-200`.
+- Piste écartée en route : `bg-brand-400 dark:bg-brand-900/55`. Une surcharge globale
+  `html.dark .bg-brand-400` aurait éteint en sombre le bouton d'`EventForm` en chargement et la jauge
+  des achats groupés, qui utilisent cette classe. Le token règle la question sans toucher au bloc
+  `!important`.
+- Contraste sur ce vert : les gris de l'en-tête (icône, chevron, sous-titre « Activée sur N
+  appareils ») passent en `text-content-soft` une fois ouvert, et les icônes `text-brand-600` de
+  « Mes annonces » / « Mes événements » en `text-brand-800`.
+- À la différence de « Supprimer mon compte », dont le rouge n'est qu'un `hover:bg-red-50` (sur mobile,
+  il tient au survol resté collé et disparaît au tap suivant), ce vert est lié à l'état ouvert.
+
+## 2026-10-05 — Bouton « Retirer » d'une passkey en rouge
+
+- **`components/profile/PasskeySection.tsx`** : la poubelle et le libellé « Retirer » passent de
+  `text-content-muted` (gris, rouge au survol seulement) à `text-red-700 hover:text-red-800`.
+  `red-700` plutôt que `red-600` : c'est la teinte qui a une surcharge sombre dans `globals.css`
+  (`#fca5a5`), `red-600` resterait rouge foncé sur fond sombre.
+
 ## 2026-10-05 — Menu mobile refermé à la déconnexion
 
 - **`components/layout/Navbar.tsx`** : `handleLogout` commence par `setMenuOpen(false)`. La Navbar

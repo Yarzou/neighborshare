@@ -63,6 +63,8 @@ const config: Config = {
           // Volets latéraux (Quartier, Demandes, Messages, Profil) et barre de navigation
           pane: 'var(--surface-pane)',
           header: 'var(--surface-header)',
+          // En-tête d'accordéon ouvert (profil) — pastel du vert du titre
+          accent: 'var(--surface-accent)',
         },
         edge: {
           DEFAULT: 'var(--border)',
