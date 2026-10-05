@@ -82,6 +82,7 @@ export function Navbar() {
   }, [user?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleLogout = async () => {
+    setMenuOpen(false)
     setTheme('system')
     await supabase.auth.signOut()
     router.push('/')

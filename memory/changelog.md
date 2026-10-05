@@ -1,5 +1,11 @@
 # Historique des modifications (par session)
 
+## 2026-10-05 — Menu mobile refermé à la déconnexion
+
+- **`components/layout/Navbar.tsx`** : `handleLogout` commence par `setMenuOpen(false)`. La Navbar
+  vit dans le layout et n'est pas démontée par la navigation vers `/` : le menu mobile restait donc
+  ouvert après « Déconnexion », seul bouton du menu qui ne le refermait pas.
+
 ## 2026-10-05 — Connexion par empreinte digitale / Face ID (passkeys Supabase)
 
 Demande : se connecter par empreinte ou Face ID, activation depuis le profil. Choix validés :
