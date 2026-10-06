@@ -1,17 +1,20 @@
-import { SkeletonBlock, SkeletonCard } from '@/components/layout/Skeleton'
+import { SkeletonBlock } from '@/components/layout/Skeleton'
 
+/** Squelette calqué sur l'Accueil : salutation, deux actions, rangée d'annonces. */
 export default function Loading() {
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8 flex flex-col gap-6">
-      <div className="flex flex-col gap-3">
-        <SkeletonBlock className="h-8 w-64" />
-        <SkeletonBlock className="h-4 w-80" />
+    <div className="max-w-2xl mx-auto px-4 pt-6 pb-10 md:pt-10 flex flex-col gap-5">
+      <div className="flex flex-col gap-2">
+        <SkeletonBlock className="h-4 w-40" />
+        <SkeletonBlock className="h-9 w-56" />
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {Array.from({ length: 4 }).map((_, i) => <SkeletonBlock key={i} className="h-24" />)}
+      <div className="grid grid-cols-2 gap-3">
+        <SkeletonBlock className="h-28 rounded-[18px]" />
+        <SkeletonBlock className="h-28 rounded-[18px]" />
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}
+      <SkeletonBlock className="h-6 w-44" />
+      <div className="flex gap-2.5 overflow-hidden">
+        {Array.from({ length: 3 }).map((_, i) => <SkeletonBlock key={i} className="h-40 w-[150px] shrink-0 rounded-[18px]" />)}
       </div>
     </div>
   )

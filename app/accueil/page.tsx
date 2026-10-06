@@ -10,11 +10,11 @@ export default async function AccueilPage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('full_name, avatar_url, avatar_color')
+    .select('full_name')
     .eq('id', user.id)
     .single()
 
   const firstName = profile?.full_name?.split(' ')[0] ?? null
 
-  return <DashboardClient firstName={firstName} avatarUrl={profile?.avatar_url ?? null} avatarColor={profile?.avatar_color ?? null} />
+  return <DashboardClient firstName={firstName} />
 }

@@ -1,5 +1,80 @@
 # Historique des modifications (par session)
 
+## 2026-10-06 — Refonte « Verre et Cèdre », branche `refonte-verre` (à tester)
+
+Maquette validée : https://claude.ai/artifact/LpHNwVNvDmrguJ6pLKeNw3 — fond gris très clair, cartes
+blanches, vert Cèdre réservé aux actions, verre pour ce qui flotte. Première version « tout en vert »
+refusée (« trop de vert clair, il faut garder du blanc ») ; la version retenue suit la maquette Fridge.
+
+- **`tailwind.config.ts`** : `white` redevient `#ffffff` ; `gray-*` neutres (`#f2f5f3` → `#1c1c1e`) ;
+  `brand-*` recentré sur `#1f6f47` (600) ; nouveau token `glass`.
+- **`app/globals.css`** : tokens clairs réalignés, `--glass*` (clair et sombre), classe `.glass`.
+  Gabarit de navigation par variables : `--nav-top`, `--tabbar-h`, `--sidebar-w`, déduites de la
+  présence de `#app-topbar`, `#app-tabbar` et `#app-sidebar` via `:root:has()`, et `--app-h`.
+  Marqueurs Leaflet en carré arrondi blanc, demande en tirets, tuiles OSM désaturées en clair,
+  grappes et position en vert Cèdre.
+- **`components/layout/Navbar.tsx`** (réécrit) : barre du haut mobile, barre d'onglets flottante
+  mobile (masquée sur `NO_TABBAR`), menu latéral desktop (rail en md, libellés en lg). Compteurs
+  verts. « Événements » s'appelle « Agenda » dans la navigation.
+- **`app/layout.tsx`** : le `<main>` prend ses marges des variables. Les `calc(100dvh-4rem)` de neuf
+  fichiers passent à `var(--app-h)`. Les bannières PWA et notifications se posent au-dessus de la
+  barre d'onglets.
+- **`lib/types.ts`**, **`StatusBadge`**, **`TypeBadge`** : statuts en plein, contour ou gris, avec
+  icône ; types en pastille neutre avec la lettre sur fond vert ; marqueurs tous verts.
+  ⚠️ Remplace la règle « bleu / orange » du 2026-10-02 (CLAUDE.md mis à jour).
+- **`lib/categories.ts`** + nouveau **`components/listings/CategoryIcon.tsx`** : cartes blanches pour
+  toutes les catégories, pastille d'icône lucide sur une nuance de vert (`tile`), helpers
+  `getCategorySlug` et `getCategoryTileClass`.
+- **`ListingCard`**, **`FilterBar`**, **`MapView`** : pastilles d'icône au lieu des émojis et
+  dégradés, recherche façon iOS, bascule Liste/Carte en contrôle segmenté, bouton flottant
+  « Publier » retiré (il est dans la barre d'onglets).
+- **`app/accueil/`** (réécrit) : salutation datée, demandes en cours, Proposer / Chercher,
+  « Près de chez vous » (8 dernières annonces disponibles), « Prochainement » (2 événements),
+  « Vie du quartier » (dernière info ASL, sondage ouvert, raccourcis). Chaque bloc se masque s'il
+  est vide ou si sa table manque. Squelette de chargement assorti.
+- **`QuartierTabs`** en contrôle segmenté iOS, **`QuartierSidebar`** en sélection douce.
+- **Messagerie** : bulles envoyées en vert Cèdre, reçues en gris clair (`#eef1ef`, `#334155` en sombre).
+- **Page annonce**, **Demandes**, **ListingActions** : violet, indigo, ambre, orange, rose et
+  vert vif ramenés à la palette.
+- **`app/profile/ProfileClient.tsx`** : bouton « Se déconnecter » en mobile (le menu déroulant
+  qui le portait a disparu).
+- Vérifié : typecheck OK, lint 0 erreur / 20 avertissements, build OK, pages publiques en 200 avec
+  la bonne navigation (test de fumée sur `next start`), poids des pages inchangé (~1007-1050 Ko).
+  **Rendu visuel non contrôlé** : pas de navigateur piloté dans cette session.
+- Non traité : mode sombre de la nouvelle palette (tokens posés, rendu non revu), formulaire
+  d'annonce (`ListingForm`, encore 31 classes hors palette), page Agenda, profil public,
+  `EventDetailPopup` (positionné pour l'ancienne barre du haut).
+
+## 2026-10-06 — Mises à jour de sécurité (npm audit : 36 → 15 alertes)
+
+- **`package.json`** : `next` et `eslint-config-next` 16.2.4 → **16.3.8** (épinglés exacts, comme
+  avant), `@next/bundle-analyzer` ^16.3.8, `nodemailer` ^8.0.7 → **^10.0.15**, `firebase-admin`
+  ^13.8.0 → **^14.5.0**. `@types/nodemailer` retiré : nodemailer 10 embarque ses types.
+  Puis `npm audit fix` sans `--force` pour les dépendances transitives.
+- **`lib/fcm-admin.ts`** : firebase-admin 14 supprime l'espace de noms `admin.*`. Passage à l'API
+  modulaire : `initializeApp` / `getApps` / `cert` de `firebase-admin/app`, `getMessaging` de
+  `firebase-admin/messaging`. Toujours en `require` paresseux. Contrôlé : ces exports existent,
+  `require('firebase-admin').messaging` vaut `undefined` en v14. **Envoi réel non testé**.
+- **`app/auth/reset-password/ResetPasswordClient.tsx`** : `eslint-config-next` 16.3 ajoute
+  `@next/next/no-location-assign-relative-destination`, qui signale `window.location.href = '/accueil'`.
+  Le rechargement complet est voulu, pour que les Server Components relisent le cookie de session.
+  La règle est donc désactivée sur cette ligne, avec la raison.
+- ⚠️ **firebase-admin 14 exige Node ≥ 22** (nodemailer 10 : ≥ 20, Next 16.3 : ≥ 20.9). Il faut
+  vérifier la version Node du projet Vercel (Settings → Build and Deployment).
+- Vérifié : `typecheck` OK, `build` OK, lint **0 erreur / 20 avertissements**, la base est inchangée.
+  Poids des pages (`measure-bundle.js`) : **−54 Ko par page** (/profile 1103,9 → 1049,4 Ko,
+  /login 1064,2 → 1009,8 Ko). Les ressources communes passent de 608,6 à 538,8 Ko.
+- **15 alertes restantes, toutes sans correctif amont ou hors du chemin d'exécution :**
+  - `braces`, `micromatch`, `chokidar`, `fast-glob`, `postcss-selector-parser` sont tirés par
+    **Tailwind 3** et par `eslint-config-next`. Ce sont des outils de build, qui ne lisent que nos
+    propres motifs. Le seul correctif est **Tailwind 4**, une migration complète.
+  - `@grpc/grpc-js ~1.9` est tiré par `firebase` client (`@firebase/firestore`), même dans sa
+    dernière version 12.19. Firestore n'est jamais importé par l'app, et le correctif proposé par npm
+    (`firebase@9.14`) est une régression.
+  - `uuid` < 11.1.1 passe par `@google-cloud/storage` 8.2 (dernière version), dépendance optionnelle
+    de firebase-admin, puis par `gaxios` 6. La faille porte sur v3/v5/v6 avec un `buf` fourni, et
+    Storage n'est pas utilisé.
+
 ## 2026-10-05 — Bulle de la page Profil : mêmes initiales que la Navbar
 
 - **`lib/utils.ts`** : `getInitials(name)` reprend la règle de l'ex-`initialsOf()` de la Navbar

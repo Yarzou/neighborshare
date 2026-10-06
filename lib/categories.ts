@@ -18,18 +18,40 @@ export interface CategoryDef {
   hoverColor: string
   /** Classes Tailwind pour le mode contour seul (fond blanc + bordure colorée) */
   borderOnly: string
+  /**
+   * Fond de la pastille d'icône (icône blanche dessus, cf. `CategoryTile`).
+   * Une nuance de vert par catégorie : elle donne du relief à une liste de cartes
+   * blanches, mais n'est jamais la seule information — l'icône et le libellé le sont.
+   */
+  tile: string
 }
 
+// Refonte « Verre et Cèdre » (2026-10-06) : les cartes d'annonce sont blanches,
+// quelle que soit la catégorie. La couleur ne vit plus que dans la pastille d'icône.
+const WHITE_CARD = 'bg-white border-gray-200'
+const WHITE_HOVER = 'hover:border-gray-300'
+const WHITE_OUTLINE = 'bg-white border-gray-200 hover:border-gray-300'
+
 export const CATEGORY_LIST: CategoryDef[] = [
-  { id: 1, slug: 'outils',       label: 'Outils',          filterLabel: 'Outils',   icon: '🔧', color: 'bg-blue-50 border-blue-200',       hoverColor: 'hover:bg-blue-100 hover:border-blue-300',     borderOnly: 'bg-white border-blue-300 hover:border-blue-400' },
-  { id: 2, slug: 'services',     label: 'Services',         filterLabel: 'Services', icon: '🤝', color: 'bg-amber-50 border-amber-200',     hoverColor: 'hover:bg-amber-100 hover:border-amber-300',   borderOnly: 'bg-white border-amber-300 hover:border-amber-400' },
-  { id: 3, slug: 'garde-enfant', label: "Garde d'enfant",   filterLabel: 'Enfants',  icon: '👶', color: 'bg-pink-50 border-pink-200',       hoverColor: 'hover:bg-pink-100 hover:border-pink-300',     borderOnly: 'bg-white border-pink-300 hover:border-pink-400' },
-  { id: 4, slug: 'covoiturage',  label: 'Covoiturage',      filterLabel: 'Trajet',   icon: '🚗', color: 'bg-teal-50 border-teal-200',   hoverColor: 'hover:bg-teal-100 hover:border-teal-300', borderOnly: 'bg-white border-teal-400 hover:border-teal-500' },
-  { id: 5, slug: 'dons',         label: 'Dons / Objets',    filterLabel: 'Dons',     icon: '📦', color: 'bg-purple-50 border-purple-200',   hoverColor: 'hover:bg-purple-100 hover:border-purple-300', borderOnly: 'bg-white border-purple-300 hover:border-purple-400' },
-  { id: 6, slug: 'jardinage',    label: 'Jardinage',        filterLabel: 'Jardin',   icon: '🌿', color: 'bg-green-50 border-green-200',     hoverColor: 'hover:bg-green-100 hover:border-green-300',   borderOnly: 'bg-white border-green-300 hover:border-green-400' },
-  { id: 7, slug: 'cuisine',      label: 'Cuisine',          filterLabel: 'Cuisine',  icon: '🍳', color: 'bg-orange-100 border-orange-300',  hoverColor: 'hover:bg-orange-100 hover:border-orange-400', borderOnly: 'bg-white border-orange-300 hover:border-orange-400' },
-  { id: 8, slug: 'livre',        label: 'Livres',           filterLabel: 'Livres',   icon: '📚', color: 'bg-gray-100 border-gray-300',      hoverColor: 'hover:bg-gray-200 hover:border-gray-400',     borderOnly: 'bg-white border-gray-300 hover:border-gray-400' },
+  { id: 1, slug: 'outils',       label: 'Outils',          filterLabel: 'Outils',   icon: '🔧', color: WHITE_CARD, hoverColor: WHITE_HOVER, borderOnly: WHITE_OUTLINE, tile: 'bg-[#1f6f47]' },
+  { id: 2, slug: 'services',     label: 'Services',         filterLabel: 'Services', icon: '🤝', color: WHITE_CARD, hoverColor: WHITE_HOVER, borderOnly: WHITE_OUTLINE, tile: 'bg-[#2f6b4f]' },
+  { id: 3, slug: 'garde-enfant', label: "Garde d'enfant",   filterLabel: 'Enfants',  icon: '👶', color: WHITE_CARD, hoverColor: WHITE_HOVER, borderOnly: WHITE_OUTLINE, tile: 'bg-[#2e7d5b]' },
+  { id: 4, slug: 'covoiturage',  label: 'Covoiturage',      filterLabel: 'Trajet',   icon: '🚗', color: WHITE_CARD, hoverColor: WHITE_HOVER, borderOnly: WHITE_OUTLINE, tile: 'bg-[#0f5c4c]' },
+  { id: 5, slug: 'dons',         label: 'Dons / Objets',    filterLabel: 'Dons',     icon: '📦', color: WHITE_CARD, hoverColor: WHITE_HOVER, borderOnly: WHITE_OUTLINE, tile: 'bg-[#5b7a3a]' },
+  { id: 6, slug: 'jardinage',    label: 'Jardinage',        filterLabel: 'Jardin',   icon: '🌿', color: WHITE_CARD, hoverColor: WHITE_HOVER, borderOnly: WHITE_OUTLINE, tile: 'bg-[#4d7c2f]' },
+  { id: 7, slug: 'cuisine',      label: 'Cuisine',          filterLabel: 'Cuisine',  icon: '🍳', color: WHITE_CARD, hoverColor: WHITE_HOVER, borderOnly: WHITE_OUTLINE, tile: 'bg-[#557a2e]' },
+  { id: 8, slug: 'livre',        label: 'Livres',           filterLabel: 'Livres',   icon: '📚', color: WHITE_CARD, hoverColor: WHITE_HOVER, borderOnly: WHITE_OUTLINE, tile: 'bg-[#3e6b5a]' },
 ]
+
+/** Slug d'une catégorie à partir de son ID ('' si inconnue). */
+export function getCategorySlug(id: number | null): string {
+  return CATEGORY_LIST.find(c => c.id === id)?.slug ?? ''
+}
+
+/** Fond de la pastille d'icône d'une catégorie (vert Cèdre si inconnue). */
+export function getCategoryTileClass(id: number | null): string {
+  return CATEGORY_LIST.find(c => c.id === id)?.tile ?? 'bg-brand-600'
+}
 
 /** Slugs de catégories incompatibles avec le type "vente" */
 export const VENTE_EXCLUDED_SLUGS = ['covoiturage', 'garde-enfant'] as const

@@ -11,40 +11,40 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Palette claire « B2 » (2026-10-02) : les gris Tailwind sont remplacés par
-        // une gamme ardoise, gris bleuté. Toutes les classes `gray-*` de l'app
-        // (fond de page, bordures, textes secondaires) basculent d'un coup, sans
-        // toucher au mode sombre, dont le bloc de surcharges emploie des hex.
-        // gray-50 est le fond de page, gray-100 les zones en retrait, gray-200 les
-        // bordures. Trois niveaux depuis le 2026-10-02 : page #e9edf2 < volets
-        // #f1f4f7 < cartes #f9fafb (cf. `white` ci-dessus et les tokens de globals.css).
-        // Plus aucun blanc pur : `bg-white` (cartes, lignes, formulaires) devient un
-        // gris à peine teinté, sur toutes les pages d'un coup. `text-white` sur les
-        // boutons verts en hérite sans différence perceptible.
-        white: '#f9fafb',
+        // Refonte « Verre et Cèdre » (2026-10-06, maquette validée) : fond gris très
+        // clair, cartes blanches, texte presque noir, et le vert réservé aux actions,
+        // aux icônes et à la sélection. Les gris sont neutres, à peine teintés de
+        // vert, sur le modèle des gris système d'iOS. Toutes les classes `gray-*`
+        // basculent d'un coup ; le mode sombre n'est pas touché, son bloc de
+        // surcharges emploie des hex.
+        // gray-50 est le fond de page, gray-100 les zones en retrait et les
+        // remplissages (champs, contrôles segmentés), gray-200 les bordures.
+        // `white` redevient un blanc pur : c'est la couleur des cartes.
+        white: '#ffffff',
         gray: {
-          50:  '#e9edf2',
-          100: '#e2e8f0',
-          200: '#d7dee6',
-          300: '#b7c1cd',
-          400: '#94a3b8',
-          500: '#64748b',
-          600: '#475569',
-          700: '#334155',
-          800: '#1e293b',
-          900: '#0f172a',
+          50:  '#f2f5f3',
+          100: '#eef1ef',
+          200: '#e1e5e2',
+          300: '#c9cecb',
+          400: '#a3a8a5',
+          500: '#6c6c70',
+          600: '#545458',
+          700: '#3a3a3c',
+          800: '#2c2c2e',
+          900: '#1c1c1e',
         },
+        // Vert Cèdre : brand-600 #1f6f47 est la couleur des actions (blanc dessus : 6,3:1).
         brand: {
-          50:  '#f0fdf4',
-          100: '#dcfce7',
-          200: '#bbf7d0',
-          300: '#86efac',
-          400: '#4ade80',
-          500: '#22c55e',
-          600: '#16a34a',
-          700: '#15803d',
-          800: '#166534',
-          900: '#14532d',
+          50:  '#eef6f1',
+          100: '#e4eee9',
+          200: '#c6ddd0',
+          300: '#95c1a7',
+          400: '#5c9d77',
+          500: '#2f8257',
+          600: '#1f6f47',
+          700: '#185c3a',
+          800: '#134a2f',
+          900: '#0f3b26',
         },
         warm: {
           50:  '#fefce8',
@@ -66,6 +66,9 @@ const config: Config = {
           // En-tête d'accordéon ouvert (profil) — pastel du vert du titre
           accent: 'var(--surface-accent)',
         },
+        // Verre blanc des éléments flottants (barre d'onglets, menu latéral) :
+        // toujours avec `backdrop-blur`, voir la classe `.glass` de globals.css.
+        glass: 'var(--glass)',
         edge: {
           DEFAULT: 'var(--border)',
           strong: 'var(--border-strong)',

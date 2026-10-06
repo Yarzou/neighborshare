@@ -15,7 +15,7 @@ import { TypeBadge } from '@/components/listings/TypeBadge'
 import {
   Package, Pencil, Trash2, Edit2,
   Check, X, Loader2, AlertCircle,
-  Lock, ShieldAlert, Eye, EyeOff, Bell, Mail, ChevronDown, MapPin, CalendarDays,
+  Lock, ShieldAlert, Eye, EyeOff, Bell, Mail, ChevronDown, MapPin, CalendarDays, LogOut,
 } from 'lucide-react'
 import { isPushSupported, activatePushNotifications, deactivatePushNotifications } from '@/lib/pushNotifications'
 import AddressAutocomplete, { type ResolvedAddress } from '@/components/forms/AddressAutocomplete'
@@ -248,6 +248,15 @@ export default function ProfileClient() {
     router.push('/')
   }
 
+  // Déconnexion mobile : le menu déroulant qui la portait a laissé place à la barre
+  // d'onglets (refonte 2026-10-06). Sur desktop, le menu latéral la propose déjà.
+  const handleLogout = async () => {
+    setTheme('system')
+    await supabase.auth.signOut()
+    router.push('/')
+    router.refresh()
+  }
+
   const handleEmailToggle = async (enabled: boolean) => {
     setEmailEnabled(enabled)
     setEmailSaving(true)
@@ -320,7 +329,7 @@ export default function ProfileClient() {
   // du flex racine et c'est `order-*` qui fixe l'ordre ; à partir de md ils
   // deviennent de vrais volets et `md:order-none` rend la main à l'ordre du DOM.
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8 flex flex-col gap-6 md:max-w-none md:mx-0 md:px-0 md:py-0 md:flex-row md:gap-0 md:h-[calc(100dvh-4rem)]">
+    <div className="max-w-2xl mx-auto px-4 py-8 flex flex-col gap-6 md:max-w-none md:mx-0 md:px-0 md:py-0 md:flex-row md:gap-0 md:h-[var(--app-h)]">
       <div className={cn('contents md:flex md:flex-col md:gap-4 md:shrink-0 md:bg-surface-pane md:border-r md:border-edge md:overflow-y-auto md:p-4', SIDE_PANE_WIDTH)}>
 
       {/* ── Hero ── */}
@@ -627,6 +636,14 @@ export default function ProfileClient() {
           )}
         </div>
       </div>
+
+      {/* ── Déconnexion (mobile) ── */}
+      <button
+        onClick={handleLogout}
+        className="order-5 md:hidden w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-3xl bg-white shadow-sm text-[15px] font-semibold text-red-600 hover:bg-red-50 transition-colors"
+      >
+        <LogOut size={17} /> Se déconnecter
+      </button>
 
       {/* ── Supprimer le compte ── */}
       <div className="order-5 md:order-none md:shrink-0 bg-white md:bg-surface-raised rounded-3xl border border-red-100 shadow-sm overflow-hidden">

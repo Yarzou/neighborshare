@@ -177,35 +177,31 @@ export function MapView() {
           )}
         </div>
 
-        {/* Toggle mobile */}
-        <div className="md:hidden flex border-b border-gray-200 bg-white shrink-0">
-          <button
-              onClick={() => setMobileView('list')}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium transition-colors ${
-                  mobileView === 'list'
-                      ? 'text-brand-600 border-b-2 border-brand-600'
-                      : 'text-gray-500'
-              }`}
-          >
-            <List size={16} /> Liste
-          </button>
-          <button
-              onClick={() => setMobileView('map')}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium transition-colors ${
-                  mobileView === 'map'
-                      ? 'text-brand-600 border-b-2 border-brand-600'
-                      : 'text-gray-500'
-              }`}
-          >
-            <Map size={16} /> Carte
-          </button>
+        {/* Toggle mobile : contrôle segmenté, l'onglet choisi en blanc sur fond gris */}
+        <div className="md:hidden px-4 pt-3 pb-2 bg-gray-50 shrink-0">
+          <div className="grid grid-cols-2 gap-0.5 p-0.5 rounded-[10px] bg-gray-200" role="tablist" aria-label="Affichage">
+            {([['list', 'Liste', List], ['map', 'Carte', Map]] as const).map(([view, label, Icon]) => (
+              <button
+                key={view}
+                role="tab"
+                aria-selected={mobileView === view}
+                onClick={() => setMobileView(view)}
+                className={cn(
+                  'h-8 rounded-lg flex items-center justify-center gap-1.5 text-[13px] transition-colors',
+                  mobileView === view ? 'bg-white text-gray-900 font-semibold shadow-sm' : 'text-gray-700',
+                )}
+              >
+                <Icon size={15} /> {label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Body: sidebar + map */}
         <div className="flex flex-1 overflow-hidden flex-col md:flex-row">
 
         {/* Sidebar */}
-        <div className={`w-full md:w-96 flex flex-col bg-white md:bg-surface-pane border-r border-gray-200 overflow-hidden z-10 ${mobileView === 'map' ? 'hidden md:flex' : 'flex'}`}>
+        <div className={`w-full md:w-96 flex flex-col bg-gray-50 md:bg-surface-pane border-r border-gray-200 overflow-hidden z-10 ${mobileView === 'map' ? 'hidden md:flex' : 'flex'}`}>
           <FilterBar
               category={category}
               onCategoryChange={setCategory}
@@ -276,7 +272,7 @@ export function MapView() {
 
           {/* Popup détail sélectionné */}
           {selected && (
-              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-80 z-[1200] max-h-[calc(100dvh-5rem)] overflow-y-auto rounded-2xl shadow-xl">
+              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-80 z-[1200] max-h-[calc(var(--app-h)-3rem)] overflow-y-auto rounded-2xl shadow-xl">
                 <div className="relative">
                   <button onClick={() => setSelected(null)}
                           className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md border border-gray-200 z-10">
@@ -289,23 +285,8 @@ export function MapView() {
         </div>
 
         </div>{/* end Body */}
-
-        {/* FAB mobile — Publier une annonce (connecté uniquement) */}
-        {isLoggedIn && (
-        <button
-          onClick={() => router.push('/listings/new')}
-          className={cn(
-            'fixed md:hidden z-[1100]',
-            'w-14 h-14 rounded-full bg-brand-600 text-white shadow-xl',
-            'flex items-center justify-center',
-            'hover:bg-brand-700 active:scale-95 transition-all duration-150',
-            'right-4 bottom-6',
-          )}
-          aria-label="Publier une annonce"
-        >
-          <Plus size={26} strokeWidth={2.5} />
-        </button>
-        )}
+        {/* Plus de bouton flottant « Publier » en mobile : il vit désormais à
+            côté de la barre d'onglets, sur toutes les pages. */}
       </div>
   )
 }

@@ -10,7 +10,7 @@ export default async function HomePage() {
   if (user) redirect('/accueil')
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center px-4 py-10
+    <div className="min-h-[var(--app-h)] flex flex-col items-center justify-center px-4 py-10
                     bg-gradient-to-b from-white to-brand-50
                     dark:from-gray-950 dark:to-gray-900">
 

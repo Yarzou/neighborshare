@@ -55,7 +55,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <PWAInstallBanner />
           {/* PushNotificationBanner n'est plus ici : il ne s'affiche que sur
               /messages et vit désormais dans app/messages/layout.tsx. */}
-          <main className="min-h-screen pt-16">
+          {/* Marges dictées par la navigation réellement rendue (variables posées
+              par globals.css selon la présence de #app-topbar, #app-tabbar et
+              #app-sidebar). */}
+          <main className="min-h-screen pt-[var(--nav-top)] pb-[var(--tabbar-h)] md:pl-[var(--sidebar-w)]">
             {children}
           </main>
         </ThemeProvider>

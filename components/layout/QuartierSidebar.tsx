@@ -35,20 +35,21 @@ export function QuartierSidebar() {
               aria-current={active ? 'page' : undefined}
               className={cn(
                 'flex items-center gap-3 rounded-xl px-3 py-3 transition-colors',
+                // Sélection douce, comme le menu latéral principal (refonte 2026-10-06)
                 active
-                  ? 'bg-brand-600 text-white shadow-sm'
-                  : 'text-content-soft hover:bg-surface-sunken hover:text-brand-700'
+                  ? 'bg-brand-100 text-brand-700'
+                  : 'text-content-soft hover:bg-surface-sunken'
               )}
             >
               <span className={cn(
-                'w-9 h-9 rounded-lg flex items-center justify-center shrink-0',
-                active ? 'bg-white/15' : 'bg-surface-sunken'
+                'w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0',
+                active ? 'bg-brand-600 text-white' : 'bg-surface-sunken text-brand-600'
               )}>
                 <Icon size={18} />
               </span>
               <span className="min-w-0">
                 <span className="block text-sm font-semibold leading-tight truncate">{section.label}</span>
-                <span className={cn('block text-xs mt-0.5 truncate', active ? 'text-white/80' : 'text-content-faint')}>
+                <span className={cn('block text-xs mt-0.5 truncate', active ? 'text-brand-700' : 'text-content-muted')}>
                   {section.description}
                 </span>
               </span>

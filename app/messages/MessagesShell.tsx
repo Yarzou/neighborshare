@@ -30,7 +30,7 @@ export function MessagesShell({ userId, children }: Props) {
   if (!userId) return <>{children}</>
 
   return (
-    <div className="md:flex md:h-[calc(100dvh-4rem)]">
+    <div className="md:flex md:h-[var(--app-h)]">
       <aside
         className={cn(
           'md:flex md:flex-shrink-0 md:flex-col md:bg-surface-pane md:border-r md:border-edge md:overflow-hidden',

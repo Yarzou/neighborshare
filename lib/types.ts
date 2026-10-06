@@ -273,25 +273,26 @@ export const LISTING_STATUS_LABELS: Record<ListingStatus, string> = {
   validee: 'En utilisation',
 }
 
-// Accessibilité : disponible en bleu et en cours en orange, un couple lisible pour
-// toutes les formes de daltonisme (le vert / orange d'avant ne l'était pas).
+// Refonte « Verre et Cèdre » (2026-10-06) : tout reste dans les verts, donc un
+// statut ne se reconnaît jamais à sa teinte. Il se distingue par sa forme — plein,
+// contour ou gris —, par une icône (STATUS_ICONS de StatusBadge) et par son libellé.
+// « Disponible » (plein) et « En cours » (contour) s'opposent en luminosité.
 export const LISTING_STATUS_COLORS: Record<ListingStatus, string> = {
-  disponible: 'bg-sky-100 text-sky-700',
-  reserve: 'bg-violet-100 text-violet-700',
-  termine: 'bg-gray-200 text-gray-500',
-  en_cours: 'bg-orange-100 text-orange-700',
+  disponible: 'bg-brand-600 text-white',
+  reserve: 'ring-1 ring-inset ring-current text-gray-800',
+  termine: 'bg-gray-200 text-gray-600',
+  en_cours: 'ring-1 ring-inset ring-current text-gray-800',
   validee: 'bg-brand-100 text-brand-700',
 }
 
-// Accessibilité (2026-10-02) : les cinq types se distinguent par la teinte ET par
-// une lettre (LISTING_TYPE_SHORT) ; le don quitte le bleu-vert, trop proche du
-// bleu du prêt pour une vision daltonienne, et prend le violet.
+// Les cinq types partagent une pastille neutre : c'est la lettre (LISTING_TYPE_SHORT,
+// sur fond vert dans TypeBadge) et le libellé qui les distinguent, pas la couleur.
 export const LISTING_TYPE_COLORS: Record<ListingType, string> = {
-  pret: 'bg-sky-100 text-sky-700',
-  don: 'bg-violet-100 text-violet-700',
-  echange: 'bg-teal-100 text-teal-700',
-  service: 'bg-amber-100 text-amber-800',
-  vente: 'bg-rose-100 text-rose-700',
+  pret: 'bg-gray-100 text-gray-800',
+  don: 'bg-gray-100 text-gray-800',
+  echange: 'bg-gray-100 text-gray-800',
+  service: 'bg-gray-100 text-gray-800',
+  vente: 'bg-gray-100 text-gray-800',
 }
 
 /** Lettre portée par le marqueur de la carte, en plus de la couleur du type */
@@ -303,13 +304,16 @@ export const LISTING_TYPE_SHORT: Record<ListingType, string> = {
   vente: 'V',
 }
 
-/** Couleurs CSS hex pour les marqueurs Leaflet (border-color) */
+/**
+ * Couleurs CSS hex pour les marqueurs Leaflet (border-color et pastille de la lettre).
+ * Toutes en vert Cèdre depuis la refonte : sur la carte, le type se lit à la lettre.
+ */
 export const LISTING_TYPE_MARKER_COLORS: Record<ListingType, string> = {
-  pret: '#0284c7',
-  don: '#7c3aed',
-  echange: '#0f766e',
-  service: '#d97706',
-  vente: '#be123c',
+  pret: '#1f6f47',
+  don: '#1f6f47',
+  echange: '#1f6f47',
+  service: '#1f6f47',
+  vente: '#1f6f47',
 }
 
 export const BOOK_CONDITION_LABELS: Record<BookCondition, string> = {

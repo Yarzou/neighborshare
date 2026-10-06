@@ -88,7 +88,7 @@ function DemandeActions({
           <button
             onClick={() => run('validate', 'validate_listing_response', 'accepted')}
             disabled={loading !== null}
-            className={cn(base, 'bg-green-600 text-white hover:bg-green-700')}
+            className={cn(base, 'bg-brand-600 text-white hover:bg-brand-700')}
           >
             {loading === 'validate' ? spinner : <CheckCircle size={detail ? 15 : 13} />}
             {detail ? 'Valider la demande' : 'Valider'}
@@ -530,8 +530,8 @@ export default function DemandesClient() {
         <h1 className="text-2xl font-bold text-gray-900 mb-6">Mes demandes</h1>
 
         <div className="flex gap-1 bg-gray-100 p-1 rounded-xl mb-6">
-          {tabButton('received', 'Reçues', receivedBadge, 'bg-red-500')}
-          {tabButton('sent', 'Envoyées', sentBadge, 'bg-amber-400')}
+          {tabButton('received', 'Reçues', receivedBadge, 'bg-brand-600')}
+          {tabButton('sent', 'Envoyées', sentBadge, 'bg-brand-600')}
         </div>
 
         {tab === 'received' && (
@@ -576,13 +576,13 @@ export default function DemandesClient() {
       </div>
 
       {/* ── Desktop : liste à gauche, détail à droite (même schéma que la carte) ── */}
-      <div className="hidden md:flex h-[calc(100dvh-4rem)]">
+      <div className="hidden md:flex h-[var(--app-h)]">
         <aside className={cn('flex-shrink-0 bg-surface-pane border-r border-edge flex flex-col', SIDE_PANE_WIDTH)}>
           <div className="px-4 pt-5 pb-3 flex flex-col gap-3">
             <h1 className="text-xl font-bold text-gray-900">Mes demandes</h1>
             <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
-              {tabButton('received', `Reçues · ${receivedBadge}`, receivedPending.length, 'bg-red-500')}
-              {tabButton('sent', `Envoyées · ${sentBadge}`, sentPending.length, 'bg-amber-400')}
+              {tabButton('received', `Reçues · ${receivedBadge}`, receivedPending.length, 'bg-brand-600')}
+              {tabButton('sent', `Envoyées · ${sentBadge}`, sentPending.length, 'bg-brand-600')}
             </div>
           </div>
           <div className="flex-1 overflow-y-auto">

@@ -33,7 +33,8 @@ export function QuartierTabs() {
   const pathname = usePathname()
 
   return (
-    <nav className="grid grid-cols-4 gap-1 rounded-2xl border border-edge bg-surface-sunken p-1">
+    // Contrôle segmenté façon iOS : fond gris, l'onglet choisi en blanc (refonte 2026-10-06).
+    <nav className="grid grid-cols-4 gap-0.5 rounded-xl bg-gray-200 p-0.5">
       {QUARTIER_SECTIONS.map(tab => {
         const active = pathname?.startsWith(tab.href)
         const Icon = tab.icon
@@ -45,13 +46,13 @@ export function QuartierTabs() {
             title={tab.label}
             className={cn(
               'flex flex-col items-center justify-center gap-1',
-              'rounded-xl px-1 py-2 text-center text-xs font-medium leading-tight transition-colors',
+              'rounded-[10px] px-1 py-2 text-center text-xs leading-tight transition-colors',
               active
-                ? 'bg-brand-600 text-white shadow-sm'
-                : 'text-content-muted hover:bg-surface hover:text-brand-700'
+                ? 'bg-white text-gray-900 font-semibold shadow-sm'
+                : 'text-gray-700 font-medium hover:text-gray-900'
             )}
           >
-            <Icon size={16} className="shrink-0" />
+            <Icon size={16} className={cn('shrink-0', active && 'text-brand-600')} />
             <span>{tab.short}</span>
           </Link>
         )

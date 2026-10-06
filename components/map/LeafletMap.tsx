@@ -123,7 +123,7 @@ export default function LeafletMap({ userPosition, listings, onSelectListing, se
         const btn = L.DomUtil.create('button', 'leaflet-bar leaflet-control-recenter') as HTMLButtonElement
         btn.title = 'Recentrer sur ma position'
         btn.style.cssText = 'width:30px;height:30px;display:none;align-items:center;justify-content:center;background:white;border:none;cursor:pointer;padding:0;'
-        btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg>`
+        btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1f6f47" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg>`
         btn.onclick = (e) => {
           L.DomEvent.stopPropagation(e)
           if (mapRef.current && userPositionRef.current) {
@@ -175,7 +175,7 @@ export default function LeafletMap({ userPosition, listings, onSelectListing, se
     }
 
     const userIcon = L.divIcon({
-      html: `<div class="user-location-dot" style="width:16px;height:16px;background:#2563eb;border:3px solid white;border-radius:50%;box-shadow:0 0 0 2px rgba(37,99,235,0.3)"></div>`,
+      html: `<div class="user-location-dot" style="width:16px;height:16px;background:#1f6f47;border:3px solid white;border-radius:50%;box-shadow:0 0 0 2px rgba(31,111,71,0.3)"></div>`,
       iconSize: [16, 16],
       iconAnchor: [8, 8],
       className: '',
@@ -232,7 +232,7 @@ export default function LeafletMap({ userPosition, listings, onSelectListing, se
       if (!listing.lat_out || !listing.lng_out) return
 
       const isDemande = listing.listing_intent === 'demande'
-      const typeColor = LISTING_TYPE_MARKER_COLORS[listing.type] ?? '#16a34a'
+      const typeColor = LISTING_TYPE_MARKER_COLORS[listing.type] ?? '#1f6f47'
       // Accessibilité : la lettre du type double la couleur de la bordure, qu'un
       // daltonien ne distingue pas toujours (prêt / don, service / vente).
       const typeLetter = LISTING_TYPE_SHORT[listing.type] ?? ''
@@ -271,7 +271,7 @@ export default function LeafletMap({ userPosition, listings, onSelectListing, se
       if (!el) return
       const inner = el.querySelector('.custom-marker') as HTMLElement
       if (!inner) return
-      const typeColor = listing ? (LISTING_TYPE_MARKER_COLORS[listing.type] ?? '#16a34a') : '#16a34a'
+      const typeColor = listing ? (LISTING_TYPE_MARKER_COLORS[listing.type] ?? '#1f6f47') : '#1f6f47'
       inner.style.borderColor = id === selectedId ? '#dc2626' : typeColor
       inner.style.transform = id === selectedId ? 'scale(1.2)' : 'scale(1)'
     })

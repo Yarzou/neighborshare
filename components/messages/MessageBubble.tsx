@@ -271,8 +271,8 @@ export function MessageBubble({
               ref={bubbleRef}
               className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed select-none ${
                 isMe
-                  ? 'bg-green-500 text-white rounded-br-sm'
-                  : 'bg-blue-500 text-white rounded-bl-sm'
+                  ? 'bg-brand-600 text-white rounded-br-md'
+                  : 'bg-[#eef1ef] dark:bg-[#334155] text-gray-900 rounded-bl-md'
               } ${isTemp ? 'opacity-60' : ''}`}
             >
               {msg.content}

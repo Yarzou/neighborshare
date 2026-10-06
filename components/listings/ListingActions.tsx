@@ -68,7 +68,7 @@ export function ListingActions({ listingId, status, conversationId, isOwner, isR
         <button
           onClick={() => run('validate', 'validate_listing_response', 'accepted')}
           disabled={loading !== null}
-          className="w-full py-2.5 rounded-xl bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+          className="w-full py-2.5 rounded-xl bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
         >
           {loading === 'validate' ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle size={15} />}
           Valider la demande

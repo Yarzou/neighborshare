@@ -1,147 +1,228 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
-import { MapPin, CalendarDays, MessageCircle, ClipboardList, User, Megaphone, ShoppingCart, Wrench, FileText } from 'lucide-react'
-import { useUnreadCount, usePendingRequests } from '@/lib/hooks'
-import { cn } from '@/lib/utils'
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { ClipboardList, Plus, Search, ChevronRight, Megaphone, ChartColumn, ShoppingCart, Wrench, FileText } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+import { usePendingRequests } from '@/lib/hooks'
+import { CATEGORY_LIST } from '@/lib/categories'
+import { formatDate } from '@/lib/utils'
+import type { ListingStatus, ListingType } from '@/lib/types'
+import { CategoryTile } from '@/components/listings/CategoryIcon'
+import { TypeBadge } from '@/components/listings/TypeBadge'
 
 interface Props {
   firstName: string | null
-  avatarUrl: string | null
-  avatarColor: string | null
 }
 
-interface Tile {
-  label: string
-  description: string
-  icon: React.ReactNode
-  href: string
-  badge?: number
-}
+interface ListingRow { id: string; title: string; type: ListingType; status: ListingStatus; category_id: number | null; created_at: string }
+interface EventRow { id: string; title: string; event_date: string; location_text: string | null }
+interface PollRow { id: string; question: string; closes_at: string | null }
+interface AnnouncementRow { id: string; title: string; created_at: string }
 
-export default function DashboardClient({ firstName, avatarUrl, avatarColor }: Props) {
-  const router = useRouter()
-  // Mêmes compteurs que la navbar, factorisés dans lib/hooks.ts. Le tableau de
-  // bord gagne au passage le temps réel, qu'il n'avait pas : ses badges ne
-  // bougeaient plus une fois la page affichée.
-  const unreadCount = useUnreadCount()
+/** Carte blanche sur fond gris, ombre à peine visible (maquette « Verre et Cèdre »). */
+const CARD = 'bg-white rounded-[18px] shadow-[0_1px_3px_rgba(0,0,0,0.06)]'
+const SECTION_TITLE = 'text-xl font-bold tracking-tight text-gray-900'
+
+const categoryLabel = (id: number | null) => CATEGORY_LIST.find(c => c.id === id)?.filterLabel ?? 'Annonce'
+
+/**
+ * Accueil connecté, refonte « Verre et Cèdre » (2026-10-06, maquette validée) :
+ * salutation, demandes en attente, deux actions (Proposer / Chercher), puis ce
+ * qui se passe dans le quartier — dernières annonces, prochains événements,
+ * vie du quartier.
+ *
+ * Chaque bloc est lu côté client et se masque s'il est vide ou si sa table
+ * manque encore sur la base (même dégradation silencieuse que /infos) : la page
+ * ne casse jamais pour une section.
+ */
+export default function DashboardClient({ firstName }: Props) {
   const pendingRequestsCount = usePendingRequests()
+  const [listings, setListings] = useState<ListingRow[]>([])
+  const [events, setEvents] = useState<EventRow[]>([])
+  const [poll, setPoll] = useState<PollRow | null>(null)
+  const [announcement, setAnnouncement] = useState<AnnouncementRow | null>(null)
 
-  const tiles: Tile[] = [
-    {
-      label: 'Annonces',
-      description: 'Parcourir les offres du quartier',
-      icon: <MapPin size={32} />,
-      href: '/map',
-    },
-    {
-      label: 'Événements',
-      description: 'Voir les événements à venir',
-      icon: <CalendarDays size={32} />,
-      href: '/evenements',
-    },
-    {
-      label: 'Vie du quartier',
-      description: 'Infos officielles et sondages',
-      icon: <Megaphone size={32} />,
-      href: '/infos',
-    },
-    {
-      label: 'Achats groupés',
-      description: 'Commander à plusieurs',
-      icon: <ShoppingCart size={32} />,
-      href: '/achats',
-    },
-    {
-      label: 'Prestataires',
-      description: 'Les artisans recommandés',
-      icon: <Wrench size={32} />,
-      href: '/prestataires',
-    },
-    {
-      label: 'Documents ASL',
-      description: 'Ordres du jour et PV des AG',
-      icon: <FileText size={32} />,
-      href: '/documents',
-    },
-    {
-      label: 'Messages',
-      description: 'Vos conversations en cours',
-      icon: <MessageCircle size={32} />,
-      href: '/messages',
-      badge: unreadCount,
-    },
-    {
-      label: 'Demandes',
-      description: 'Suivre vos échanges actifs',
-      icon: <ClipboardList size={32} />,
-      href: '/demandes',
-      badge: pendingRequestsCount,
-    },
-    {
-      label: 'Mon profil',
-      description: 'Gérer votre compte',
-      icon: <User size={32} />,
-      href: '/profile',
-    },
-  ]
+  useEffect(() => {
+    const supabase = createClient()
+    let cancelled = false
+    const now = new Date().toISOString()
+
+    // La vue `listings_geo` exclut les annonces expirées ; la table sert de repli
+    // tant que la migration 032 manque sur une base.
+    const loadListings = async () => {
+      const columns = 'id, title, type, status, category_id, created_at'
+      const fromView = await supabase.from('listings_geo').select(columns)
+        .eq('status', 'disponible').order('created_at', { ascending: false }).limit(8)
+      if (!fromView.error) return fromView.data as ListingRow[]
+      const fromTable = await supabase.from('listings').select(columns)
+        .eq('status', 'disponible').order('created_at', { ascending: false }).limit(8)
+      return (fromTable.data as ListingRow[] | null) ?? []
+    }
+
+    Promise.all([
+      loadListings(),
+      supabase.from('events').select('id, title, event_date, location_text')
+        .gte('event_date', now).order('event_date').limit(2),
+      supabase.from('polls').select('id, question, closes_at')
+        .or(`closes_at.is.null,closes_at.gt.${now}`).order('created_at', { ascending: false }).limit(1),
+      supabase.from('announcements').select('id, title, created_at')
+        .order('created_at', { ascending: false }).limit(1),
+    ]).then(([listingRows, eventRes, pollRes, annRes]) => {
+      if (cancelled) return
+      setListings(listingRows)
+      setEvents((eventRes.data as EventRow[] | null) ?? [])
+      setPoll(((pollRes.data as PollRow[] | null) ?? [])[0] ?? null)
+      setAnnouncement(((annRes.data as AnnouncementRow[] | null) ?? [])[0] ?? null)
+    })
+    return () => { cancelled = true }
+  }, [])
+
+  const today = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-gray-50 px-4 py-10">
-      <div className="max-w-2xl mx-auto">
-        {/* Header */}
-        <div className="mb-10 text-center">
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
-            Bonjour{firstName ? `, ${firstName}` : ''} 👋
-          </h1>
-          <p className="text-gray-500 text-base">Que souhaitez-vous faire aujourd&apos;hui ?</p>
-        </div>
+    <div className="max-w-2xl mx-auto px-4 pt-6 pb-10 md:pt-10 flex flex-col gap-5">
+      <header className="flex flex-col gap-0.5">
+        {/* Date du navigateur : le serveur peut être sur un autre fuseau. */}
+        <p suppressHydrationWarning className="text-[13px] font-semibold uppercase tracking-wide text-gray-500">{today}</p>
+        <h1 className="text-[34px] leading-10 font-bold tracking-tight text-gray-900">
+          Bonjour{firstName ? ` ${firstName}` : ''}
+        </h1>
+      </header>
 
-        {/* Tiles grid: 2 cols, last tile centered */}
-        <div className="grid grid-cols-2 gap-4">
-          {tiles.map((tile, i) => {
-            // Centre la dernière tuile seulement si elle serait orpheline (compte impair)
-            const isLast = i === tiles.length - 1 && tiles.length % 2 === 1
+      {pendingRequestsCount > 0 && (
+        <Link href="/demandes" className={`${CARD} flex items-center gap-3 p-3.5 hover:bg-gray-50 transition-colors`}>
+          <span className="w-10 h-10 rounded-[11px] bg-brand-600 text-white flex items-center justify-center shrink-0">
+            <ClipboardList size={21} />
+          </span>
+          <span className="flex-1 min-w-0 flex flex-col">
+            <span className="text-base font-semibold text-gray-900">
+              {pendingRequestsCount} demande{pendingRequestsCount > 1 ? 's' : ''} en cours
+            </span>
+            <span className="text-[13px] text-gray-500">Prêts, dons et services à suivre</span>
+          </span>
+          <ChevronRight size={18} className="text-gray-400 shrink-0" />
+        </Link>
+      )}
 
-            const tileButton = (
-              <button
-                key={tile.href}
-                onClick={() => router.push(tile.href)}
-                className={cn(
-                  'relative flex flex-col items-center justify-center gap-3 p-6 rounded-2xl',
-                  'bg-white border border-gray-200 shadow-sm',
-                  'hover:border-brand-400 hover:bg-brand-50 transition-all duration-150',
-                  'cursor-pointer text-center group w-full'
-                )}
-              >
-                {/* Badge */}
-                {(tile.badge ?? 0) > 0 && (
-                  <span className="absolute top-3 right-3 min-w-[22px] h-[22px] px-1.5 bg-red-500 text-white text-[11px] font-bold rounded-full flex items-center justify-center leading-none">
-                    {(tile.badge ?? 0) > 9 ? '9+' : tile.badge}
-                  </span>
-                )}
-                <span className="text-brand-600 group-hover:text-brand-700 transition-colors">
-                  {tile.icon}
-                </span>
-                <div>
-                  <p className="font-semibold text-gray-900 text-base">{tile.label}</p>
-                  <p className="text-xs text-gray-500 mt-0.5 hidden sm:block">{tile.description}</p>
-                </div>
-              </button>
-            )
-
-            if (isLast) {
-              return (
-                <div key={tile.href} className="col-span-2 flex justify-center">
-                  <div className="w-1/2">{tileButton}</div>
-                </div>
-              )
-            }
-
-            return <div key={tile.href}>{tileButton}</div>
-          })}
-        </div>
+      <div className="grid grid-cols-2 gap-3">
+        <Link href="/listings/new"
+          className="flex flex-col gap-3 p-4 rounded-[18px] bg-brand-600 hover:bg-brand-700 text-white shadow-[0_6px_16px_rgba(16,52,32,0.18)] transition-colors">
+          <span className="w-[38px] h-[38px] rounded-[11px] bg-white/20 flex items-center justify-center">
+            <Plus size={22} strokeWidth={2.4} />
+          </span>
+          <span className="flex flex-col">
+            <span className="text-[17px] font-semibold">Proposer</span>
+            <span className="text-[13px]">Prêter, donner, aider</span>
+          </span>
+        </Link>
+        <Link href="/map" className={`${CARD} flex flex-col gap-3 p-4 hover:bg-gray-50 transition-colors`}>
+          <span className="w-[38px] h-[38px] rounded-[11px] bg-brand-100 text-brand-700 flex items-center justify-center">
+            <Search size={21} strokeWidth={2.2} />
+          </span>
+          <span className="flex flex-col">
+            <span className="text-[17px] font-semibold text-gray-900">Chercher</span>
+            <span className="text-[13px] text-gray-500">Un outil, un trajet…</span>
+          </span>
+        </Link>
       </div>
+
+      {listings.length > 0 && (
+        <section className="flex flex-col gap-2.5">
+          <div className="flex items-baseline justify-between">
+            <h2 className={SECTION_TITLE}>Près de chez vous</h2>
+            <Link href="/map" className="text-[15px] text-brand-600 hover:text-brand-700">Voir la carte</Link>
+          </div>
+          <div className="flex gap-2.5 overflow-x-auto -mx-4 px-4 pb-1.5 snap-x">
+            {listings.map(l => (
+              <Link key={l.id} href={`/listings/${l.id}`}
+                className={`${CARD} snap-start w-[150px] shrink-0 p-3 flex flex-col gap-2 hover:bg-gray-50 transition-colors`}>
+                <CategoryTile id={l.category_id} size="sm" />
+                <span className="text-[15px] leading-5 font-semibold text-gray-900 line-clamp-2 min-h-10">{l.title}</span>
+                <span className="text-[13px] text-gray-500 truncate">{categoryLabel(l.category_id)} · {formatDate(l.created_at)}</span>
+                <TypeBadge type={l.type} className="self-start" />
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {events.length > 0 && (
+        <section className="flex flex-col gap-2.5">
+          <div className="flex items-baseline justify-between">
+            <h2 className={SECTION_TITLE}>Prochainement</h2>
+            <Link href="/evenements" className="text-[15px] text-brand-600 hover:text-brand-700">Agenda</Link>
+          </div>
+          {events.map(e => {
+            const d = new Date(e.event_date)
+            const weekday = d.toLocaleDateString('fr-FR', { weekday: 'short' }).toUpperCase()
+            const time = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }).replace(':', ' h ')
+            return (
+              <Link key={e.id} href={`/evenements/${e.id}`} className={`${CARD} flex items-center gap-3.5 p-3 hover:bg-gray-50 transition-colors`}>
+                <span suppressHydrationWarning className="w-14 h-[60px] rounded-[13px] bg-brand-600 text-white flex flex-col items-center justify-center shrink-0">
+                  <span className="text-[11px] font-bold tracking-wider">{weekday}</span>
+                  <span className="text-2xl leading-7 font-bold">{d.getDate()}</span>
+                </span>
+                <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+                  <span className="text-base font-semibold text-gray-900 truncate">{e.title}</span>
+                  <span suppressHydrationWarning className="text-[13px] text-gray-500 truncate">
+                    {time}{e.location_text ? ` · ${e.location_text}` : ''}
+                  </span>
+                </span>
+                <ChevronRight size={18} className="text-gray-400 shrink-0" />
+              </Link>
+            )
+          })}
+        </section>
+      )}
+
+      <section className="flex flex-col gap-2.5">
+        <h2 className={SECTION_TITLE}>Vie du quartier</h2>
+        {announcement && (
+          <Link href="/infos" className={`${CARD} flex items-center gap-3 p-3.5 hover:bg-gray-50 transition-colors`}>
+            <span className="w-10 h-10 rounded-[11px] bg-brand-600 text-white flex items-center justify-center shrink-0">
+              <Megaphone size={20} />
+            </span>
+            <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+              <span className="text-[13px] text-gray-500">Info de l&apos;ASL · {formatDate(announcement.created_at)}</span>
+              <span className="text-base font-semibold text-gray-900 line-clamp-2">{announcement.title}</span>
+            </span>
+            <ChevronRight size={18} className="text-gray-400 shrink-0" />
+          </Link>
+        )}
+        {poll && (
+          <Link href="/infos" className={`${CARD} flex items-center gap-3 p-3.5 hover:bg-gray-50 transition-colors`}>
+            <span className="w-10 h-10 rounded-[11px] bg-brand-100 text-brand-700 flex items-center justify-center shrink-0">
+              <ChartColumn size={20} />
+            </span>
+            <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+              <span suppressHydrationWarning className="text-[13px] text-gray-500">
+                Sondage{poll.closes_at ? ` · jusqu'au ${new Date(poll.closes_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}` : ''}
+              </span>
+              <span className="text-base font-semibold text-gray-900 line-clamp-2">{poll.question}</span>
+            </span>
+            <ChevronRight size={18} className="text-gray-400 shrink-0" />
+          </Link>
+        )}
+        {/* Raccourcis vers les autres rubriques du quartier : liste groupée façon iOS */}
+        <div className={`${CARD} overflow-hidden`}>
+          {[
+            { href: '/achats', label: 'Achats groupés', icon: ShoppingCart },
+            { href: '/prestataires', label: 'Prestataires recommandés', icon: Wrench },
+            { href: '/documents', label: "Documents de l'ASL", icon: FileText },
+          ].map((row, i) => (
+            <Link key={row.href} href={row.href} className="flex items-center gap-3 pl-3.5 hover:bg-gray-50 transition-colors">
+              <span className="w-[30px] h-[30px] rounded-lg bg-brand-100 text-brand-700 flex items-center justify-center shrink-0">
+                <row.icon size={17} />
+              </span>
+              <span className={`flex-1 flex items-center justify-between py-3 pr-3.5 ${i > 0 ? 'border-t border-gray-200' : ''}`}>
+                <span className="text-base text-gray-900">{row.label}</span>
+                <ChevronRight size={18} className="text-gray-400" />
+              </span>
+            </Link>
+          ))}
+        </div>
+      </section>
     </div>
   )
 }

@@ -202,7 +202,7 @@ export default function EvenementsPage() {
       </div>
 
       {/* ── DESKTOP : layout pleine hauteur avec calendrier ── */}
-      <div className="hidden md:flex flex-col h-[calc(100vh-4rem)]">
+      <div className="hidden md:flex flex-col h-[var(--app-h)]">
         {/* Header */}
         <div className="bg-surface-pane border-b border-gray-200 px-4 py-3 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">

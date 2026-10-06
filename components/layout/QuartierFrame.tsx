@@ -28,7 +28,7 @@ export function QuartierFrame({ children }: { children: React.ReactNode }) {
   const isViewer = VIEWER_PATH.test(pathname ?? '')
 
   return (
-    <div className="md:flex md:h-[calc(100dvh-4rem)]">
+    <div className="md:flex md:h-[var(--app-h)]">
       <aside className={cn('hidden md:flex md:shrink-0 md:flex-col md:bg-surface-pane md:border-r md:border-edge md:overflow-y-auto', SIDE_PANE_WIDTH)}>
         <QuartierSidebar />
       </aside>
