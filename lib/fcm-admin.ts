@@ -7,9 +7,11 @@ function getAdminApp() {
   const serviceAccountJson = process.env.FCM_SERVICE_ACCOUNT_JSON
   if (!serviceAccountJson) return
 
-  // Lazy import to avoid bundling firebase-admin in the client
-  const admin = require('firebase-admin')
-  if (admin.apps.length === 0) {
+  // Lazy import to avoid bundling firebase-admin in the client.
+  // API modulaire : l'espace de noms `admin.*` (admin.apps, admin.credential,
+  // admin.messaging()) a été supprimé en firebase-admin 14.
+  const { initializeApp, getApps, cert } = require('firebase-admin/app')
+  if (getApps().length === 0) {
     const serviceAccount = JSON.parse(
       Buffer.isBuffer(serviceAccountJson)
         ? serviceAccountJson.toString()
@@ -17,8 +19,8 @@ function getAdminApp() {
           ? serviceAccountJson
           : Buffer.from(serviceAccountJson, 'base64').toString('utf-8')
     )
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
+    initializeApp({
+      credential: cert(serviceAccount),
     })
   }
   appInitialized = true
@@ -44,8 +46,8 @@ function getAdminSupabase() {
 async function sendToTokens(tokens: string[], notification: PushNotification): Promise<void> {
   if (tokens.length === 0) return
   getAdminApp()
-  const admin = require('firebase-admin')
-  const messaging = admin.messaging()
+  const { getMessaging } = require('firebase-admin/messaging')
+  const messaging = getMessaging()
   const adminSupabase = getAdminSupabase()
 
   const invalidTokens: string[] = []

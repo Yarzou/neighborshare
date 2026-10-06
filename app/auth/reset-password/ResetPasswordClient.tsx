@@ -65,6 +65,7 @@ export default function ResetPasswordClient() {
       setDone(true)
       // Navigation complète : les Server Components relisent le cookie de session
       setTimeout(() => {
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- rechargement complet voulu, router.push garderait l'ancienne session
         window.location.href = '/accueil'
       }, 1500)
     } catch {
