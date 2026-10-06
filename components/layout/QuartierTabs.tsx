@@ -33,8 +33,9 @@ export function QuartierTabs() {
   const pathname = usePathname()
 
   return (
-    // Contrôle segmenté façon iOS : fond gris, l'onglet choisi en blanc (refonte 2026-10-06).
-    <nav className="grid grid-cols-4 gap-0.5 rounded-xl bg-gray-200 p-0.5">
+    // Contrôle segmenté en capsule, comme Segmented (iOS 26) : fond gris, l'onglet
+    // choisi en blanc. Des liens et non des boutons : chaque onglet est une page.
+    <nav className="grid grid-cols-4 gap-0.5 rounded-full bg-gray-200 p-0.5">
       {QUARTIER_SECTIONS.map(tab => {
         const active = pathname?.startsWith(tab.href)
         const Icon = tab.icon
@@ -46,9 +47,9 @@ export function QuartierTabs() {
             title={tab.label}
             className={cn(
               'flex flex-col items-center justify-center gap-1',
-              'rounded-[10px] px-1 py-2 text-center text-xs leading-tight transition-colors',
+              'rounded-full px-1 py-2 text-center text-xs leading-tight transition-colors',
               active
-                ? 'bg-white text-gray-900 font-semibold shadow-sm'
+                ? 'bg-white text-gray-900 font-semibold shadow-lift'
                 : 'text-gray-700 font-medium hover:text-gray-900'
             )}
           >

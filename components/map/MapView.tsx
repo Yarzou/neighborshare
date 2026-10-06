@@ -8,8 +8,9 @@ import type { Listing } from '@/lib/types'
 import { ListingCard } from '@/components/listings/ListingCard'
 import { FilterBar } from '@/components/map/FilterBar'
 import { LoginRequiredNotice } from '@/components/layout/LoginRequiredNotice'
-import { MapPin, Loader2, X, Map, List, Plus, LayoutGrid } from 'lucide-react'
-import { normalizeSearch, cn } from '@/lib/utils'
+import { MapPin, Loader2, X, Plus, LayoutGrid } from 'lucide-react'
+import { normalizeSearch } from '@/lib/utils'
+import Segmented from '@/components/ui/Segmented'
 import { NEIGHBORHOOD_CENTER, NEIGHBORHOOD_RADIUS_KM, distanceMeters } from '@/lib/neighborhood'
 
 // Dynamic import pour éviter SSR avec Leaflet
@@ -177,24 +178,15 @@ export function MapView() {
           )}
         </div>
 
-        {/* Toggle mobile : contrôle segmenté, l'onglet choisi en blanc sur fond gris */}
+        {/* Toggle mobile : contrôle segmenté iOS 26 (capsule, pastille qui glisse) */}
         <div className="md:hidden px-4 pt-3 pb-2 bg-gray-50 shrink-0">
-          <div className="grid grid-cols-2 gap-0.5 p-0.5 rounded-[10px] bg-gray-200" role="tablist" aria-label="Affichage">
-            {([['list', 'Liste', List], ['map', 'Carte', Map]] as const).map(([view, label, Icon]) => (
-              <button
-                key={view}
-                role="tab"
-                aria-selected={mobileView === view}
-                onClick={() => setMobileView(view)}
-                className={cn(
-                  'h-8 rounded-lg flex items-center justify-center gap-1.5 text-[13px] transition-colors',
-                  mobileView === view ? 'bg-white text-gray-900 font-semibold shadow-sm' : 'text-gray-700',
-                )}
-              >
-                <Icon size={15} /> {label}
-              </button>
-            ))}
-          </div>
+          <Segmented
+            label="Affichage"
+            value={mobileView}
+            onChange={setMobileView}
+            options={[{ value: 'list', label: 'Liste' }, { value: 'map', label: 'Carte' }]}
+            itemClassName="h-8 text-[13px]"
+          />
         </div>
 
         {/* Body: sidebar + map */}

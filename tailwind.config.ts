@@ -66,9 +66,21 @@ const config: Config = {
           // En-tête d'accordéon ouvert (profil) — pastel du vert du titre
           accent: 'var(--surface-accent)',
         },
-        // Verre blanc des éléments flottants (barre d'onglets, menu latéral) :
+        // Verre blanc des éléments flottants (menu latéral, barre du haut) :
         // toujours avec `backdrop-blur`, voir la classe `.glass` de globals.css.
         glass: 'var(--glass)',
+        // Barre d'onglets et sa bulle, repris de l'app Fridge (2026-10-06) : verre
+        // très transparent, bulle gris système translucide. Voir globals.css.
+        tabbar: {
+          DEFAULT: 'var(--tabbar)',
+          edge: 'var(--tabbar-edge)',
+        },
+        bubble: {
+          DEFAULT: 'var(--bubble)',
+          edge: 'var(--bubble-edge)',
+        },
+        // Pastille soulevée par le doigt (contrôle segmenté) : verre clair
+        lens: 'var(--lens)',
         edge: {
           DEFAULT: 'var(--border)',
           strong: 'var(--border-strong)',
@@ -90,6 +102,28 @@ const config: Config = {
       borderRadius: {
         '2xl': '1rem',
         '3xl': '1.5rem',
+      },
+      // « Goutte d'eau » de la barre d'onglets et des contrôles segmentés (repris
+      // de Fridge) : la bulle s'étire en partant, se tasse, puis se pose.
+      keyframes: {
+        bubble: {
+          '0%': { transform: 'scale(1, 1)' },
+          '30%': { transform: 'scale(1.24, 0.84)' },
+          '62%': { transform: 'scale(0.95, 1.06)' },
+          '100%': { transform: 'scale(1, 1)' },
+        },
+      },
+      animation: {
+        bubble: 'bubble 560ms cubic-bezier(0.2, 0.8, 0.2, 1)',
+      },
+      boxShadow: {
+        // Barre d'onglets : ombre portée + reflet sur l'arête haute
+        tabbar: 'var(--shadow-float), inset 0 1px 0 var(--tabbar-highlight)',
+        bubble: 'inset 0 0 0 0.5px var(--bubble-edge), 0 2px 10px rgba(0, 0, 0, 0.1)',
+        // Pastille soulevée par le doigt : plus d'ombre, pour se détacher d'une piste grise
+        lifted: 'inset 0 0 0 0.5px var(--bubble-edge), 0 3px 12px rgba(0, 0, 0, 0.2)',
+        lift: 'var(--shadow-lift)',
+        float: 'var(--shadow-float)',
       },
     },
   },

@@ -45,6 +45,16 @@
   --glass: rgba(255, 255, 255, 0.88);
   --glass-edge: rgba(0, 0, 0, 0.06);
   --glass-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  /* Barre d'onglets et bulle, repris de l'app Fridge : verre très transparent,
+   * bulle de l'onglet choisi en gris système translucide, liseré lumineux. */
+  --tabbar: rgba(255, 255, 255, 0.42);
+  --tabbar-edge: rgba(255, 255, 255, 0.65);
+  --tabbar-highlight: rgba(255, 255, 255, 0.8);   /* reflet sur l'arête haute */
+  --bubble: rgba(120, 120, 128, 0.16);
+  --bubble-edge: rgba(255, 255, 255, 0.75);
+  --lens: rgba(255, 255, 255, 0.6);                /* pastille soulevée par le doigt */
+  --shadow-lift: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-float: 0 8px 24px rgba(0, 0, 0, 0.12);
 
   /* ─── Gabarit de navigation ───────────────────────────────────────────────
    * Mobile : barre du haut (3,5 rem) + barre d'onglets flottante en bas.
@@ -79,63 +89,6 @@
   box-shadow: var(--glass-shadow);
 }
 
-/* ─── Goutte d'eau : élément actif de la navigation (maquette validée 2026-10-06) ──
- * Reflet en haut à gauche, ombre intérieure en bas, sur un vert très pâle. */
-.droplet {
-  background:
-    radial-gradient(130% 110% at 30% 12%, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0) 58%),
-    #dbe8e1;
-  border: 1px solid rgba(255,255,255,0.9);
-  box-shadow:
-    inset 0 1px 1.5px rgba(255,255,255,0.95),
-    inset 0 -3px 7px rgba(16,52,32,0.12),
-    0 3px 10px rgba(16,52,32,0.14);
-}
-html.dark .droplet {
-  background:
-    radial-gradient(130% 110% at 30% 12%, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 58%),
-    rgba(31,111,71,0.55);
-  border-color: rgba(255,255,255,0.12);
-  box-shadow:
-    inset 0 1px 1px rgba(255,255,255,0.18),
-    inset 0 -3px 7px rgba(0,0,0,0.25),
-    0 3px 10px rgba(0,0,0,0.4);
-}
-
-/* Goutte de la barre d'onglets mobile : Navbar la place sur l'icône + libellé de
- * l'onglet actif (mesurés, pas estimés). Au changement d'onglet, elle glisse avec
- * un léger dépassement, s'étire pendant le trajet (--moving) puis se repose. */
-.tab-droplet {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 0;
-  height: 0;
-  border-radius: 9999px;
-  pointer-events: none;
-  opacity: 0;
-  transition:
-    left 0.55s cubic-bezier(0.34, 1.45, 0.5, 1),
-    top 0.55s cubic-bezier(0.34, 1.45, 0.5, 1),
-    width 0.55s cubic-bezier(0.34, 1.45, 0.5, 1),
-    height 0.55s cubic-bezier(0.34, 1.45, 0.5, 1),
-    transform 0.3s ease-out,
-    opacity 0.2s ease;
-}
-.tab-droplet--instant { transition: opacity 0.2s ease; }
-.tab-droplet--moving { transform: scale(1.18, 0.84); }
-@media (prefers-reduced-motion: reduce) {
-  .tab-droplet { transition: opacity 0.2s ease; }
-  .tab-droplet--moving { transform: none; }
-}
-
-/* Reflet de goutte sur un bouton plein (le « + » Publier) : se pose par-dessus la
- * couleur de fond Tailwind (`bg-brand-600`). */
-.btn-drop {
-  background-image: radial-gradient(120% 100% at 30% 15%, rgba(255,255,255,0.38) 0%, rgba(255,255,255,0) 55%);
-  box-shadow: inset 0 1px 1px rgba(255,255,255,0.45), 0 8px 24px rgba(16,52,32,0.28);
-}
-
 html.dark {
   --surface: #1e293b;
   --surface-raised: #0f172a;
@@ -152,6 +105,14 @@ html.dark {
   --glass: rgba(30, 41, 59, 0.88);
   --glass-edge: rgba(255, 255, 255, 0.08);
   --glass-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --tabbar: rgba(30, 41, 59, 0.42);
+  --tabbar-edge: rgba(255, 255, 255, 0.12);
+  --tabbar-highlight: rgba(255, 255, 255, 0.14);
+  --bubble: rgba(255, 255, 255, 0.16);
+  --bubble-edge: rgba(255, 255, 255, 0.24);
+  --lens: rgba(255, 255, 255, 0.2);
+  --shadow-lift: none;
+  --shadow-float: 0 8px 24px rgba(0, 0, 0, 0.5);
 }
 
 body {

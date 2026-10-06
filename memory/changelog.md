@@ -1,5 +1,26 @@
 # Historique des modifications (par session)
 
+## 2026-10-06 (fin) — La vraie « goutte d'eau » de Fridge (branche `refonte-verre`)
+
+Retour : « l'effet goutte d'eau est vraiment moche », « sur le web c'est super moche et ça donne un
+aspect vieux », « je parlais de l'effet goutte d'eau de l'app Fridge (d:/GIT/fridge) », « garder un
+aspect Apple-like ». Ma version (dégradé radial vert, ombres intérieures, reflet sur le « + ») est
+retirée et remplacée par le portage du code de Fridge.
+
+- **`tailwind.config.ts`** : couleurs `tabbar`, `bubble`, `lens` ; ombres `tabbar`, `bubble`,
+  `lifted`, `lift`, `float` ; keyframes et animation `bubble` (copiées de Fridge).
+- **`app/globals.css`** : variables `--tabbar*`, `--bubble*`, `--lens`, `--shadow-lift`,
+  `--shadow-float` en clair et en sombre ; classes `.droplet`, `.tab-droplet*`, `.btn-drop` supprimées.
+- **`components/layout/Navbar.tsx`** : `TabBar` réécrit d'après `fridge/components/layout/TabBar.tsx`
+  (bulle gris translucide mesurée par ResizeObserver, onglet visé marqué au toucher sans attendre
+  la page, glissé du doigt, `animate-bubble`), adapté à cinq onglets (`TAB_PAD_X` 10 px au lieu
+  de 14). Menu latéral : entrée active en `bg-bubble shadow-bubble`. Publier : aplat sans reflet.
+- **Nouveau `components/ui/Segmented.tsx`** (repris de Fridge) : capsule, pastille qui glisse, se
+  soulève et suit le doigt. Utilisé pour la bascule Liste/Carte (`MapView`) et Je propose / Je
+  cherche (`ListingForm`). **`QuartierTabs`** passe en capsule (liens, sans pastille animée).
+- Vérifié : typecheck OK, lint 0 erreur / 20 avertissements, build OK, barre d'onglets présente sur
+  `next start`. **Rendu et animation non vus à l'écran.**
+
 ## 2026-10-06 (suite) — Couleur par type, Accueil allégé, goutte d'eau (branche `refonte-verre`)
 
 Retour sur la maquette : « trop juste teinte de vert » pour les types, Accueil à simplifier, effet

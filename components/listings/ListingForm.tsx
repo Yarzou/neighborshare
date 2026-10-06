@@ -19,6 +19,7 @@ import {
 } from '@/lib/types'
 import { VENTE_EXCLUDED_SLUGS } from '@/lib/categories'
 import AddressAutocomplete, { type ResolvedAddress } from '@/components/forms/AddressAutocomplete'
+import Segmented from '@/components/ui/Segmented'
 
 const CarpoolMiniMap = dynamic(() => import('@/components/map/CarpoolMiniMap'), { ssr: false })
 
@@ -398,17 +399,14 @@ export function ListingForm({ mode, listingId, initial, defaultAddress, profileH
         {/* Intent : offre / demande */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Je souhaite…</label>
-          {/* Contrôle segmenté iOS : l'option choisie en blanc sur fond gris */}
-          <div className="grid grid-cols-2 gap-0.5 p-0.5 rounded-[10px] bg-gray-200">
-            <button type="button" onClick={() => setListingIntent('offre')} aria-pressed={listingIntent === 'offre'}
-              className={`py-2 rounded-lg text-sm transition-colors flex items-center justify-center ${listingIntent === 'offre' ? 'bg-white text-gray-900 font-semibold shadow-sm' : 'text-gray-700 font-medium'}`}>
-              Je propose
-            </button>
-            <button type="button" onClick={() => setListingIntent('demande')} aria-pressed={listingIntent === 'demande'}
-              className={`py-2 rounded-lg text-sm transition-colors flex items-center justify-center ${listingIntent === 'demande' ? 'bg-white text-gray-900 font-semibold shadow-sm' : 'text-gray-700 font-medium'}`}>
-              Je cherche
-            </button>
-          </div>
+          {/* Contrôle segmenté iOS 26 (capsule, pastille qui glisse), repris de Fridge */}
+          <Segmented
+            label="Je souhaite"
+            value={listingIntent}
+            onChange={setListingIntent}
+            options={[{ value: 'offre', label: 'Je propose' }, { value: 'demande', label: 'Je cherche' }]}
+            itemClassName="h-9 text-sm"
+          />
         </div>
 
         {/* Type */}

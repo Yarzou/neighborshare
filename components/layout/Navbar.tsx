@@ -4,7 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { MapPin, MessageCircle, LogOut, ClipboardList, CalendarDays, House, Plus, TreePine } from 'lucide-react'
-import { useState, useEffect, useLayoutEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { cn, getAvatarStyle, getInitials } from '@/lib/utils'
 import { useUnreadCount, usePendingRequests } from '@/lib/hooks'
@@ -45,32 +45,32 @@ interface NavItem {
   count?: number
 }
 
-/** Pose la goutte sur `target` (coordonnées relatives à la boîte de `nav`). */
-function placeDroplet(nav: HTMLElement, drop: HTMLElement, target: HTMLElement | null | undefined, animate: boolean) {
-  if (!target) {
-    drop.style.opacity = '0'
-    return
-  }
-  const n = nav.getBoundingClientRect()
-  const t = target.getBoundingClientRect()
-  drop.classList.toggle('tab-droplet--instant', !animate)
-  // Une boîte en `absolute` se place par rapport à la zone intérieure de `nav`,
-  // donc sans son liseré (clientLeft / clientTop).
-  drop.style.left = `${t.left - n.left - nav.clientLeft}px`
-  drop.style.top = `${t.top - n.top - nav.clientTop}px`
-  drop.style.width = `${t.width}px`
-  drop.style.height = `${t.height}px`
-  drop.style.opacity = '1'
+/** Marge intérieure de la barre (p-1), en px : la bulle ne la franchit pas. */
+const TAB_INSET = 4
+/**
+ * Marge de la bulle autour de l'icône et du libellé, de chaque côté. 14 px dans
+ * Fridge, qui n'a que trois onglets ; avec cinq, au-delà de 10 px la bulle de
+ * « Messages » mordrait sur les libellés voisins.
+ */
+const TAB_PAD_X = 10
+
+interface Slot {
+  /** Bord gauche du contenu (icône + libellé), depuis le bord de la barre */
+  left: number
+  width: number
 }
 
 /**
- * Barre d'onglets mobile avec sa « goutte d'eau » (maquette validée le 2026-10-06).
+ * Barre d'onglets mobile, reprise de l'app Fridge (2026-10-06) : verre très
+ * transparent façon « Liquid Glass », et à sa droite le bouton rond « Publier ».
  *
- * La goutte épouse l'icône + le libellé de l'onglet actif : elle est mesurée sur
- * le vrai rendu, pas estimée. La barre vit dans le layout racine et survit donc
- * aux navigations : quand l'onglet actif change, la goutte glisse vers le nouveau,
- * s'étire pendant le trajet puis se repose (classes de globals.css). Tout passe
- * par le DOM, sans état React : rien à re-rendre pendant l'animation.
+ * L'onglet choisi est marqué par une bulle gris système translucide, taillée sur
+ * mesure autour de son icône et de son libellé (mesurés par un ResizeObserver).
+ * - Au toucher, elle part tout de suite vers l'onglet, sans attendre la page, en
+ *   changeant de largeur et en s'étirant comme une goutte d'eau.
+ * - Si l'on fait glisser le doigt sur la barre, elle le suit en grossissant ; au
+ *   lâcher, elle se pose sur l'onglet le plus proche, qui s'ouvre.
+ * Avec « Réduire les animations », elle se déplace sans effet.
  */
 function TabBar({ items, activeIndex, publishHref, badge }: {
   items: NavItem[]
@@ -78,79 +78,171 @@ function TabBar({ items, activeIndex, publishHref, badge }: {
   publishHref: string
   badge: (n: number | undefined, className?: string) => React.ReactNode
 }) {
-  const navRef = useRef<HTMLElement>(null)
-  const dropRef = useRef<HTMLSpanElement>(null)
+  const pathname = usePathname() ?? ''
+  const router = useRouter()
+  const barRef = useRef<HTMLDivElement>(null)
   const contentRefs = useRef<(HTMLSpanElement | null)[]>([])
-  const prevIndex = useRef<number | null>(null)
-  const activeRef = useRef(activeIndex)
+  const gesture = useRef<{ startX: number; dragging: boolean } | null>(null)
+  const swallowClick = useRef(false)
+  // Onglet visé au toucher, valable tant que l'URL n'a pas changé
+  const [pending, setPending] = useState<{ index: number; from: string } | null>(null)
+  const [drag, setDrag] = useState<number | null>(null)
+  // La goutte ne se déforme qu'après un premier geste, pas à l'ouverture de l'appli
+  const [touched, setTouched] = useState(false)
+  const [bar, setBar] = useState<{ width: number; slots: Slot[] } | null>(null)
 
-  // Avant le paint : la goutte ne doit jamais apparaître au mauvais endroit.
-  useLayoutEffect(() => {
-    const nav = navRef.current
-    const drop = dropRef.current
-    if (!nav || !drop) return
-    activeRef.current = activeIndex
-    const previous = prevIndex.current
-    // Premier rendu : posée sans animation. Ensuite, elle glisse.
-    placeDroplet(nav, drop, contentRefs.current[activeIndex], previous !== null)
-    prevIndex.current = activeIndex
-
-    if (previous === null || previous < 0 || activeIndex < 0 || previous === activeIndex) return
-    drop.classList.add('tab-droplet--moving')
-    const settle = setTimeout(() => drop.classList.remove('tab-droplet--moving'), 240)
-    return () => clearTimeout(settle)
-  }, [activeIndex])
-
-  // Re-mesure sans animation si la barre change de largeur (rotation de l'écran)
-  // ou quand la police Geist arrive et élargit les libellés.
   useEffect(() => {
-    const nav = navRef.current
-    const drop = dropRef.current
-    if (!nav || !drop) return
-    const replace = () => placeDroplet(nav, drop, contentRefs.current[activeRef.current], false)
-    let lastWidth = nav.offsetWidth
+    const el = barRef.current
+    if (!el) return
     const observer = new ResizeObserver(() => {
-      if (nav.offsetWidth === lastWidth) return
-      lastWidth = nav.offsetWidth
-      replace()
+      const box = el.getBoundingClientRect()
+      setBar({
+        width: box.width,
+        slots: contentRefs.current.map(content => {
+          const r = content?.getBoundingClientRect()
+          return r ? { left: r.left - box.left, width: r.width } : { left: 0, width: 0 }
+        }),
+      })
     })
-    observer.observe(nav)
-    document.fonts?.ready.then(replace)
+    observer.observe(el)
+    // Les libellés s'élargissent à l'arrivée de la police : la bulle suit.
+    contentRefs.current.forEach(content => content && observer.observe(content))
     return () => observer.disconnect()
   }, [])
+
+  const count = items.length
+  const index = pending && pending.from === pathname ? pending.index : activeIndex
+
+  /** Onglet sous un point de la barre (abscisse depuis son bord gauche, largeur de la barre). */
+  const tabAt = (x: number, width: number) =>
+    Math.min(count - 1, Math.max(0, Math.floor(((x - TAB_INSET) / (width - TAB_INSET * 2)) * count)))
+  const localX = (clientX: number) => clientX - barRef.current!.getBoundingClientRect().left
+
+  /** La bulle part tout de suite vers l'onglet, sans attendre la page. */
+  const mark = (next: number) => {
+    setTouched(true)
+    setPending({ index: next, from: pathname })
+  }
+
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return
+    gesture.current = { startX: e.clientX, dragging: false }
+    swallowClick.current = false
+  }
+
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const g = gesture.current
+    if (!g) return
+    if (!g.dragging) {
+      if (Math.abs(e.clientX - g.startX) < 8) return
+      g.dragging = true
+      setTouched(true)
+      e.currentTarget.setPointerCapture(e.pointerId)
+    }
+    setDrag(localX(e.clientX))
+  }
+
+  const onPointerEnd = (e: React.PointerEvent<HTMLDivElement>) => {
+    const g = gesture.current
+    gesture.current = null
+    if (!g?.dragging) return
+    swallowClick.current = true
+    setDrag(null)
+    const next = tabAt(localX(e.clientX), barRef.current!.getBoundingClientRect().width)
+    mark(next)
+    if (next !== activeIndex) router.push(items[next].href)
+  }
+
+  // Bulle : autour du contenu de l'onglet choisi, ou centrée sous le doigt
+  // pendant un glissé (avec la largeur de l'onglet survolé), sans sortir de la barre.
+  let bubble: { left: number; width: number } | null = null
+  if (bar && index >= 0) {
+    const slot = bar.slots[drag !== null ? tabAt(drag, bar.width) : index]
+    const width = Math.min(slot.width + TAB_PAD_X * 2, bar.width - TAB_INSET * 2)
+    const center = drag !== null ? drag : slot.left + slot.width / 2
+    const left = Math.min(Math.max(center - width / 2, TAB_INSET), bar.width - TAB_INSET - width)
+    bubble = { left, width }
+  }
 
   return (
     <div
       id="app-tabbar"
       className="md:hidden fixed z-[1200] left-4 right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] flex items-center gap-2.5"
     >
-      <nav ref={navRef} aria-label="Navigation principale" className="relative flex-1 h-[62px] p-1 rounded-full glass flex items-center">
-        <span ref={dropRef} aria-hidden="true" className="tab-droplet droplet tab-droplet--instant" />
-        {items.map((item, i) => {
-          const active = i === activeIndex
-          const Icon = item.icon
-          return (
-            <Link key={item.label} href={item.href} aria-current={active ? 'page' : undefined}
-              className="relative z-[1] flex-1 h-[54px] flex items-center justify-center">
+      <nav aria-label="Navigation principale" className="flex-1">
+        <div
+          ref={barRef}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerEnd}
+          onPointerCancel={onPointerEnd}
+          onClickCapture={e => {
+            // Fin d'un glissé : la navigation est déjà partie, pas de second clic.
+            // Le clic du clavier (detail 0) n'est jamais celui d'un glissé.
+            if (swallowClick.current && e.detail !== 0) {
+              e.preventDefault()
+              e.stopPropagation()
+              swallowClick.current = false
+            }
+          }}
+          className="relative grid grid-cols-5 h-[62px] p-1 touch-none select-none rounded-full border border-tabbar-edge bg-tabbar shadow-tabbar backdrop-blur-2xl backdrop-saturate-[1.8]"
+        >
+          {bubble && (
+            <span
+              aria-hidden="true"
+              className={cn(
+                'pointer-events-none absolute inset-y-1 left-0',
+                drag === null &&
+                  'transition-[transform,width] duration-500 ease-[cubic-bezier(0.34,1.4,0.5,1)] motion-reduce:transition-none',
+              )}
+              style={{ transform: `translateX(${bubble.left}px)`, width: bubble.width }}
+            >
               <span
-                ref={el => { contentRefs.current[i] = el }}
+                key={touched ? index : 'repos'}
                 className={cn(
-                  'flex flex-col items-center gap-0.5 px-[9px] pt-1 pb-[5px] text-[10.5px] font-semibold transition-colors duration-300',
+                  'block h-full w-full rounded-full bg-bubble shadow-bubble transition-transform duration-200',
+                  touched && drag === null && 'motion-safe:animate-bubble',
+                  drag !== null && 'scale-[1.12]',
+                )}
+              />
+            </span>
+          )}
+
+          {items.map((item, i) => {
+            const active = i === index
+            const Icon = item.icon
+            return (
+              <Link
+                key={item.label}
+                href={item.href}
+                draggable={false}
+                onClick={() => mark(i)}
+                aria-current={i === activeIndex ? 'page' : undefined}
+                className={cn(
+                  'relative z-10 flex items-center justify-center rounded-full transition-colors duration-300',
                   active ? 'text-brand-700' : 'text-gray-500',
                 )}
               >
-                <span className="relative flex">
-                  <Icon size={23} strokeWidth={1.9} />
-                  {badge(item.count, 'absolute -top-1.5 -right-3')}
+                <span
+                  ref={el => {
+                    contentRefs.current[i] = el
+                  }}
+                  className="relative flex flex-col items-center gap-0.5 text-[10.5px] leading-[13px] font-semibold"
+                >
+                  <span className="relative flex">
+                    <Icon size={23} strokeWidth={1.9} aria-hidden="true" />
+                    {/* Pastille sur le coin de l'icône : hors mesure de la bulle */}
+                    {badge(item.count, 'absolute -top-1.5 -right-3')}
+                  </span>
+                  {item.label}
                 </span>
-                {item.label}
-              </span>
-            </Link>
-          )
-        })}
+              </Link>
+            )
+          })}
+        </div>
       </nav>
       <Link href={publishHref} aria-label="Publier une annonce"
-        className="w-[62px] h-[62px] shrink-0 rounded-full bg-brand-600 btn-drop text-white flex items-center justify-center">
+        className="w-[62px] h-[62px] shrink-0 rounded-full bg-brand-600 text-white flex items-center justify-center shadow-float">
         <Plus size={27} strokeWidth={2.4} />
       </Link>
     </div>
@@ -321,7 +413,9 @@ export function Navbar() {
               <Link key={item.label} href={item.href} title={item.label} aria-current={active ? 'page' : undefined}
                 className={cn(
                   'relative h-11 rounded-xl flex items-center gap-3 justify-center lg:justify-start lg:px-3 text-[15px] transition-colors',
-                  active ? 'droplet text-brand-700 font-semibold' : 'border border-transparent text-gray-900 hover:bg-gray-100',
+                  // Sélection sobre, comme une barre latérale macOS : la même bulle
+                  // gris translucide que la barre d'onglets mobile.
+                  active ? 'bg-bubble shadow-bubble text-brand-700 font-semibold' : 'text-gray-900 hover:bg-gray-100',
                 )}>
                 <Icon size={20} className={cn('shrink-0', !active && 'text-gray-500')} />
                 <span className="sr-only lg:not-sr-only">{item.label}</span>
@@ -332,7 +426,7 @@ export function Navbar() {
         </nav>
 
         <Link href={publishHref} title="Publier une annonce"
-          className="h-11 rounded-full bg-brand-600 hover:bg-brand-700 btn-drop text-white font-semibold text-[15px] flex items-center justify-center gap-2 transition-colors">
+          className="h-11 rounded-full bg-brand-600 hover:bg-brand-700 text-white font-semibold text-[15px] flex items-center justify-center gap-2 shadow-lift transition-colors">
           <Plus size={20} strokeWidth={2.4} />
           <span className="sr-only lg:not-sr-only">Publier</span>
         </Link>
