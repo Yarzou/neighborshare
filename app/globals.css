@@ -79,6 +79,63 @@
   box-shadow: var(--glass-shadow);
 }
 
+/* ─── Goutte d'eau : élément actif de la navigation (maquette validée 2026-10-06) ──
+ * Reflet en haut à gauche, ombre intérieure en bas, sur un vert très pâle. */
+.droplet {
+  background:
+    radial-gradient(130% 110% at 30% 12%, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0) 58%),
+    #dbe8e1;
+  border: 1px solid rgba(255,255,255,0.9);
+  box-shadow:
+    inset 0 1px 1.5px rgba(255,255,255,0.95),
+    inset 0 -3px 7px rgba(16,52,32,0.12),
+    0 3px 10px rgba(16,52,32,0.14);
+}
+html.dark .droplet {
+  background:
+    radial-gradient(130% 110% at 30% 12%, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 58%),
+    rgba(31,111,71,0.55);
+  border-color: rgba(255,255,255,0.12);
+  box-shadow:
+    inset 0 1px 1px rgba(255,255,255,0.18),
+    inset 0 -3px 7px rgba(0,0,0,0.25),
+    0 3px 10px rgba(0,0,0,0.4);
+}
+
+/* Goutte de la barre d'onglets mobile : Navbar la place sur l'icône + libellé de
+ * l'onglet actif (mesurés, pas estimés). Au changement d'onglet, elle glisse avec
+ * un léger dépassement, s'étire pendant le trajet (--moving) puis se repose. */
+.tab-droplet {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  border-radius: 9999px;
+  pointer-events: none;
+  opacity: 0;
+  transition:
+    left 0.55s cubic-bezier(0.34, 1.45, 0.5, 1),
+    top 0.55s cubic-bezier(0.34, 1.45, 0.5, 1),
+    width 0.55s cubic-bezier(0.34, 1.45, 0.5, 1),
+    height 0.55s cubic-bezier(0.34, 1.45, 0.5, 1),
+    transform 0.3s ease-out,
+    opacity 0.2s ease;
+}
+.tab-droplet--instant { transition: opacity 0.2s ease; }
+.tab-droplet--moving { transform: scale(1.18, 0.84); }
+@media (prefers-reduced-motion: reduce) {
+  .tab-droplet { transition: opacity 0.2s ease; }
+  .tab-droplet--moving { transform: none; }
+}
+
+/* Reflet de goutte sur un bouton plein (le « + » Publier) : se pose par-dessus la
+ * couleur de fond Tailwind (`bg-brand-600`). */
+.btn-drop {
+  background-image: radial-gradient(120% 100% at 30% 15%, rgba(255,255,255,0.38) 0%, rgba(255,255,255,0) 55%);
+  box-shadow: inset 0 1px 1px rgba(255,255,255,0.45), 0 8px 24px rgba(16,52,32,0.28);
+}
+
 html.dark {
   --surface: #1e293b;
   --surface-raised: #0f172a;
@@ -121,20 +178,23 @@ body {
 ::-webkit-scrollbar-thumb { background: #c9cecb; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #a3a8a5; }
 
-/* Leaflet custom marker — carré arrondi blanc (refonte 2026-10-06) */
+/* Leaflet custom marker — carré arrondi rempli de la couleur du type (posée en
+   ligne par LeafletMap), lettre du type en blanc (refonte 2026-10-06). */
 .custom-marker {
-  background: white;
-  border: 2px solid #1f6f47;
-  border-radius: 12px;
-  width: 36px !important;
-  height: 36px !important;
+  border: 2px solid #fff;
+  border-radius: 11px;
+  width: 34px !important;
+  height: 34px !important;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.16);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.22);
   cursor: pointer;
-  transition: transform 0.15s ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .custom-marker:hover {
@@ -142,36 +202,21 @@ body {
   z-index: 1000 !important;
 }
 
-/* Une demande se distingue par sa bordure en tirets, pas par une autre teinte. */
+/* Une demande se distingue par son contour en tirets. */
 .custom-marker--demande {
   border-style: dashed;
-  background: #f2f5f3;
+}
+
+/* Annonce sélectionnée : agrandie et cerclée de vert Cèdre. */
+.custom-marker.custom-marker--selected {
+  transform: scale(1.25);
+  box-shadow: 0 0 0 2px #1f6f47, 0 6px 18px rgba(0,0,0,0.3);
 }
 
 /* Tuiles OSM désaturées en thème clair : la carte devient un fond calme, sur
    lequel les marqueurs blancs et verts ressortent (maquette « Verre et Cèdre »). */
 html:not(.dark) .main-map .leaflet-tile-pane {
   filter: saturate(0.4) brightness(1.04);
-}
-
-/* Lettre du type d'annonce (P, D, E, S, V), en plus de la couleur de bordure */
-.custom-marker { position: relative; }
-.custom-marker__type {
-  position: absolute;
-  right: -5px;
-  bottom: -5px;
-  width: 17px;
-  height: 17px;
-  border-radius: 50%;
-  border: 2px solid #fff;
-  color: #fff;
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
 
 /* Cluster bubble */
@@ -433,12 +478,10 @@ html.dark .map-login-veil {
 }
 
 /* ─── Marqueurs personnalisés (carte) ────────────────────────────────────── */
-html.dark .custom-marker {
-  background: #1e293b !important;
+/* Le fond porte la couleur du type : on ne le surcharge pas, seule l'ombre change. */
+html.dark .custom-marker:not(.custom-marker--selected) {
   box-shadow: 0 2px 8px rgba(0,0,0,0.5) !important;
 }
-html.dark .custom-marker--demande { background: #2d1a0a !important; }
-html.dark .custom-marker__type { border-color: #1e293b !important; }
 
 /* ─── Images : atténuation fond blanc ───────────────────────────────────── */
 html.dark img { filter: brightness(0.85) saturate(0.9); }

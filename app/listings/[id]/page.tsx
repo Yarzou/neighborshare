@@ -153,7 +153,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
           </div>
         ) : (
           <div className="w-full h-40 bg-gray-100 flex items-center justify-center">
-            <CategoryTile id={typedListing.category_id} size="lg" />
+            <CategoryTile id={typedListing.category_id} type={listingType} size="lg" />
           </div>
         )}
 

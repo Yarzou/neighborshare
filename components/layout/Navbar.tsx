@@ -4,7 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { MapPin, MessageCircle, LogOut, ClipboardList, CalendarDays, House, Plus, TreePine } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { cn, getAvatarStyle, getInitials } from '@/lib/utils'
 import { useUnreadCount, usePendingRequests } from '@/lib/hooks'
@@ -43,6 +43,118 @@ interface NavItem {
   /** Préfixes qui rendent l'entrée active (défaut : `href`) */
   matches?: string[]
   count?: number
+}
+
+/** Pose la goutte sur `target` (coordonnées relatives à la boîte de `nav`). */
+function placeDroplet(nav: HTMLElement, drop: HTMLElement, target: HTMLElement | null | undefined, animate: boolean) {
+  if (!target) {
+    drop.style.opacity = '0'
+    return
+  }
+  const n = nav.getBoundingClientRect()
+  const t = target.getBoundingClientRect()
+  drop.classList.toggle('tab-droplet--instant', !animate)
+  // Une boîte en `absolute` se place par rapport à la zone intérieure de `nav`,
+  // donc sans son liseré (clientLeft / clientTop).
+  drop.style.left = `${t.left - n.left - nav.clientLeft}px`
+  drop.style.top = `${t.top - n.top - nav.clientTop}px`
+  drop.style.width = `${t.width}px`
+  drop.style.height = `${t.height}px`
+  drop.style.opacity = '1'
+}
+
+/**
+ * Barre d'onglets mobile avec sa « goutte d'eau » (maquette validée le 2026-10-06).
+ *
+ * La goutte épouse l'icône + le libellé de l'onglet actif : elle est mesurée sur
+ * le vrai rendu, pas estimée. La barre vit dans le layout racine et survit donc
+ * aux navigations : quand l'onglet actif change, la goutte glisse vers le nouveau,
+ * s'étire pendant le trajet puis se repose (classes de globals.css). Tout passe
+ * par le DOM, sans état React : rien à re-rendre pendant l'animation.
+ */
+function TabBar({ items, activeIndex, publishHref, badge }: {
+  items: NavItem[]
+  activeIndex: number
+  publishHref: string
+  badge: (n: number | undefined, className?: string) => React.ReactNode
+}) {
+  const navRef = useRef<HTMLElement>(null)
+  const dropRef = useRef<HTMLSpanElement>(null)
+  const contentRefs = useRef<(HTMLSpanElement | null)[]>([])
+  const prevIndex = useRef<number | null>(null)
+  const activeRef = useRef(activeIndex)
+
+  // Avant le paint : la goutte ne doit jamais apparaître au mauvais endroit.
+  useLayoutEffect(() => {
+    const nav = navRef.current
+    const drop = dropRef.current
+    if (!nav || !drop) return
+    activeRef.current = activeIndex
+    const previous = prevIndex.current
+    // Premier rendu : posée sans animation. Ensuite, elle glisse.
+    placeDroplet(nav, drop, contentRefs.current[activeIndex], previous !== null)
+    prevIndex.current = activeIndex
+
+    if (previous === null || previous < 0 || activeIndex < 0 || previous === activeIndex) return
+    drop.classList.add('tab-droplet--moving')
+    const settle = setTimeout(() => drop.classList.remove('tab-droplet--moving'), 240)
+    return () => clearTimeout(settle)
+  }, [activeIndex])
+
+  // Re-mesure sans animation si la barre change de largeur (rotation de l'écran)
+  // ou quand la police Geist arrive et élargit les libellés.
+  useEffect(() => {
+    const nav = navRef.current
+    const drop = dropRef.current
+    if (!nav || !drop) return
+    const replace = () => placeDroplet(nav, drop, contentRefs.current[activeRef.current], false)
+    let lastWidth = nav.offsetWidth
+    const observer = new ResizeObserver(() => {
+      if (nav.offsetWidth === lastWidth) return
+      lastWidth = nav.offsetWidth
+      replace()
+    })
+    observer.observe(nav)
+    document.fonts?.ready.then(replace)
+    return () => observer.disconnect()
+  }, [])
+
+  return (
+    <div
+      id="app-tabbar"
+      className="md:hidden fixed z-[1200] left-4 right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] flex items-center gap-2.5"
+    >
+      <nav ref={navRef} aria-label="Navigation principale" className="relative flex-1 h-[62px] p-1 rounded-full glass flex items-center">
+        <span ref={dropRef} aria-hidden="true" className="tab-droplet droplet tab-droplet--instant" />
+        {items.map((item, i) => {
+          const active = i === activeIndex
+          const Icon = item.icon
+          return (
+            <Link key={item.label} href={item.href} aria-current={active ? 'page' : undefined}
+              className="relative z-[1] flex-1 h-[54px] flex items-center justify-center">
+              <span
+                ref={el => { contentRefs.current[i] = el }}
+                className={cn(
+                  'flex flex-col items-center gap-0.5 px-[9px] pt-1 pb-[5px] text-[10.5px] font-semibold transition-colors duration-300',
+                  active ? 'text-brand-700' : 'text-gray-500',
+                )}
+              >
+                <span className="relative flex">
+                  <Icon size={23} strokeWidth={1.9} />
+                  {badge(item.count, 'absolute -top-1.5 -right-3')}
+                </span>
+                {item.label}
+              </span>
+            </Link>
+          )
+        })}
+      </nav>
+      <Link href={publishHref} aria-label="Publier une annonce"
+        className="w-[62px] h-[62px] shrink-0 rounded-full bg-brand-600 btn-drop text-white flex items-center justify-center">
+        <Plus size={27} strokeWidth={2.4} />
+      </Link>
+    </div>
+  )
 }
 
 /**
@@ -209,7 +321,7 @@ export function Navbar() {
               <Link key={item.label} href={item.href} title={item.label} aria-current={active ? 'page' : undefined}
                 className={cn(
                   'relative h-11 rounded-xl flex items-center gap-3 justify-center lg:justify-start lg:px-3 text-[15px] transition-colors',
-                  active ? 'bg-brand-100 text-brand-700 font-semibold' : 'text-gray-900 hover:bg-gray-100',
+                  active ? 'droplet text-brand-700 font-semibold' : 'border border-transparent text-gray-900 hover:bg-gray-100',
                 )}>
                 <Icon size={20} className={cn('shrink-0', !active && 'text-gray-500')} />
                 <span className="sr-only lg:not-sr-only">{item.label}</span>
@@ -220,7 +332,7 @@ export function Navbar() {
         </nav>
 
         <Link href={publishHref} title="Publier une annonce"
-          className="h-11 rounded-full bg-brand-600 hover:bg-brand-700 text-white font-semibold text-[15px] flex items-center justify-center gap-2 shadow-sm transition-colors">
+          className="h-11 rounded-full bg-brand-600 hover:bg-brand-700 btn-drop text-white font-semibold text-[15px] flex items-center justify-center gap-2 transition-colors">
           <Plus size={20} strokeWidth={2.4} />
           <span className="sr-only lg:not-sr-only">Publier</span>
         </Link>
@@ -259,36 +371,9 @@ export function Navbar() {
         </div>
       </aside>
 
-      {/* ─── Mobile : barre d'onglets flottante ─────────────────────────── */}
+      {/* ─── Mobile : barre d'onglets flottante, avec sa goutte ──────────── */}
       {showTabbar && (
-        <div
-          id="app-tabbar"
-          className="md:hidden fixed z-[1200] left-4 right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] flex items-center gap-2.5"
-        >
-          <nav aria-label="Navigation principale" className="flex-1 h-[62px] p-1 rounded-full glass flex items-center gap-0.5">
-            {items.map(item => {
-              const active = isActive(item)
-              const Icon = item.icon
-              return (
-                <Link key={item.label} href={item.href} aria-current={active ? 'page' : undefined}
-                  className={cn(
-                    'flex-1 h-[54px] rounded-full flex flex-col items-center justify-center gap-0.5 text-[10.5px] font-semibold transition-colors',
-                    active ? 'bg-brand-100 text-brand-700' : 'text-gray-500',
-                  )}>
-                  <span className="relative flex">
-                    <Icon size={23} strokeWidth={1.9} />
-                    {badge(item.count, 'absolute -top-1.5 -right-3')}
-                  </span>
-                  {item.label}
-                </Link>
-              )
-            })}
-          </nav>
-          <Link href={publishHref} aria-label="Publier une annonce"
-            className="w-[62px] h-[62px] shrink-0 rounded-full bg-brand-600 text-white flex items-center justify-center shadow-[0_8px_24px_rgba(16,52,32,0.28)]">
-            <Plus size={27} strokeWidth={2.4} />
-          </Link>
-        </div>
+        <TabBar items={items} activeIndex={items.findIndex(isActive)} publishHref={publishHref} badge={badge} />
       )}
     </>
   )

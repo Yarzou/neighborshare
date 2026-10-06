@@ -1,5 +1,33 @@
 # Historique des modifications (par session)
 
+## 2026-10-06 (suite) — Couleur par type, Accueil allégé, goutte d'eau (branche `refonte-verre`)
+
+Retour sur la maquette : « trop juste teinte de vert » pour les types, Accueil à simplifier, effet
+goutte d'eau sur l'onglet actif « à la taille du texte + image » comme l'app Fridge. Maquette mise à
+jour puis validée (« parfait »).
+
+- **`lib/types.ts`** : `LISTING_TYPE_MARKER_COLORS` par type — Prêt `#2f6fb3`, Don `#b03a6e`,
+  Échange `#6b4fa8`, Service `#c46a12`, Vente `#c2413a` (blanc dessus ≥ 4,5:1). Lettre d'Échange :
+  « É ».
+- **`TypeBadge`** : lettre sur la couleur du type. **`CategoryTile`** : prop `type`, le fond prend la
+  couleur du type et l'icône reste celle de la catégorie ; utilisée par `ListingCard`, la page
+  annonce et l'Accueil.
+- **`LeafletMap`** + **`globals.css`** : marqueur = carré rempli de la couleur du type, lettre
+  blanche (l'émoji de catégorie disparaît de la carte), demande en tirets, sélection agrandie et
+  cerclée de vert (classe `custom-marker--selected` au lieu d'une bordure rouge en ligne). Le titre
+  injecté dans l'attribut HTML est maintenant échappé. Surcharge sombre qui écrasait le fond retirée.
+- **`ListingForm`** : choix du type avec la lettre colorée au lieu des émojis ; Je propose / Je
+  cherche en contrôle segmenté iOS (fini l'ambre).
+- **`app/accueil/`** allégé : salutation, champ de recherche (vers la carte), demandes en cours,
+  « Près de chez vous », « À venir » (prochain événement + sondage ouvert, liste groupée). Retirés :
+  tuiles Proposer / Chercher, info ASL, raccourcis Quartier.
+- **`components/layout/Navbar.tsx`** : nouveau composant `TabBar` avec la goutte (mesure en
+  `useLayoutEffect`, glissement + étirement, re-mesure sur redimensionnement et chargement de la
+  police) ; entrée active du menu latéral en `.droplet` ; reflet `.btn-drop` sur les boutons Publier.
+- Vérifié : typecheck OK, lint 0 erreur / 20 avertissements, build OK, `next start` : goutte et
+  barre d'onglets présentes sur /map, /evenements, /infos, /accueil, absentes sur /.
+  **Animation non vue à l'écran** (pas de navigateur piloté).
+
 ## 2026-10-06 — Refonte « Verre et Cèdre », branche `refonte-verre` (à tester)
 
 Maquette validée : https://claude.ai/artifact/LpHNwVNvDmrguJ6pLKeNw3 — fond gris très clair, cartes

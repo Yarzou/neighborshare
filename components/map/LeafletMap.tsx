@@ -11,7 +11,6 @@ import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
 import markerShadow from 'leaflet/dist/images/marker-shadow.png'
 import type { Listing } from '@/lib/types'
 import { LISTING_TYPE_MARKER_COLORS, LISTING_TYPE_SHORT } from '@/lib/types'
-import { getCategoryEmoji } from '@/lib/categories'
 import { NEIGHBORHOOD_CENTER, NEIGHBORHOOD_DEFAULT_ZOOM } from '@/lib/neighborhood'
 
 // Fix icônes Leaflet avec Next.js.
@@ -233,13 +232,15 @@ export default function LeafletMap({ userPosition, listings, onSelectListing, se
 
       const isDemande = listing.listing_intent === 'demande'
       const typeColor = LISTING_TYPE_MARKER_COLORS[listing.type] ?? '#1f6f47'
-      // Accessibilité : la lettre du type double la couleur de la bordure, qu'un
-      // daltonien ne distingue pas toujours (prêt / don, service / vente).
+      // Refonte 2026-10-06 : carré rempli de la couleur du type, lettre blanche.
+      // Accessibilité : la lettre double la couleur, qu'un daltonien ne distingue
+      // pas toujours (don / vente) ; une demande a un contour en tirets.
       const typeLetter = LISTING_TYPE_SHORT[listing.type] ?? ''
+      const title = listing.title.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')
       const icon = L.divIcon({
-        html: `<div class="custom-marker${isDemande ? ' custom-marker--demande' : ''}" style="border-color:${typeColor}" title="${listing.title}">${getCategoryEmoji(listing.category_id)}<span class="custom-marker__type" style="background:${typeColor}" aria-hidden="true">${typeLetter}</span></div>`,
-        iconSize: [36, 36],
-        iconAnchor: [18, 18],
+        html: `<div class="custom-marker${isDemande ? ' custom-marker--demande' : ''}" style="background:${typeColor}" title="${title}">${typeLetter}</div>`,
+        iconSize: [34, 34],
+        iconAnchor: [17, 17],
         className: '',
       })
 
@@ -263,17 +264,15 @@ export default function LeafletMap({ userPosition, listings, onSelectListing, se
     })
   }, [listings, onSelectListing])
 
-  // Highlight selected
+  // Highlight selected : agrandi et cerclé de vert Cèdre (la couleur des actions),
+  // ce qui le détache des cinq couleurs de type.
   useEffect(() => {
-    Object.entries(markersRef.current).forEach(([id, marker]) => {
-      const listing = listings.find(l => l.id === id)
+    Object.values(markersRef.current).forEach(marker => {
       const el = marker.getElement()
       if (!el) return
       const inner = el.querySelector('.custom-marker') as HTMLElement
       if (!inner) return
-      const typeColor = listing ? (LISTING_TYPE_MARKER_COLORS[listing.type] ?? '#1f6f47') : '#1f6f47'
-      inner.style.borderColor = id === selectedId ? '#dc2626' : typeColor
-      inner.style.transform = id === selectedId ? 'scale(1.2)' : 'scale(1)'
+      inner.classList.toggle('custom-marker--selected', marker === markersRef.current[selectedId ?? ''])
     })
   }, [selectedId, listings])
 

@@ -34,7 +34,7 @@ export function ListingCard({ listing, compact = false, onClick, active, outline
       {/* Image / Carte covoiturage / Garde d'enfant */}
       {listing.carpool_departure_lat && listing.carpool_arrival_lat ? (
         compact ? (
-          <CategoryTile id={listing.category_id} size="lg" />
+          <CategoryTile id={listing.category_id} type={listing.type} size="lg" />
         ) : (
           <div className="w-full h-44 max-h-[35vh] overflow-hidden rounded-t-2xl flex-shrink-0">
             <CarpoolMiniMap
@@ -50,7 +50,7 @@ export function ListingCard({ listing, compact = false, onClick, active, outline
         )
       ) : listing.childcare_slots && listing.childcare_slots.length > 0 ? (
         compact ? (
-          <CategoryTile id={listing.category_id} size="lg" />
+          <CategoryTile id={listing.category_id} type={listing.type} size="lg" />
         ) : (
           <div className="w-full h-44 max-h-[35vh] overflow-hidden rounded-t-2xl flex-shrink-0 bg-gray-100 flex flex-col items-center justify-center gap-2 px-4">
             <CalendarDays size={28} className="text-brand-600" />
@@ -62,7 +62,7 @@ export function ListingCard({ listing, compact = false, onClick, active, outline
         )
       ) : listing.childcare_start_at && listing.childcare_end_at ? (
         compact ? (
-          <CategoryTile id={listing.category_id} size="lg" />
+          <CategoryTile id={listing.category_id} type={listing.type} size="lg" />
         ) : (() => {
           const { startLabel, endLabel, sameDay } = formatChildcarePeriod(listing.childcare_start_at, listing.childcare_end_at)
           return (
@@ -92,10 +92,10 @@ export function ListingCard({ listing, compact = false, onClick, active, outline
           />
         </div>
       ) : compact ? (
-        <CategoryTile id={listing.category_id} size="lg" />
+        <CategoryTile id={listing.category_id} type={listing.type} size="lg" />
       ) : (
         <div className="w-full h-32 bg-gray-100 flex items-center justify-center">
-          <CategoryTile id={listing.category_id} size="lg" />
+          <CategoryTile id={listing.category_id} type={listing.type} size="lg" />
         </div>
       )}
 

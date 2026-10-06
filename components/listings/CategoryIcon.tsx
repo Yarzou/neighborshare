@@ -1,6 +1,7 @@
 import { Wrench, HeartHandshake, Baby, Car, Package, Sprout, CookingPot, BookOpen, MapPin, LayoutGrid, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getCategorySlug, getCategoryTileClass } from '@/lib/categories'
+import { LISTING_TYPE_MARKER_COLORS, type ListingType } from '@/lib/types'
 
 /**
  * Icônes des catégories, par slug (IDs stables dans lib/categories.ts).
@@ -36,15 +37,23 @@ const TILE_SIZES = {
   lg: { box: 'w-16 h-16 rounded-2xl', icon: 30 },
 } as const
 
-/** Pastille d'icône : icône blanche sur la nuance de vert de la catégorie. */
-export function CategoryTile({ id, size = 'md', className }: {
+/**
+ * Pastille d'icône : l'icône dit la catégorie, le fond dit le type d'annonce
+ * (`type`, couleurs de LISTING_TYPE_MARKER_COLORS). Sans type, le fond prend la
+ * nuance de vert de la catégorie.
+ */
+export function CategoryTile({ id, type, size = 'md', className }: {
   id: number | null
+  type?: ListingType
   size?: keyof typeof TILE_SIZES
   className?: string
 }) {
   const s = TILE_SIZES[size]
   return (
-    <span className={cn('flex items-center justify-center shrink-0 text-white', s.box, getCategoryTileClass(id), className)}>
+    <span
+      className={cn('flex items-center justify-center shrink-0 text-white', s.box, !type && getCategoryTileClass(id), className)}
+      style={type ? { backgroundColor: LISTING_TYPE_MARKER_COLORS[type] } : undefined}
+    >
       <CategoryIcon id={id} size={s.icon} />
     </span>
   )

@@ -285,8 +285,8 @@ export const LISTING_STATUS_COLORS: Record<ListingStatus, string> = {
   validee: 'bg-brand-100 text-brand-700',
 }
 
-// Les cinq types partagent une pastille neutre : c'est la lettre (LISTING_TYPE_SHORT,
-// sur fond vert dans TypeBadge) et le libellé qui les distinguent, pas la couleur.
+// Les cinq types partagent une pastille neutre ; c'est la lettre (LISTING_TYPE_SHORT),
+// sur la couleur du type (LISTING_TYPE_MARKER_COLORS) dans TypeBadge, qui les distingue.
 export const LISTING_TYPE_COLORS: Record<ListingType, string> = {
   pret: 'bg-gray-100 text-gray-800',
   don: 'bg-gray-100 text-gray-800',
@@ -299,21 +299,24 @@ export const LISTING_TYPE_COLORS: Record<ListingType, string> = {
 export const LISTING_TYPE_SHORT: Record<ListingType, string> = {
   pret: 'P',
   don: 'D',
-  echange: 'E',
+  echange: 'É',
   service: 'S',
   vente: 'V',
 }
 
 /**
- * Couleurs CSS hex pour les marqueurs Leaflet (border-color et pastille de la lettre).
- * Toutes en vert Cèdre depuis la refonte : sur la carte, le type se lit à la lettre.
+ * Couleur de chaque type d'annonce (hex), validée sur maquette le 2026-10-06 :
+ * marqueurs Leaflet, pastille de la lettre (TypeBadge) et pastille d'icône des
+ * cartes (CategoryTile). Le vert reste réservé aux actions : aucun type n'est vert.
+ * Blanc dessus : contraste ≥ 4,5:1 pour chacune. La lettre accompagne toujours la
+ * couleur — framboise et rouge sont proches pour un œil daltonien.
  */
 export const LISTING_TYPE_MARKER_COLORS: Record<ListingType, string> = {
-  pret: '#1f6f47',
-  don: '#1f6f47',
-  echange: '#1f6f47',
-  service: '#1f6f47',
-  vente: '#1f6f47',
+  pret: '#2f6fb3',    // bleu
+  don: '#b03a6e',     // framboise
+  echange: '#6b4fa8', // violet
+  service: '#c46a12', // orange
+  vente: '#c2413a',   // rouge
 }
 
 export const BOOK_CONDITION_LABELS: Record<BookCondition, string> = {
