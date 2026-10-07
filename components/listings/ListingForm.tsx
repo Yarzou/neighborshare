@@ -17,7 +17,9 @@ import {
   type ChildcareSlot,
   type ListingIntent,
 } from '@/lib/types'
-import { VENTE_EXCLUDED_SLUGS } from '@/lib/categories'
+import { VENTE_EXCLUDED_SLUGS, CATEGORY_LIST } from '@/lib/categories'
+import { CategoryIcon } from '@/components/listings/CategoryIcon'
+import DateField from '@/components/ui/DateField'
 import AddressAutocomplete, { type ResolvedAddress } from '@/components/forms/AddressAutocomplete'
 import Segmented from '@/components/ui/Segmented'
 
@@ -467,15 +469,34 @@ export function ListingForm({ mode, listingId, initial, defaultAddress, profileH
         </div>
 
         {/* Catégorie */}
+        {/* Grille de tuiles dans la page (2026-10-07), comme la maquette validée,
+            au lieu de la liste déroulante native : sa fenêtre système paraissait
+            « immense ». Icône verte, tuile choisie cerclée de vert. */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Catégorie</label>
-          <select name="category_id" value={form.category_id} onChange={handleChange}
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm bg-white">
-            <option value="">Choisir une catégorie...</option>
-            {filteredCategories.map(c => (
-              <option key={c.id} value={c.id}>{c.icon} {c.label}</option>
-            ))}
-          </select>
+          <span id="categorie-label" className="block text-sm font-medium text-gray-700 mb-1.5">Catégorie</span>
+          <div role="radiogroup" aria-labelledby="categorie-label" className="grid grid-cols-4 gap-2">
+            {filteredCategories.map(c => {
+              const active = form.category_id === String(c.id)
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  title={c.label}
+                  onClick={() => setForm(f => ({ ...f, category_id: String(c.id) }))}
+                  className={`h-16 rounded-2xl border-2 bg-white flex flex-col items-center justify-center gap-1 px-1 text-xs transition-colors ${
+                    active ? 'border-brand-600 text-brand-700 font-semibold' : 'border-gray-200 text-gray-800 hover:border-gray-300'
+                  }`}
+                >
+                  <CategoryIcon id={c.id} size={20} className="text-brand-600" />
+                  <span className="max-w-full truncate">
+                    {CATEGORY_LIST.find(x => x.id === c.id)?.filterLabel ?? c.label}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
         </div>
 
         {/* Champs livre — tous optionnels, la photo reste proposée (couverture) */}
@@ -615,17 +636,34 @@ export function ListingForm({ mode, listingId, initial, defaultAddress, profileH
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     Début <span className="text-red-500">*</span>
                   </label>
-                  <input type="datetime-local" value={childcareStart}
-                    onChange={e => setChildcareStart(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm bg-white" />
+                  {/* Date au calendrier dans la page, heure en champ simple ; recomposées
+                      en 'YYYY-MM-DDTHH:mm' comme l'ancien champ datetime-local */}
+                  <DateField
+                    value={childcareStart.slice(0, 10)}
+                    onChange={d => setChildcareStart(d ? `${d}T${childcareStart.slice(11, 16) || '09:00'}` : '')}
+                    trailing={
+                      <input type="time" value={childcareStart.slice(11, 16)} disabled={!childcareStart}
+                        aria-label="Heure de début"
+                        onChange={e => setChildcareStart(`${childcareStart.slice(0, 10)}T${e.target.value || '00:00'}`)}
+                        className="w-28 px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm bg-white disabled:opacity-40" />
+                    }
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     Fin <span className="text-red-500">*</span>
                   </label>
-                  <input type="datetime-local" value={childcareEnd} min={childcareStart || undefined}
-                    onChange={e => setChildcareEnd(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm bg-white" />
+                  <DateField
+                    value={childcareEnd.slice(0, 10)}
+                    min={childcareStart.slice(0, 10) || undefined}
+                    onChange={d => setChildcareEnd(d ? `${d}T${childcareEnd.slice(11, 16) || '18:00'}` : '')}
+                    trailing={
+                      <input type="time" value={childcareEnd.slice(11, 16)} disabled={!childcareEnd}
+                        aria-label="Heure de fin"
+                        onChange={e => setChildcareEnd(`${childcareEnd.slice(0, 10)}T${e.target.value || '00:00'}`)}
+                        className="w-28 px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm bg-white disabled:opacity-40" />
+                    }
+                  />
                 </div>
               </div>
             )}
@@ -647,35 +685,40 @@ export function ListingForm({ mode, listingId, initial, defaultAddress, profileH
                       </button>
                     ))}
                   </div>
-                  <div className="flex items-center gap-2">
+                  {/* Heures sur une ligne qui ne peut pas déborder (min-w-0), « Ajouter »
+                      dessous en pleine largeur : sur mobile, il sortait du cadre. */}
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
                     <input type="time" value={recurringStart} onChange={e => setRecurringStart(e.target.value)}
-                      className="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white" />
+                      aria-label="Heure de début"
+                      className="w-full min-w-0 px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white" />
                     <span className="text-gray-400 text-sm">→</span>
                     <input type="time" value={recurringEnd} onChange={e => setRecurringEnd(e.target.value)}
-                      className="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white" />
-                    <button type="button" onClick={addRecurringSlots} disabled={recurringDays.size === 0}
-                      className="flex items-center gap-1 px-3 py-2 bg-violet-600 text-white rounded-xl text-sm font-medium hover:bg-violet-700 disabled:opacity-40 transition-colors">
-                      <Plus size={14} /> Ajouter
-                    </button>
+                      aria-label="Heure de fin"
+                      className="w-full min-w-0 px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white" />
                   </div>
+                  <button type="button" onClick={addRecurringSlots} disabled={recurringDays.size === 0}
+                    className="w-full flex items-center justify-center gap-1 px-3 py-2 bg-violet-600 text-white rounded-xl text-sm font-medium hover:bg-violet-700 disabled:opacity-40 transition-colors">
+                    <Plus size={14} /> Ajouter
+                  </button>
                 </div>
 
                 {/* Ponctuels */}
                 <div className="bg-white rounded-xl border border-violet-100 p-3 flex flex-col gap-3">
                   <p className="text-xs font-semibold text-violet-600 uppercase tracking-wide">Créneau ponctuel</p>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <input type="date" value={onceDate} onChange={e => setOnceDate(e.target.value)}
-                      className="flex-1 min-w-[130px] px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white" />
+                  <DateField value={onceDate} onChange={setOnceDate} min={new Date().toISOString().split('T')[0]} />
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
                     <input type="time" value={onceStart} onChange={e => setOnceStart(e.target.value)}
-                      className="w-24 px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white" />
+                      aria-label="Heure de début"
+                      className="w-full min-w-0 px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white" />
                     <span className="text-gray-400 text-sm">→</span>
                     <input type="time" value={onceEnd} onChange={e => setOnceEnd(e.target.value)}
-                      className="w-24 px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white" />
-                    <button type="button" onClick={addOnceSlot} disabled={!onceDate}
-                      className="flex items-center gap-1 px-3 py-2 bg-violet-600 text-white rounded-xl text-sm font-medium hover:bg-violet-700 disabled:opacity-40 transition-colors">
-                      <Plus size={14} /> Ajouter
-                    </button>
+                      aria-label="Heure de fin"
+                      className="w-full min-w-0 px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white" />
                   </div>
+                  <button type="button" onClick={addOnceSlot} disabled={!onceDate}
+                    className="w-full flex items-center justify-center gap-1 px-3 py-2 bg-violet-600 text-white rounded-xl text-sm font-medium hover:bg-violet-700 disabled:opacity-40 transition-colors">
+                    <Plus size={14} /> Ajouter
+                  </button>
                 </div>
 
                 {/* Liste des créneaux ajoutés */}
@@ -727,9 +770,13 @@ export function ListingForm({ mode, listingId, initial, defaultAddress, profileH
             Date d&apos;expiration <span className="text-gray-400 font-normal">(optionnel)</span>
           </label>
           <p className="text-xs text-gray-400 mb-2">L&apos;annonce disparaîtra automatiquement de la carte après cette date.</p>
-          <input type="date" value={expiresAt} onChange={e => setExpiresAt(e.target.value)}
+          <DateField
+            value={expiresAt}
+            onChange={setExpiresAt}
             min={new Date().toISOString().split('T')[0]}
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm bg-white" />
+            placeholder="Aucune date d'expiration"
+            clearable
+          />
         </div>
 
         <button type="submit" disabled={saving || (!isCarpool && !hasLocation)}

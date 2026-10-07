@@ -1,5 +1,88 @@
 # Historique des modifications (par session)
 
+## 2026-10-07 — Couleurs Apple, repères de carte, bulle partout, fin du « + » global (branche `refonte-verre`)
+
+Retour : « garde la refonte », mais « des couleurs à la Apple, pas de teinte de vert », « garde les
+icônes en vert », la lettre du type disparue de la carte, le « + » de la barre qui crée une annonce
+même depuis le Quartier, et « l'effet bulle, je le veux partout ». Décisions par questions : « + »
+supprimé de la barre (un « + » par page), boutons en vert plein Apple, repère rond + icône + lettre,
+logo et nom sur une ligne.
+
+- **`tailwind.config.ts`** : `gray-*` = gris système d'iOS neutres (`#f2f2f7` → `#1c1c1e`) ;
+  `brand-600` `#23843b` (vert Apple assombri, 4,7:1 avec du blanc), `brand-400` `#34c759` ;
+  `brand-50` à `brand-300` **neutralisés** (gris) pour supprimer les verts pâles de toute l'appli.
+- **`app/globals.css`** : tokens neutres, surcharges sombres sans vert pâle, grappes en vert franc,
+  point de position en bleu Apple, nouveau repère (rond blanc, icône verte, cercle et pastille-lettre
+  à la couleur du type via `--type`).
+- **`lib/types.ts`** : types en couleurs système d'Apple contrastées (bleu, rose, violet, orange,
+  rouge, toutes ≥ 4,5:1). **`lib/categories.ts`** : plus de nuances de vert par catégorie.
+  **`lib/utils.ts`** : avatar par défaut gris.
+- **`CategoryIcon.tsx`** : `categoryIconSvg()` (tracés lucide en SVG brut) pour les repères Leaflet.
+- **`Navbar.tsx`** : « + » retiré de la barre d'onglets et du menu latéral ; nom sur une ligne ; icônes
+  du menu latéral vertes. **Accueil** et **Carte** (mobile) gagnent leur « + » en haut à droite.
+- **`components/ui/Segmented.tsx`** : segments-liens (`href`), `icon`, `badge`. Utilisé désormais par
+  `QuartierTabs` (bulle sur Quartier / Achats / Presta. / Docs ASL), Demandes (Reçues / Envoyées) et
+  le thème du Profil (Clair / Sombre / Auto). `QuartierSidebar` : sélection en bulle.
+- Nouveau **`components/ui/Switch.tsx`** (repris de Fridge) pour les interrupteurs de notifications
+  (Profil, `NotificationSettings`) ; icônes des réglages en vert.
+- Vérifié : typecheck OK, lint 0 erreur / 20 avertissements ; serveur de dev lancé pour revue en
+  direct par l'utilisateur.
+
+Suite, même jour (revue en direct) : « supprime le + de l'accueil » ; sur la création d'annonce et
+d'événement, « un Annuler en haut à gauche serait plus parlant (à la Apple) » au lieu de « Retour
+aux événements ».
+- Nouveau **`components/layout/FormHeader.tsx`** : barre collante en verre, « Annuler » à gauche,
+  titre centré. Posée sur `listings/new` (→ `/map`), `listings/[id]/edit` (→ la fiche ; remplace
+  « ← Retour au profil »), et `EventForm` en création (→ `/evenements`) comme en modification
+  (→ l'événement). Le bouton « Annuler » du bas d'`EventForm` est retiré.
+- **`DashboardClient`** : « + » retiré de l'en-tête.
+
+Suite : « fais de même pour les messages » ; sur la carte, « que la carte puisse remonter ou
+redescendre pour toujours voir les bulles malgré l'ouverture de l'annonce ». (Fausse alerte « je n'ai
+plus rien sur la carte » : un filtre était actif.)
+- **`app/messages/new/page.tsx`** : `FormHeader` « Nouvelle conversation », Annuler → `/messages`
+  (remplace « ← Retour aux messages »).
+- Nouveau **`components/map/ListingSheet.tsx`** : la fiche choisie sur la carte devient un panneau à
+  poignée, façon Plans d'Apple — déplié (fiche entière) ou réduit (une ligne), au glissé ou au
+  toucher ; l'état est gardé d'une annonce à l'autre. Remplace le popup fixe de `MapView`.
+- **`LeafletMap`** : prop `bottomInset` (hauteur couverte par le panneau, remontée par
+  `onInsetChange`) ; à la sélection et à chaque pli/dépli, `map.panInside` garde le repère choisi
+  visible au-dessus du panneau.
+
+Suite : « supprime cette poignée qui sert à rien ! je ne te l'ai pas demandée », et « la poubelle en
+filigrane dans la liste des messages, est-ce réel ? » (oui).
+- **`ListingSheet`** : poignée, glissé et état réduit retirés ; reste une fiche simple avec sa croix.
+  Le recadrage automatique de la carte (`bottomInset` + `panInside`) est conservé.
+- **`ConversationRow`** : la zone rouge de suppression a une largeur nulle au repos et suit le
+  glissé (comme `MessageBubble`) ; la carte de conversation est toujours opaque (blanc, ou gris si
+  active). Cause du filigrane : `bg-brand-50/40` translucide sur les non-lus.
+- Bulles reçues et indicateur de frappe : gris iMessage `#e9e9eb` (au lieu d'un gris verdâtre).
+- Barre d'onglets (« la liste ne passe pas derrière », « semi-transparente sauf si je passe le doigt
+  dessus », « effet loupe à la Apple », « pour toutes les pages ») : verre moins flouté au repos
+  (`bg-tabbar`, 6 px), densifié au toucher (`bg-tabbar-strong`) ; loupe = lentille contenant une
+  copie agrandie ×1,28 de la rangée, à l'appui tenu (160 ms) ou au glissé. Carte : `--app-h-full`
+  + `-mb-[var(--tabbar-h)]` pour descendre sous la barre, marge basse de la liste, fiche et
+  attribution OSM remontées au-dessus de la barre. Nouveaux tokens `--tabbar-strong`,
+  `--lens-fill`, ombre `lens`.
+- Accueil, « Près de chez vous » : 16 px de marge à gauche et à droite, y compris après défilement (`scroll-px-4` contre l'aimantation au bord, espaceur final car Safari ignore le padding de fin d'une zone défilante).
+- « L'effet iOS 26 ne s'applique pas partout (Quartier, Liste/Carte) » : `Segmented` reçoit la même loupe
+  que la barre d'onglets (appui tenu 160 ms ou glissé, lentille contenant une copie agrandie ×1,22,
+  pastille masquée pendant la loupe), donc onglets du Quartier, Liste/Carte, Demandes, thème du Profil,
+  Je propose / Je cherche. `[-webkit-touch-callout:none]` sur la barre et les segments (appui long sur
+  un lien = pas de menu d'aperçu iOS).
+- « Le choix catégorie est immense », « le choix de la date c'est n'importe quoi » (test dans l'émulation
+  mobile de Chrome, où les fenêtres natives s'affichent à l'échelle du PC) : nouveau
+  `components/ui/DateField.tsx` (calendrier dans la page, lundi en premier, `min`, `clearable`,
+  `trailing` pour l'heure). Remplace les dates d'`EventForm` (début, fin) et de `ListingForm`
+  (garde : début / fin recomposés en 'YYYY-MM-DDTHH:mm', créneau ponctuel, expiration). Catégorie
+  d'annonce : grille de 8 tuiles au lieu du `<select>`. Erreur passagère « CategoryIcon is not
+  defined » vue dans le navigateur pendant l'édition (import ajouté juste après) : disparue à la
+  recompilation suivante.
+- « Reproduire la bulle iOS 26 sur les switchs » : la pastille de `Switch` devient sous le doigt une
+  lentille translucide ×1,35 (`bg-white/30`, `shadow-lens`).
+- Garde d'enfant, « je propose des dispos » : le bouton « Ajouter » des créneaux (récurrents et ponctuels) sortait du cadre sur mobile. Heures en grille `minmax(0,1fr) auto minmax(0,1fr)` (`min-w-0`), bouton en pleine largeur dessous.
+- Barre du haut mobile agrandie (« agrandis un petit peu le header ») : 56 → 64 px (`--nav-top` 4 rem), logo 38 px, nom en 17 px, avatar 40 px.
+
 ## 2026-10-06 (fin) — La vraie « goutte d'eau » de Fridge (branche `refonte-verre`)
 
 Retour : « l'effet goutte d'eau est vraiment moche », « sur le web c'est super moche et ça donne un

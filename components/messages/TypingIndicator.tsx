@@ -16,7 +16,7 @@ export function TypingIndicator({ names, isGroup }: Props) {
         {label && (
           <span className="text-xs text-gray-400 px-1">{label}</span>
         )}
-        <div className="px-4 py-3 rounded-2xl rounded-bl-md bg-[#eef1ef] dark:bg-[#334155] text-gray-500 flex items-center gap-1.5">
+        <div className="px-4 py-3 rounded-2xl rounded-bl-md bg-[#e9e9eb] dark:bg-[#334155] text-gray-500 flex items-center gap-1.5">
           <span className="typing-dot" />
           <span className="typing-dot" />
           <span className="typing-dot" />

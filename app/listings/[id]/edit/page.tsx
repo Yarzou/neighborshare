@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { Loader2, ArrowLeft } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
+import { FormHeader } from '@/components/layout/FormHeader'
 import type { Listing } from '@/lib/types'
 import { ListingForm } from '@/components/listings/ListingForm'
 
@@ -74,12 +75,9 @@ export default function EditListingPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
-      <Link href="/profile" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-6">
-        <ArrowLeft size={16} /> Retour au profil
-      </Link>
-
-      <h1 className="text-2xl font-bold mb-1">Modifier l&apos;annonce</h1>
+    <div className="max-w-2xl mx-auto px-4 pb-8">
+      {/* « Annuler » ramène à l'annonce, sans rien enregistrer */}
+      <FormHeader title="Modifier l'annonce" cancelHref={`/listings/${id}`} />
       <p className="text-gray-500 mb-8 text-sm">Mettez à jour les informations de votre annonce.</p>
 
       <ListingForm mode="edit" listingId={id} initial={listing} />

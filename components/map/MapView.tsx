@@ -7,8 +7,9 @@ import { createClient } from '@/lib/supabase/client'
 import type { Listing } from '@/lib/types'
 import { ListingCard } from '@/components/listings/ListingCard'
 import { FilterBar } from '@/components/map/FilterBar'
+import { ListingSheet } from '@/components/map/ListingSheet'
 import { LoginRequiredNotice } from '@/components/layout/LoginRequiredNotice'
-import { MapPin, Loader2, X, Plus, LayoutGrid } from 'lucide-react'
+import { MapPin, Loader2, Plus, LayoutGrid } from 'lucide-react'
 import { normalizeSearch } from '@/lib/utils'
 import Segmented from '@/components/ui/Segmented'
 import { NEIGHBORHOOD_CENTER, NEIGHBORHOOD_RADIUS_KM, distanceMeters } from '@/lib/neighborhood'
@@ -30,6 +31,8 @@ export function MapView() {
   // (useMemo plus bas) : catégorie et recherche ne déclenchent donc aucune requête.
   const [rows, setRows] = useState<Listing[]>([])
   const [selected, setSelected] = useState<Listing | null>(null)
+  // Hauteur couverte en bas de la carte par la fiche ouverte (ListingSheet)
+  const [sheetInset, setSheetInset] = useState(0)
   // searchCenter: centre utilisé pour le rayon de recherche (La Chapelle par défaut)
   const [searchCenter, setSearchCenter] = useState<[number, number]>(NEIGHBORHOOD_CENTER)
   // userGeoLocation: position GPS réelle (uniquement pour le marqueur bleu)
@@ -179,14 +182,25 @@ export function MapView() {
         </div>
 
         {/* Toggle mobile : contrôle segmenté iOS 26 (capsule, pastille qui glisse) */}
-        <div className="md:hidden px-4 pt-3 pb-2 bg-gray-50 shrink-0">
+        <div className="md:hidden px-4 pt-3 pb-2 bg-gray-50 shrink-0 flex items-center gap-3">
           <Segmented
             label="Affichage"
             value={mobileView}
             onChange={setMobileView}
             options={[{ value: 'list', label: 'Liste' }, { value: 'map', label: 'Carte' }]}
+            className="flex-1"
             itemClassName="h-8 text-[13px]"
           />
+          {/* « + » de la page (le « + » global de la barre d'onglets a disparu) */}
+          {isLoggedIn && (
+            <button
+              onClick={() => router.push('/listings/new')}
+              aria-label="Publier une annonce"
+              className="w-9 h-9 rounded-full bg-brand-600 hover:bg-brand-700 text-white flex items-center justify-center shrink-0 shadow-lift transition-colors"
+            >
+              <Plus size={19} strokeWidth={2.4} />
+            </button>
+          )}
         </div>
 
         {/* Body: sidebar + map */}
@@ -203,7 +217,9 @@ export function MapView() {
               onSearchChange={setSearch}
           />
 
-          <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
+          {/* Marge basse = la barre d'onglets : la liste passe dessous, mais la
+              dernière annonce peut remonter au-dessus d'elle (0 sur desktop) */}
+          <div className="flex-1 overflow-y-auto p-3 pb-[calc(var(--tabbar-h)+0.75rem)] flex flex-col gap-2">
             {loading ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="animate-spin text-brand-600" size={28} />
@@ -246,6 +262,7 @@ export function MapView() {
               selectedId={selected?.id}
               searchedLocation={searchedLocation}
               visible={mobileView === 'map'}
+              bottomInset={selected ? sheetInset : 0}
           />
 
           {/* Voile visiteur non connecté : la carte serait sinon affichée vide,
@@ -262,17 +279,10 @@ export function MapView() {
               </div>
           )}
 
-          {/* Popup détail sélectionné */}
+          {/* Fiche de l'annonce choisie : la carte se recadre pour garder le
+              repère visible au-dessus d'elle (pas de poignée, retirée à la demande) */}
           {selected && (
-              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-80 z-[1200] max-h-[calc(var(--app-h)-3rem)] overflow-y-auto rounded-2xl shadow-xl">
-                <div className="relative">
-                  <button onClick={() => setSelected(null)}
-                          className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md border border-gray-200 z-10">
-                    <X size={14} />
-                  </button>
-                  <ListingCard listing={selected} outlineOnly />
-                </div>
-              </div>
+              <ListingSheet listing={selected} onClose={() => setSelected(null)} onInsetChange={setSheetInset} />
           )}
         </div>
 

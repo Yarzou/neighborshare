@@ -4,7 +4,7 @@
 
 :root {
   --foreground: #1c1c1e;
-  --background: #f2f5f3;
+  --background: #f2f2f7;
 
   /* ─── Tokens sémantiques ──────────────────────────────────────────────────
    * Exposés en utilitaires Tailwind par tailwind.config.ts :
@@ -31,23 +31,25 @@
    * Le verre (`--glass`) est réservé à ce qui flotte : barre d'onglets, menu latéral,
    * barre du haut. Les valeurs ≈ renvoient aux `gray-*` redéfinis dans tailwind.config.ts. */
   --surface: #ffffff;         /* cartes, panneaux            (= `white` Tailwind) */
-  --surface-raised: #f2f5f3;  /* fond de page, lignes        (≈ bg-gray-50)  */
-  --surface-sunken: #eef1ef;  /* zones en retrait            (≈ bg-gray-100) */
-  --surface-pane: #f8faf9;    /* volets latéraux desktop                       */
+  --surface-raised: #f2f2f7;  /* fond de page, lignes        (≈ bg-gray-50)  */
+  --surface-sunken: #e9e9ee;  /* zones en retrait            (≈ bg-gray-100) */
+  --surface-pane: #f9f9fb;    /* volets latéraux desktop                       */
   --surface-header: #ffffff;  /* pastille de compteur détachée du fond         */
-  --surface-accent: #e4eee9;  /* en-tête d'accordéon ouvert (≈ brand-100)      */
-  --border: #e1e5e2;          /*                             (≈ border-gray-200) */
-  --border-strong: #c9cecb;   /*                             (≈ border-gray-300) */
+  --surface-accent: #e9e9ee;  /* en-tête d'accordéon ouvert (gris système)  */
+  --border: #e3e3e8;          /*                             (≈ border-gray-200) */
+  --border-strong: #d1d1d6;   /*                             (≈ border-gray-300) */
   --text: #1c1c1e;            /* titres                      (≈ text-gray-900) */
   --text-soft: #3a3a3c;       /* corps de texte              (≈ text-gray-700) */
   --text-muted: #6c6c70;      /* secondaire                  (≈ text-gray-500) */
-  --text-faint: #a3a8a5;      /* tertiaire, placeholders     (≈ text-gray-400) */
+  --text-faint: #8e8e93;      /* tertiaire, placeholders     (≈ text-gray-400) */
   --glass: rgba(255, 255, 255, 0.88);
   --glass-edge: rgba(0, 0, 0, 0.06);
   --glass-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   /* Barre d'onglets et bulle, repris de l'app Fridge : verre très transparent,
    * bulle de l'onglet choisi en gris système translucide, liseré lumineux. */
-  --tabbar: rgba(255, 255, 255, 0.42);
+  --tabbar: rgba(255, 255, 255, 0.4);             /* au repos : on devine ce qui passe dessous */
+  --tabbar-strong: rgba(255, 255, 255, 0.85);     /* doigt posé sur la barre */
+  --lens-fill: rgba(255, 255, 255, 0.94);         /* loupe : cache les onglets réels sous la copie agrandie */
   --tabbar-edge: rgba(255, 255, 255, 0.65);
   --tabbar-highlight: rgba(255, 255, 255, 0.8);   /* reflet sur l'arête haute */
   --bubble: rgba(120, 120, 128, 0.16);
@@ -57,7 +59,7 @@
   --shadow-float: 0 8px 24px rgba(0, 0, 0, 0.12);
 
   /* ─── Gabarit de navigation ───────────────────────────────────────────────
-   * Mobile : barre du haut (3,5 rem) + barre d'onglets flottante en bas.
+   * Mobile : barre du haut (4 rem) + barre d'onglets flottante en bas.
    * Desktop : menu latéral flottant à gauche (rail d'icônes en md, libellés en lg).
    * Chaque mesure ne vaut que si l'élément correspondant est rendu (`:has()`) :
    * la Navbar disparaît sur /auth/*, la barre d'onglets sur les écrans « poussés »
@@ -67,10 +69,14 @@
   --tabbar-h: 0px;
   --sidebar-w: 0px;
   --app-h: calc(100dvh - var(--nav-top) - var(--tabbar-h));
+  /* Hauteur jusqu'au bas de l'écran, SOUS la barre d'onglets (comme iOS) : pour une page
+   * plein écran dont le contenu doit passer derrière la barre (la Carte). Elle
+   * compense la marge basse du <main> par un `-mb-[var(--tabbar-h)]`. */
+  --app-h-full: calc(100dvh - var(--nav-top));
 }
 
 @media (max-width: 767.98px) {
-  :root:has(#app-topbar) { --nav-top: 3.5rem; }
+  :root:has(#app-topbar) { --nav-top: 4rem; }
   :root:has(#app-tabbar) { --tabbar-h: calc(5.5rem + env(safe-area-inset-bottom)); }
 }
 @media (min-width: 768px) {
@@ -95,7 +101,7 @@ html.dark {
   --surface-sunken: #0f172a;
   --surface-pane: #1e293b;
   --surface-header: #1e293b;
-  --surface-accent: rgba(20, 83, 45, 0.55); /* brand-900 à 55 %, validé en sombre */
+  --surface-accent: rgba(255, 255, 255, 0.08); /* gris translucide, sans vert */
   --border: #334155;
   --border-strong: #475569;
   --text: #f1f5f9;
@@ -106,6 +112,8 @@ html.dark {
   --glass-edge: rgba(255, 255, 255, 0.08);
   --glass-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   --tabbar: rgba(30, 41, 59, 0.42);
+  --tabbar-strong: rgba(30, 41, 59, 0.88);
+  --lens-fill: rgba(51, 65, 85, 0.96);
   --tabbar-edge: rgba(255, 255, 255, 0.12);
   --tabbar-highlight: rgba(255, 255, 255, 0.14);
   --bubble: rgba(255, 255, 255, 0.16);
@@ -136,26 +144,48 @@ body {
 /* Custom scrollbar */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #c9cecb; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #a3a8a5; }
+::-webkit-scrollbar-thumb { background: #d1d1d6; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #aeaeb2; }
 
-/* Leaflet custom marker — carré arrondi rempli de la couleur du type (posée en
-   ligne par LeafletMap), lettre du type en blanc (refonte 2026-10-06). */
+/* Leaflet custom marker (2026-10-07) — rond blanc, icône de la catégorie en vert,
+   cerclé de la couleur du type, avec la lettre du type dans une pastille en bas à
+   droite. La couleur du type arrive en ligne par la variable --type (LeafletMap). */
 .custom-marker {
-  border: 2px solid #fff;
-  border-radius: 11px;
-  width: 34px !important;
-  height: 34px !important;
+  position: relative;
+  box-sizing: border-box;
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid var(--type, #23843b);
+  color: #23843b;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
-  font-size: 14px;
-  font-weight: 700;
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.22);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
   cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.custom-marker svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Lettre du type (P, D, É, S, V) : la couleur seule ne suffit pas à un daltonien */
+.custom-marker__type {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: var(--type, #23843b);
+  color: #fff;
+  font: 700 10px/1 var(--font-geist-sans), system-ui, sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .custom-marker:hover {
@@ -168,10 +198,10 @@ body {
   border-style: dashed;
 }
 
-/* Annonce sélectionnée : agrandie et cerclée de vert Cèdre. */
+/* Annonce sélectionnée : agrandie, avec un halo vert. */
 .custom-marker.custom-marker--selected {
   transform: scale(1.25);
-  box-shadow: 0 0 0 2px #1f6f47, 0 6px 18px rgba(0,0,0,0.3);
+  box-shadow: 0 0 0 4px rgba(35,132,59,0.35), 0 6px 18px rgba(0,0,0,0.3);
 }
 
 /* Tuiles OSM désaturées en thème clair : la carte devient un fond calme, sur
@@ -180,11 +210,17 @@ html:not(.dark) .main-map .leaflet-tile-pane {
   filter: saturate(0.4) brightness(1.04);
 }
 
+/* Sur mobile, la carte descend sous la barre d'onglets (--app-h-full) : on remonte
+   l'attribution OpenStreetMap, obligatoire, au-dessus d'elle. 0 sur desktop. */
+.main-map .leaflet-bottom {
+  bottom: var(--tabbar-h);
+}
+
 /* Cluster bubble */
 .cluster-bubble {
   width: 40px;
   height: 40px;
-  background: #1f6f47;
+  background: #23843b;
   border: 3px solid white;
   border-radius: 50%;
   display: flex;
@@ -193,14 +229,14 @@ html:not(.dark) .main-map .leaflet-tile-pane {
   color: white;
   font-weight: 700;
   font-size: 15px;
-  box-shadow: 0 2px 10px rgba(16,52,32,0.35);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.25);
   cursor: pointer;
   transition: transform 0.15s ease, background 0.15s ease;
 }
 
 .cluster-bubble:hover {
   transform: scale(1.15);
-  background: #185c3a;
+  background: #1d7032;
 }
 
 .leaflet-popup-content-wrapper {
@@ -229,7 +265,7 @@ html:not(.dark) .main-map .leaflet-tile-pane {
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  background: #1f6f47;
+  background: #007aff;
   animation: user-pulse 2s ease-out infinite;
 }
 
@@ -327,13 +363,13 @@ html.dark .carpool-mini-map .leaflet-tile-pane {
 html.dark .leaflet-container { background: #1e293b !important; }
 
 /* ─── Brand colors ───────────────────────────────────────────────────────── */
-html.dark .bg-brand-50  { background-color: rgba(20,83,45,0.25) !important; }
-html.dark .bg-brand-100 { background-color: rgba(20,83,45,0.40) !important; }
-html.dark .bg-brand-600 { background-color: #15803d !important; }
-html.dark .border-brand-600 { border-color: #15803d !important; }
-html.dark .text-brand-700 { color: #86efac !important; }
-html.dark .text-brand-600 { color: #4ade80 !important; }
-html.dark .hover\:bg-brand-50:hover { background-color: rgba(20,83,45,0.25) !important; }
+html.dark .bg-brand-50  { background-color: rgba(255,255,255,0.06) !important; }
+html.dark .bg-brand-100 { background-color: rgba(255,255,255,0.10) !important; }
+html.dark .bg-brand-600 { background-color: #23843b !important; }
+html.dark .border-brand-600 { border-color: #23843b !important; }
+html.dark .text-brand-700 { color: #30d158 !important; }
+html.dark .text-brand-600 { color: #30d158 !important; }
+html.dark .hover\:bg-brand-50:hover { background-color: rgba(255,255,255,0.06) !important; }
 
 /* ─── Status badges ──────────────────────────────────────────────────────── */
 html.dark .bg-emerald-100 { background-color: rgba(6,78,59,0.40) !important; }
@@ -401,9 +437,9 @@ html.dark .hover\:bg-orange-100:hover  { background-color: rgba(124,45,18,0.40) 
 html.dark .hover\:bg-amber-100:hover   { background-color: rgba(120,53,15,0.45)  !important; }
 
 /* ─── Gradients (ListingCard, home) ─────────────────────────────────────── */
-html.dark .from-brand-50  { --tw-gradient-from: rgba(20,83,45,0.3) !important; }
-html.dark .to-brand-100   { --tw-gradient-to:   rgba(20,83,45,0.5) !important; }
-html.dark .from-brand-100 { --tw-gradient-from: rgba(20,83,45,0.4) !important; }
+html.dark .from-brand-50  { --tw-gradient-from: rgba(255,255,255,0.04) !important; }
+html.dark .to-brand-100   { --tw-gradient-to:   rgba(255,255,255,0.08) !important; }
+html.dark .from-brand-100 { --tw-gradient-from: rgba(255,255,255,0.06) !important; }
 html.dark .from-violet-50 { --tw-gradient-from: rgba(76,29,149,0.3) !important; }
 html.dark .to-violet-50   { --tw-gradient-to:   rgba(76,29,149,0.3) !important; }
 html.dark .bg-violet-50   { background-color: rgba(76,29,149,0.25) !important; }
@@ -419,12 +455,12 @@ html.dark .text-brand-800 { color: #bbf7d0 !important; }
 
 /* ─── Cluster bubbles (carte) ────────────────────────────────────────────── */
 html.dark .cluster-bubble {
-  background: #166534 !important;
+  background: #23843b !important;
   border-color: #94a3b8 !important;
   color: #e2e8f0 !important;
   box-shadow: 0 2px 10px rgba(0,0,0,0.6) !important;
 }
-html.dark .cluster-bubble:hover { background: #14532d !important; }
+html.dark .cluster-bubble:hover { background: #1d7032 !important; }
 
 /* ─── Voile « connexion requise » sur la carte ───────────────────────────── */
 /* Classe dédiée : `bg-white/80` génère `.bg-white\/80`, que le bloc d'overrides
@@ -439,7 +475,9 @@ html.dark .map-login-veil {
 }
 
 /* ─── Marqueurs personnalisés (carte) ────────────────────────────────────── */
-/* Le fond porte la couleur du type : on ne le surcharge pas, seule l'ombre change. */
+/* Rond sombre ; le cercle et la pastille gardent la couleur du type. */
+html.dark .custom-marker { background: #1e293b; color: #30d158; }
+html.dark .custom-marker__type { border-color: #1e293b; }
 html.dark .custom-marker:not(.custom-marker--selected) {
   box-shadow: 0 2px 8px rgba(0,0,0,0.5) !important;
 }
@@ -454,6 +492,6 @@ html.dark .homepage-category-pill {
   color: #cbd5e1 !important;
 }
 html.dark .homepage-category-pill:hover {
-  border-color: #4ade80 !important;
-  color: #4ade80 !important;
+  border-color: #30d158 !important;
+  color: #30d158 !important;
 }

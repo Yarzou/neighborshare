@@ -11,40 +11,44 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Refonte « Verre et Cèdre » (2026-10-06, maquette validée) : fond gris très
-        // clair, cartes blanches, texte presque noir, et le vert réservé aux actions,
-        // aux icônes et à la sélection. Les gris sont neutres, à peine teintés de
-        // vert, sur le modèle des gris système d'iOS. Toutes les classes `gray-*`
-        // basculent d'un coup ; le mode sombre n'est pas touché, son bloc de
-        // surcharges emploie des hex.
-        // gray-50 est le fond de page, gray-100 les zones en retrait et les
-        // remplissages (champs, contrôles segmentés), gray-200 les bordures.
-        // `white` redevient un blanc pur : c'est la couleur des cartes.
+        // Refonte « Verre et Cèdre », couleurs Apple (2026-10-07) : fond gris clair,
+        // cartes blanches, texte presque noir. Demande utilisateur : « des couleurs
+        // à la Apple, pas de teinte de vert ». Les gris sont donc les gris système
+        // d'iOS, neutres (plus aucun gris verdâtre). Toutes les classes `gray-*`
+        // basculent d'un coup ; le mode sombre garde son bloc de surcharges en hex.
+        // gray-50 est le fond de page, gray-100 les remplissages (champs), gray-200
+        // les séparateurs et la piste des contrôles segmentés.
+        // `white` est un blanc pur : c'est la couleur des cartes.
         white: '#ffffff',
         gray: {
-          50:  '#f2f5f3',
-          100: '#eef1ef',
-          200: '#e1e5e2',
-          300: '#c9cecb',
-          400: '#a3a8a5',
+          50:  '#f2f2f7',
+          100: '#e9e9ee',
+          200: '#e3e3e8',
+          300: '#d1d1d6',
+          400: '#8e8e93',
           500: '#6c6c70',
           600: '#545458',
           700: '#3a3a3c',
           800: '#2c2c2e',
           900: '#1c1c1e',
         },
-        // Vert Cèdre : brand-600 #1f6f47 est la couleur des actions (blanc dessus : 6,3:1).
+        // Vert « système » d'Apple, en version contrastée : le vert reste la base de
+        // l'appli (actions, icônes), mais en aplat franc. brand-600 #23843b est le
+        // vert des boutons (blanc dessus : 4,7:1) ; brand-400 est le vert système.
+        // ⚠️ brand-50 à brand-300 sont volontairement NEUTRES (gris système) : ils
+        // servaient de fonds et de bordures vert pâle dans toute l'appli (sélection,
+        // survol, pastilles), et l'utilisateur ne veut plus de vert pâle.
         brand: {
-          50:  '#eef6f1',
-          100: '#e4eee9',
-          200: '#c6ddd0',
-          300: '#95c1a7',
-          400: '#5c9d77',
-          500: '#2f8257',
-          600: '#1f6f47',
-          700: '#185c3a',
-          800: '#134a2f',
-          900: '#0f3b26',
+          50:  '#f2f2f7',
+          100: '#e9e9ee',
+          200: '#d1d1d6',
+          300: '#c7c7cc',
+          400: '#34c759',
+          500: '#2aa14b',
+          600: '#23843b',
+          700: '#1d7032',
+          800: '#175a28',
+          900: '#11441e',
         },
         warm: {
           50:  '#fefce8',
@@ -74,7 +78,11 @@ const config: Config = {
         tabbar: {
           DEFAULT: 'var(--tabbar)',
           edge: 'var(--tabbar-edge)',
+          // Doigt posé sur la barre : elle se densifie (2026-10-07)
+          strong: 'var(--tabbar-strong)',
         },
+        // Fond de la loupe de la barre d'onglets
+        'lens-fill': 'var(--lens-fill)',
         bubble: {
           DEFAULT: 'var(--bubble)',
           edge: 'var(--bubble-edge)',
@@ -124,6 +132,8 @@ const config: Config = {
         lifted: 'inset 0 0 0 0.5px var(--bubble-edge), 0 3px 12px rgba(0, 0, 0, 0.2)',
         lift: 'var(--shadow-lift)',
         float: 'var(--shadow-float)',
+        // Loupe de la barre d'onglets : arête claire, ombre interne en bas, portée douce
+        lens: 'inset 0 0 0 0.5px var(--bubble-edge), inset 0 1px 1px rgba(255, 255, 255, 0.9), inset 0 -2px 6px rgba(0, 0, 0, 0.08), 0 8px 22px rgba(0, 0, 0, 0.18)',
       },
     },
   },

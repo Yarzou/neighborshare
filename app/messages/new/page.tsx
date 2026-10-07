@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { ArrowLeft, Search, X, Users, Loader2, Check, AlertCircle } from 'lucide-react'
+import { Search, X, Users, Loader2, Check, AlertCircle } from 'lucide-react'
+import { FormHeader } from '@/components/layout/FormHeader'
 import type { Profile } from '@/lib/types'
 import { getAvatarStyle } from '@/lib/utils'
 
@@ -101,12 +101,9 @@ export default function NewConversationPage() {
   const isGroup = selected.length > 1
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-8">
-      <Link href="/messages" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-6">
-        <ArrowLeft size={16} /> Retour aux messages
-      </Link>
-
-      <h1 className="text-2xl font-bold mb-1">Nouvelle conversation</h1>
+    <div className="max-w-lg mx-auto px-4 pb-8">
+      {/* Barre façon iOS : « Annuler » ramène aux messages */}
+      <FormHeader title="Nouvelle conversation" cancelHref="/messages" />
       <p className="text-sm text-gray-500 mb-6">Recherchez un ou plusieurs voisins pour démarrer une discussion.</p>
 
       {error && (

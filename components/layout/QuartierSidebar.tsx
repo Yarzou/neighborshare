@@ -37,7 +37,7 @@ export function QuartierSidebar() {
                 'flex items-center gap-3 rounded-xl px-3 py-3 transition-colors',
                 // Sélection douce, comme le menu latéral principal (refonte 2026-10-06)
                 active
-                  ? 'bg-brand-100 text-brand-700'
+                  ? 'bg-bubble shadow-bubble text-brand-700'
                   : 'text-content-soft hover:bg-surface-sunken'
               )}
             >

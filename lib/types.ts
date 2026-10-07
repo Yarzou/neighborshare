@@ -305,18 +305,19 @@ export const LISTING_TYPE_SHORT: Record<ListingType, string> = {
 }
 
 /**
- * Couleur de chaque type d'annonce (hex), validée sur maquette le 2026-10-06 :
- * marqueurs Leaflet, pastille de la lettre (TypeBadge) et pastille d'icône des
- * cartes (CategoryTile). Le vert reste réservé aux actions : aucun type n'est vert.
- * Blanc dessus : contraste ≥ 4,5:1 pour chacune. La lettre accompagne toujours la
- * couleur — framboise et rouge sont proches pour un œil daltonien.
+ * Couleur de chaque type d'annonce (hex) : marqueurs Leaflet, pastille de la lettre
+ * (TypeBadge) et pastille d'icône des cartes (CategoryTile).
+ * 2026-10-07 : couleurs système d'Apple, dans leur version contrastée (celle
+ * d'« Augmenter le contraste ») pour qu'une lettre blanche reste lisible : contraste
+ * ≥ 4,5:1 pour chacune. Le vert reste celui des actions et des icônes : aucun
+ * type n'est vert. La lettre accompagne toujours la couleur.
  */
 export const LISTING_TYPE_MARKER_COLORS: Record<ListingType, string> = {
-  pret: '#2f6fb3',    // bleu
-  don: '#b03a6e',     // framboise
-  echange: '#6b4fa8', // violet
-  service: '#c46a12', // orange
-  vente: '#c2413a',   // rouge
+  pret: '#0a64d8',    // bleu
+  don: '#c2185b',     // rose framboise
+  echange: '#8944ab', // violet
+  service: '#b35c00', // orange
+  vente: '#d70015',   // rouge
 }
 
 export const BOOK_CONDITION_LABELS: Record<BookCondition, string> = {

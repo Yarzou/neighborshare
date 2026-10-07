@@ -11,6 +11,7 @@ import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
 import markerShadow from 'leaflet/dist/images/marker-shadow.png'
 import type { Listing } from '@/lib/types'
 import { LISTING_TYPE_MARKER_COLORS, LISTING_TYPE_SHORT } from '@/lib/types'
+import { categoryIconSvg } from '@/components/listings/CategoryIcon'
 import { NEIGHBORHOOD_CENTER, NEIGHBORHOOD_DEFAULT_ZOOM } from '@/lib/neighborhood'
 
 // Fix icônes Leaflet avec Next.js.
@@ -34,9 +35,11 @@ interface Props {
   selectedId?: string
   searchedLocation?: [number, number] | null
   visible?: boolean
+  /** Hauteur (px) couverte en bas de la carte par la fiche ouverte : le repère choisi reste au-dessus */
+  bottomInset?: number
 }
 
-export default function LeafletMap({ userPosition, listings, onSelectListing, selectedId, searchedLocation, visible }: Props) {
+export default function LeafletMap({ userPosition, listings, onSelectListing, selectedId, searchedLocation, visible, bottomInset = 0 }: Props) {
   const mapRef = useRef<L.Map | null>(null)
   const markersRef = useRef<Record<string, L.Marker>>({})
   const clusterGroupRef = useRef<L.MarkerClusterGroup | null>(null)
@@ -122,7 +125,7 @@ export default function LeafletMap({ userPosition, listings, onSelectListing, se
         const btn = L.DomUtil.create('button', 'leaflet-bar leaflet-control-recenter') as HTMLButtonElement
         btn.title = 'Recentrer sur ma position'
         btn.style.cssText = 'width:30px;height:30px;display:none;align-items:center;justify-content:center;background:white;border:none;cursor:pointer;padding:0;'
-        btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1f6f47" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg>`
+        btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#007aff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg>`
         btn.onclick = (e) => {
           L.DomEvent.stopPropagation(e)
           if (mapRef.current && userPositionRef.current) {
@@ -174,7 +177,7 @@ export default function LeafletMap({ userPosition, listings, onSelectListing, se
     }
 
     const userIcon = L.divIcon({
-      html: `<div class="user-location-dot" style="width:16px;height:16px;background:#1f6f47;border:3px solid white;border-radius:50%;box-shadow:0 0 0 2px rgba(31,111,71,0.3)"></div>`,
+      html: `<div class="user-location-dot" style="width:16px;height:16px;background:#007aff;border:3px solid white;border-radius:50%;box-shadow:0 0 0 2px rgba(0,122,255,0.3)"></div>`,
       iconSize: [16, 16],
       iconAnchor: [8, 8],
       className: '',
@@ -231,16 +234,17 @@ export default function LeafletMap({ userPosition, listings, onSelectListing, se
       if (!listing.lat_out || !listing.lng_out) return
 
       const isDemande = listing.listing_intent === 'demande'
-      const typeColor = LISTING_TYPE_MARKER_COLORS[listing.type] ?? '#1f6f47'
-      // Refonte 2026-10-06 : carré rempli de la couleur du type, lettre blanche.
+      const typeColor = LISTING_TYPE_MARKER_COLORS[listing.type] ?? '#23843b'
+      // 2026-10-07 : rond blanc, icône de la catégorie en vert, cerclé de la couleur
+      // du type, avec la lettre du type dans une pastille (P, D, É, S, V).
       // Accessibilité : la lettre double la couleur, qu'un daltonien ne distingue
       // pas toujours (don / vente) ; une demande a un contour en tirets.
       const typeLetter = LISTING_TYPE_SHORT[listing.type] ?? ''
       const title = listing.title.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')
       const icon = L.divIcon({
-        html: `<div class="custom-marker${isDemande ? ' custom-marker--demande' : ''}" style="background:${typeColor}" title="${title}">${typeLetter}</div>`,
-        iconSize: [34, 34],
-        iconAnchor: [17, 17],
+        html: `<div class="custom-marker${isDemande ? ' custom-marker--demande' : ''}" style="--type:${typeColor}" title="${title}">${categoryIconSvg(listing.category_id)}<span class="custom-marker__type" aria-hidden="true">${typeLetter}</span></div>`,
+        iconSize: [36, 36],
+        iconAnchor: [18, 18],
         className: '',
       })
 
@@ -275,6 +279,19 @@ export default function LeafletMap({ userPosition, listings, onSelectListing, se
       inner.classList.toggle('custom-marker--selected', marker === markersRef.current[selectedId ?? ''])
     })
   }, [selectedId, listings])
+
+  // Garde le repère choisi visible au-dessus de la fiche (ListingSheet) : à la
+  // sélection, puis à chaque fois que la fiche est dépliée ou réduite. La carte ne
+  // bouge que si le repère est caché ; sinon `panInside` ne fait rien.
+  useEffect(() => {
+    const map = mapRef.current
+    const marker = selectedId ? markersRef.current[selectedId] : undefined
+    if (!map || !marker) return
+    map.panInside(marker.getLatLng(), {
+      paddingTopLeft: [40, 60],
+      paddingBottomRight: [40, bottomInset + 40],
+    })
+  }, [selectedId, bottomInset])
 
   return (
     <div className="relative w-full h-full">

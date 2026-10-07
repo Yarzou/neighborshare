@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import type { DirectMessage, Profile } from '@/lib/types'
 import { cn, formatDate, getAvatarStyle, SIDE_PANE_WIDTH } from '@/lib/utils'
+import Segmented from '@/components/ui/Segmented'
 import { fetchRecentMessages } from '@/lib/messaging'
 import {
   Loader2, MessageCircle, CheckCircle, XCircle, ArrowRight, Package, Inbox, ExternalLink,
@@ -507,20 +508,18 @@ export default function DemandesClient() {
     setSelectedId(null)
   }
 
-  const tabButton = (key: 'received' | 'sent', label: string, badge: number, badgeColor: string) => (
-    <button
-      onClick={() => selectTab(key)}
-      className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${
-        tab === key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-      }`}
-    >
-      {label}
-      {badge > 0 && (
-        <span className={`min-w-[18px] h-[18px] px-1 ${badgeColor} text-white text-[10px] font-bold rounded-full flex items-center justify-center`}>
-          {badge}
-        </span>
-      )}
-    </button>
+  // Reçues / Envoyées : contrôle segmenté iOS 26 (bulle qui glisse, repris de Fridge)
+  const tabs = (receivedLabel: string, sentLabel: string, receivedCount: number, sentCount: number) => (
+    <Segmented
+      label="Demandes"
+      value={tab}
+      onChange={selectTab}
+      options={[
+        { value: 'received', label: receivedLabel, badge: receivedCount },
+        { value: 'sent', label: sentLabel, badge: sentCount },
+      ]}
+      itemClassName="h-9 text-sm"
+    />
   )
 
   return (
@@ -529,9 +528,8 @@ export default function DemandesClient() {
       <div className="md:hidden max-w-2xl mx-auto px-4 py-8">
         <h1 className="text-2xl font-bold text-gray-900 mb-6">Mes demandes</h1>
 
-        <div className="flex gap-1 bg-gray-100 p-1 rounded-xl mb-6">
-          {tabButton('received', 'Reçues', receivedBadge, 'bg-brand-600')}
-          {tabButton('sent', 'Envoyées', sentBadge, 'bg-brand-600')}
+        <div className="mb-6">
+          {tabs('Reçues', 'Envoyées', receivedBadge, sentBadge)}
         </div>
 
         {tab === 'received' && (
@@ -580,10 +578,7 @@ export default function DemandesClient() {
         <aside className={cn('flex-shrink-0 bg-surface-pane border-r border-edge flex flex-col', SIDE_PANE_WIDTH)}>
           <div className="px-4 pt-5 pb-3 flex flex-col gap-3">
             <h1 className="text-xl font-bold text-gray-900">Mes demandes</h1>
-            <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
-              {tabButton('received', `Reçues · ${receivedBadge}`, receivedPending.length, 'bg-brand-600')}
-              {tabButton('sent', `Envoyées · ${sentBadge}`, sentPending.length, 'bg-brand-600')}
-            </div>
+            {tabs(`Reçues · ${receivedBadge}`, `Envoyées · ${sentBadge}`, receivedPending.length, sentPending.length)}
           </div>
           <div className="flex-1 overflow-y-auto">
             {currentList.length === 0 ? (

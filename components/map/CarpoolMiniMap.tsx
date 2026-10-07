@@ -18,7 +18,7 @@ const departureIconHtml = `
   <div style="display:flex;flex-direction:column;align-items:center;gap:0">
     <div style="
       width:20px;height:20px;
-      background:#1f6f47;
+      background:#23843b;
       border:2px solid white;
       border-radius:50%;
       box-shadow:0 1px 4px rgba(0,0,0,0.35);
@@ -29,7 +29,7 @@ const departureIconHtml = `
         <polygon points="3,1 9,3.5 3,6"/>
       </svg>
     </div>
-    <div style="width:2px;height:8px;background:#1f6f47;margin-top:-1px"></div>
+    <div style="width:2px;height:8px;background:#23843b;margin-top:-1px"></div>
   </div>
 `
 

@@ -10,12 +10,14 @@ import { getCategoryEmoji } from '@/lib/categories'
 import { EventActions } from '@/components/map/EventActions'
 import { formatDate } from '@/lib/utils'
 import { cn, SIDE_PANE_WIDTH } from '@/lib/utils'
+import Switch from '@/components/ui/Switch'
+import Segmented from '@/components/ui/Segmented'
 import { getAvatarStyle, getInitials, DEFAULT_AVATAR_COLOR } from '@/lib/utils'
 import { TypeBadge } from '@/components/listings/TypeBadge'
 import {
   Package, Pencil, Trash2, Edit2,
   Check, X, Loader2, AlertCircle,
-  Lock, ShieldAlert, Eye, EyeOff, Bell, Mail, ChevronDown, MapPin, CalendarDays, LogOut,
+  Lock, ShieldAlert, Eye, EyeOff, Bell, Mail, ChevronDown, MapPin, CalendarDays, LogOut, Palette,
 } from 'lucide-react'
 import { isPushSupported, activatePushNotifications, deactivatePushNotifications } from '@/lib/pushNotifications'
 import AddressAutocomplete, { type ResolvedAddress } from '@/components/forms/AddressAutocomplete'
@@ -473,68 +475,47 @@ export default function ProfileClient() {
         {/* Apparence */}
         <div className="flex items-center justify-between gap-4 px-6 py-4 border-b border-gray-100">
           <div className="flex items-start gap-3">
-            <span className="text-gray-400 mt-0.5 flex-shrink-0 text-base leading-none">🎨</span>
+            <Palette size={17} className="text-brand-600 mt-0.5 flex-shrink-0" aria-hidden="true" />
             <div>
               <p className="text-sm font-medium text-gray-800">Apparence</p>
               <p className="text-xs text-gray-400">Thème de l&apos;interface</p>
             </div>
           </div>
-          <div className="flex gap-1 bg-gray-100 p-1 rounded-xl flex-shrink-0">
-            {([
-              { value: 'light',  label: '☀️', title: 'Clair' },
-              { value: 'dark',   label: '🌙', title: 'Sombre' },
-              { value: 'system', label: '💻', title: 'Système' },
-            ] as { value: ThemeChoice; label: string; title: string }[]).map(opt => (
-              <button
-                key={opt.value}
-                onClick={() => setTheme(opt.value)}
-                title={opt.title}
-                className={cn(
-                  'px-2.5 py-1.5 rounded-lg text-sm transition-all',
-                  theme === opt.value
-                    ? 'bg-white text-gray-900 shadow-sm font-medium'
-                    : 'text-gray-500 hover:text-gray-700'
-                )}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
+          {/* Contrôle segmenté iOS 26 (bulle qui glisse, repris de Fridge) */}
+          <Segmented
+            label="Thème de l'interface"
+            value={theme}
+            onChange={setTheme}
+            options={[
+              { value: 'light', label: 'Clair' },
+              { value: 'dark', label: 'Sombre' },
+              { value: 'system', label: 'Auto' },
+            ] satisfies { value: ThemeChoice; label: string }[]}
+            className="w-[204px] flex-shrink-0"
+            itemClassName="h-8 text-[13px]"
+          />
         </div>
 
         {/* Notifications email */}
         <div className="flex items-center justify-between gap-4 px-6 py-4 border-b border-gray-100">
           <div className="flex items-start gap-3">
-            <Mail size={17} className="text-gray-400 mt-0.5 flex-shrink-0" />
+            <Mail size={17} className="text-brand-600 mt-0.5 flex-shrink-0" />
             <div>
               <p className="text-sm font-medium text-gray-800">Notifications par email</p>
               <p className="text-xs text-gray-400">Nouvelles annonces et messages</p>
             </div>
           </div>
-          <button
-            role="switch"
-            aria-checked={emailEnabled}
-            disabled={emailSaving}
-            onClick={() => handleEmailToggle(!emailEnabled)}
-            className={cn(
-              'relative inline-flex w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-brand-400',
-              emailEnabled ? 'bg-brand-600' : 'bg-gray-200',
-              emailSaving && 'opacity-50 cursor-not-allowed',
-            )}
-          >
-            <span className={cn(
-              'inline-block w-5 h-5 bg-white rounded-full shadow transition-transform mt-0.5',
-              emailEnabled ? 'translate-x-5' : 'translate-x-0.5',
-            )} />
-            {emailSaving && <Loader2 size={10} className="absolute inset-0 m-auto animate-spin text-white" />}
-          </button>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {emailSaving && <Loader2 size={14} className="animate-spin text-gray-400" aria-hidden="true" />}
+            <Switch checked={emailEnabled} onChange={handleEmailToggle} label="Notifications par email" disabled={emailSaving} />
+          </div>
         </div>
 
         {/* Notifications push */}
         <div className="flex flex-col border-b border-gray-100">
           <div className="flex items-center justify-between gap-4 px-6 py-4">
             <div className="flex items-start gap-3">
-              <Bell size={17} className="text-gray-400 mt-0.5 flex-shrink-0" />
+              <Bell size={17} className="text-brand-600 mt-0.5 flex-shrink-0" />
               <div>
                 <p className="text-sm font-medium text-gray-800">Notifications push</p>
                 <p className="text-xs text-gray-400">
@@ -542,23 +523,10 @@ export default function ProfileClient() {
                 </p>
               </div>
             </div>
-            <button
-              role="switch"
-              aria-checked={pushEnabled}
-              disabled={pushSaving || !pushSupported}
-              onClick={() => handlePushToggle(!pushEnabled)}
-              className={cn(
-                'relative inline-flex w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-brand-400',
-                pushEnabled ? 'bg-brand-600' : 'bg-gray-200',
-                (pushSaving || !pushSupported) && 'opacity-50 cursor-not-allowed',
-              )}
-            >
-              <span className={cn(
-                'inline-block w-5 h-5 bg-white rounded-full shadow transition-transform mt-0.5',
-                pushEnabled ? 'translate-x-5' : 'translate-x-0.5',
-              )} />
-              {pushSaving && <Loader2 size={10} className="absolute inset-0 m-auto animate-spin text-white" />}
-            </button>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {pushSaving && <Loader2 size={14} className="animate-spin text-gray-400" aria-hidden="true" />}
+              <Switch checked={pushEnabled} onChange={handlePushToggle} label="Notifications push" disabled={pushSaving || !pushSupported} />
+            </div>
           </div>
           {pushError && (
             <div className="flex items-center gap-2 text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2 mx-6 mb-3">

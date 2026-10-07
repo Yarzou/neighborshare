@@ -77,6 +77,7 @@ export default function DashboardClient({ firstName }: Props) {
 
   return (
     <div className="max-w-2xl mx-auto px-4 pt-6 pb-10 md:pt-10 flex flex-col gap-3.5">
+      {/* Pas de « + » ici (retiré à la demande, 2026-10-07) : on publie depuis la Carte. */}
       <header className="flex flex-col gap-0.5">
         {/* Date du navigateur : le serveur peut être sur un autre fuseau. */}
         <p suppressHydrationWarning className="text-[13px] font-semibold uppercase tracking-wide text-gray-500">{today}</p>
@@ -112,7 +113,11 @@ export default function DashboardClient({ firstName }: Props) {
             <h2 className={SECTION_TITLE}>Près de chez vous</h2>
             <Link href="/map" className="text-[15px] text-brand-600 hover:text-brand-700">Tout voir</Link>
           </div>
-          <div className="flex gap-2.5 overflow-x-auto -mx-4 px-4 pb-1.5 snap-x">
+          {/* 16 px de marge à gauche comme à droite, aussi après défilement :
+              - scroll-px-4 : les cartes s'aimantent à 16 px du bord, pas contre l'écran ;
+              - à droite, un espaceur plutôt qu'un padding, que Safari ignore en fin de
+                zone défilante (6 px + l'écart de 10 px = 16 px). */}
+          <div className="flex gap-2.5 overflow-x-auto -mx-4 pl-4 scroll-px-4 pb-1.5 snap-x">
             {listings.map(l => (
               <Link key={l.id} href={`/listings/${l.id}`}
                 className={`${CARD} snap-start w-[150px] shrink-0 p-3 flex flex-col gap-2 hover:bg-gray-50 transition-colors`}>
@@ -122,6 +127,7 @@ export default function DashboardClient({ firstName }: Props) {
                 <TypeBadge type={l.type} className="self-start" />
               </Link>
             ))}
+            <span aria-hidden="true" className="w-1.5 shrink-0" />
           </div>
         </section>
       )}

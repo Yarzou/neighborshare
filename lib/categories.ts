@@ -33,14 +33,14 @@ const WHITE_HOVER = 'hover:border-gray-300'
 const WHITE_OUTLINE = 'bg-white border-gray-200 hover:border-gray-300'
 
 export const CATEGORY_LIST: CategoryDef[] = [
-  { id: 1, slug: 'outils',       label: 'Outils',          filterLabel: 'Outils',   icon: '🔧', color: WHITE_CARD, hoverColor: WHITE_HOVER, borderOnly: WHITE_OUTLINE, tile: 'bg-[#1f6f47]' },
-  { id: 2, slug: 'services',     label: 'Services',         filterLabel: 'Services', icon: '🤝', color: WHITE_CARD, hoverColor: WHITE_HOVER, borderOnly: WHITE_OUTLINE, tile: 'bg-[#2f6b4f]' },
-  { id: 3, slug: 'garde-enfant', label: "Garde d'enfant",   filterLabel: 'Enfants',  icon: '👶', color: WHITE_CARD, hoverColor: WHITE_HOVER, borderOnly: WHITE_OUTLINE, tile: 'bg-[#2e7d5b]' },
-  { id: 4, slug: 'covoiturage',  label: 'Covoiturage',      filterLabel: 'Trajet',   icon: '🚗', color: WHITE_CARD, hoverColor: WHITE_HOVER, borderOnly: WHITE_OUTLINE, tile: 'bg-[#0f5c4c]' },
-  { id: 5, slug: 'dons',         label: 'Dons / Objets',    filterLabel: 'Dons',     icon: '📦', color: WHITE_CARD, hoverColor: WHITE_HOVER, borderOnly: WHITE_OUTLINE, tile: 'bg-[#5b7a3a]' },
-  { id: 6, slug: 'jardinage',    label: 'Jardinage',        filterLabel: 'Jardin',   icon: '🌿', color: WHITE_CARD, hoverColor: WHITE_HOVER, borderOnly: WHITE_OUTLINE, tile: 'bg-[#4d7c2f]' },
-  { id: 7, slug: 'cuisine',      label: 'Cuisine',          filterLabel: 'Cuisine',  icon: '🍳', color: WHITE_CARD, hoverColor: WHITE_HOVER, borderOnly: WHITE_OUTLINE, tile: 'bg-[#557a2e]' },
-  { id: 8, slug: 'livre',        label: 'Livres',           filterLabel: 'Livres',   icon: '📚', color: WHITE_CARD, hoverColor: WHITE_HOVER, borderOnly: WHITE_OUTLINE, tile: 'bg-[#3e6b5a]' },
+  { id: 1, slug: 'outils',       label: 'Outils',          filterLabel: 'Outils',   icon: '🔧', color: WHITE_CARD, hoverColor: WHITE_HOVER, borderOnly: WHITE_OUTLINE, tile: 'bg-brand-600' },
+  { id: 2, slug: 'services',     label: 'Services',         filterLabel: 'Services', icon: '🤝', color: WHITE_CARD, hoverColor: WHITE_HOVER, borderOnly: WHITE_OUTLINE, tile: 'bg-brand-600' },
+  { id: 3, slug: 'garde-enfant', label: "Garde d'enfant",   filterLabel: 'Enfants',  icon: '👶', color: WHITE_CARD, hoverColor: WHITE_HOVER, borderOnly: WHITE_OUTLINE, tile: 'bg-brand-600' },
+  { id: 4, slug: 'covoiturage',  label: 'Covoiturage',      filterLabel: 'Trajet',   icon: '🚗', color: WHITE_CARD, hoverColor: WHITE_HOVER, borderOnly: WHITE_OUTLINE, tile: 'bg-brand-600' },
+  { id: 5, slug: 'dons',         label: 'Dons / Objets',    filterLabel: 'Dons',     icon: '📦', color: WHITE_CARD, hoverColor: WHITE_HOVER, borderOnly: WHITE_OUTLINE, tile: 'bg-brand-600' },
+  { id: 6, slug: 'jardinage',    label: 'Jardinage',        filterLabel: 'Jardin',   icon: '🌿', color: WHITE_CARD, hoverColor: WHITE_HOVER, borderOnly: WHITE_OUTLINE, tile: 'bg-brand-600' },
+  { id: 7, slug: 'cuisine',      label: 'Cuisine',          filterLabel: 'Cuisine',  icon: '🍳', color: WHITE_CARD, hoverColor: WHITE_HOVER, borderOnly: WHITE_OUTLINE, tile: 'bg-brand-600' },
+  { id: 8, slug: 'livre',        label: 'Livres',           filterLabel: 'Livres',   icon: '📚', color: WHITE_CARD, hoverColor: WHITE_HOVER, borderOnly: WHITE_OUTLINE, tile: 'bg-brand-600' },
 ]
 
 /** Slug d'une catégorie à partir de son ID ('' si inconnue). */
