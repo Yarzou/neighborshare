@@ -81,6 +81,7 @@ filigrane dans la liste des messages, est-ce réel ? » (oui).
 - « Reproduire la bulle iOS 26 sur les switchs » : la pastille de `Switch` devient sous le doigt une
   lentille translucide ×1,35 (`bg-white/30`, `shadow-lens`).
 - Garde d'enfant, « je propose des dispos » : le bouton « Ajouter » des créneaux (récurrents et ponctuels) sortait du cadre sur mobile. Heures en grille `minmax(0,1fr) auto minmax(0,1fr)` (`min-w-0`), bouton en pleine largeur dessous.
+- « Date de l'assemblée dépasse du champ » : `DateField` aussi pour la date d'une assemblée (`AssemblyForm`), la date limite d'un achat groupé (sortie de la grille, qui passe à 3 colonnes) et la clôture d'un sondage. Restent natifs : les filtres Du / Au de l'Agenda (compacts, prévus pour rétrécir).
 - Barre du haut mobile agrandie (« agrandis un petit peu le header ») : 56 → 64 px (`--nav-top` 4 rem), logo 38 px, nom en 17 px, avatar 40 px.
 
 ## 2026-10-06 (fin) — La vraie « goutte d'eau » de Fridge (branche `refonte-verre`)

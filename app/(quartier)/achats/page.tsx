@@ -10,6 +10,7 @@ import { LoginRequiredNotice } from '@/components/layout/LoginRequiredNotice'
 import { ItemActions } from '@/components/common/ItemActions'
 import { formatDate, getAvatarStyle, cn } from '@/lib/utils'
 import { notifyQuartier } from '@/lib/pushNotifications'
+import DateField from '@/components/ui/DateField'
 
 /** Quantité formatée sans décimales inutiles (500 plutôt que 500.00) */
 function fmtQty(n: number): string {
@@ -252,7 +253,7 @@ export default function GroupPurchasesPage() {
                   className="w-full px-4 py-2.5 rounded-xl border border-edge bg-surface text-sm resize-none focus:outline-none focus:ring-2 focus:ring-brand-500" />
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-content-muted mb-1.5">Unité *</label>
                   <input name="unit" value={form.unit} onChange={handleChange}
@@ -271,12 +272,19 @@ export default function GroupPurchasesPage() {
                     type="number" min="0" step="0.01" placeholder="1.05"
                     className="w-full px-3 py-2.5 rounded-xl border border-edge bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-content-muted mb-1.5">Date limite</label>
-                  <input name="deadline" value={form.deadline} onChange={handleChange}
-                    type="date" min={new Date().toISOString().slice(0, 10)}
-                    className="w-full px-3 py-2.5 rounded-xl border border-edge bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
-                </div>
+              </div>
+
+              {/* Date limite sur sa propre ligne : son calendrier (DateField) a besoin de
+                  toute la largeur, pas d'une case de la grille. */}
+              <div>
+                <span className="block text-xs font-medium text-content-muted mb-1.5">Date limite</span>
+                <DateField
+                  value={form.deadline}
+                  min={new Date().toISOString().slice(0, 10)}
+                  placeholder="Pas de date limite"
+                  clearable
+                  onChange={v => setForm(f => ({ ...f, deadline: v }))}
+                />
               </div>
 
               <button type="submit" disabled={saving}
