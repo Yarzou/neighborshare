@@ -312,7 +312,7 @@ export default function EventForm({ initialEvent }: EventFormProps) {
                 <button
                   type="button"
                   onClick={() => removeExistingImage(url)}
-                  className="absolute top-1 right-1 bg-white rounded-full p-0.5 shadow border border-gray-200"
+                  className="absolute top-1 right-1 glass rounded-full p-0.5"
                 >
                   <X size={12} />
                 </button>
@@ -331,7 +331,7 @@ export default function EventForm({ initialEvent }: EventFormProps) {
                 <button
                   type="button"
                   onClick={() => removeNewImage(i)}
-                  className="absolute top-1 right-1 bg-white rounded-full p-0.5 shadow border border-gray-200"
+                  className="absolute top-1 right-1 glass rounded-full p-0.5"
                 >
                   <X size={12} />
                 </button>

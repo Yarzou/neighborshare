@@ -124,7 +124,8 @@ export default function LeafletMap({ userPosition, listings, onSelectListing, se
       onAdd() {
         const btn = L.DomUtil.create('button', 'leaflet-bar leaflet-control-recenter') as HTMLButtonElement
         btn.title = 'Recentrer sur ma position'
-        btn.style.cssText = 'width:30px;height:30px;display:none;align-items:center;justify-content:center;background:white;border:none;cursor:pointer;padding:0;'
+        // Fond et bordure : le verre des contrôles, posé par globals.css (.leaflet-bar)
+        btn.style.cssText = 'width:32px;height:32px;display:none;align-items:center;justify-content:center;cursor:pointer;padding:0;'
         btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#007aff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg>`
         btn.onclick = (e) => {
           L.DomEvent.stopPropagation(e)

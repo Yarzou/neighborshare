@@ -216,6 +216,33 @@ html:not(.dark) .main-map .leaflet-tile-pane {
   bottom: var(--tabbar-h);
 }
 
+/* Contrôles de la carte (+/−, Recentrer) : le verre des éléments flottants, comme
+   `.glass`. leaflet.css est chargé APRÈS ce fichier (import des composants carte),
+   d'où des sélecteurs plus spécifiques que les siens (`.leaflet-touch .leaflet-bar`,
+   `.leaflet-bar a:hover`, `.leaflet-bar a.leaflet-disabled`). */
+.leaflet-container .leaflet-control.leaflet-bar {
+  background-color: var(--glass);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--glass-edge);
+  box-shadow: var(--glass-shadow);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.leaflet-container .leaflet-control.leaflet-bar a {
+  background-color: transparent;
+  color: var(--text);
+  border-bottom-color: var(--glass-edge);
+}
+.leaflet-container .leaflet-control.leaflet-bar a:hover,
+.leaflet-container .leaflet-control.leaflet-bar a:focus {
+  background-color: var(--bubble);
+}
+.leaflet-container .leaflet-control.leaflet-bar a.leaflet-disabled {
+  background-color: transparent;
+  color: var(--text-faint);
+}
+
 /* Cluster bubble */
 .cluster-bubble {
   width: 40px;

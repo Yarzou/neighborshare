@@ -77,13 +77,13 @@ export function EventDetailPopup({ event, onClose, onDeleted }: EventDetailPopup
               <>
                 <button
                   onClick={() => setPhotoIndex(i => (i - 1 + photos.length) % photos.length)}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 rounded-full p-1 shadow"
+                  className="absolute left-2 top-1/2 -translate-y-1/2 glass rounded-full p-1"
                 >
                   <ChevronLeft size={16} />
                 </button>
                 <button
                   onClick={() => setPhotoIndex(i => (i + 1) % photos.length)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 rounded-full p-1 shadow"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 glass rounded-full p-1"
                 >
                   <ChevronRight size={16} />
                 </button>

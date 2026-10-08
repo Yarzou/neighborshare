@@ -74,7 +74,7 @@ export default function PWAInstallBanner() {
 
   return (
     <div className="fixed bottom-[var(--tabbar-h)] left-0 right-0 md:left-[var(--sidebar-w)] z-[1300] flex justify-center px-4 pb-4 pointer-events-none">
-      <div className="pointer-events-auto w-full max-w-sm bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
+      <div className="pointer-events-auto w-full max-w-sm glass rounded-2xl overflow-hidden">
         {/* Header */}
         <div className="flex items-center gap-3 px-4 pt-4 pb-3">
           <Image src="/icon-192.png" alt="Icône" width={44} height={44} className="rounded-xl flex-shrink-0" />

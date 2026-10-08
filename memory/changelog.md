@@ -1,5 +1,36 @@
 # Historique des modifications (par session)
 
+## 2026-10-08 — Verre sur les petits éléments flottants (branche `refonte-verre`)
+
+Demande : « vérifie que l'effet liquid glass d'Apple est bien présent partout ». L'audit a montré
+que le verre était posé sur la navigation (barre d'onglets, barre du haut, menu latéral,
+`FormHeader`, loupes), mais que les éléments qui flottent ailleurs restaient en blanc opaque.
+Décision de l'utilisateur : **seulement les petits éléments**. La fiche d'annonce de la carte
+(`ListingSheet`) et le détail d'un événement (`EventDetailPopup`) restent opaques, car ce sont de
+grandes surfaces de texte.
+
+- **`PushNotificationBanner.tsx`, `PWAInstallBanner.tsx`** : bandeaux en `.glass` (au lieu de
+  `bg-white shadow-xl border`).
+- **`MessageBubble.tsx`** : palettes de réactions desktop (survol) et mobile (appui long) en `.glass`.
+- **`AddressAutocomplete.tsx`** : liste des suggestions en `.glass`.
+- **Boutons posés sur une photo**, en `.glass` : flèches du carrousel (`EventDetailClient.tsx`,
+  `EventDetailPopup.tsx`), « Supprimer »/« Changer » (`ListingForm.tsx`), croix de retrait d'image
+  (`EventForm.tsx`).
+- **`app/globals.css`** : contrôles Leaflet (`.leaflet-bar` : +/−, Recentrer) avec la recette
+  `.glass`, coins de 12 px, survol en `--bubble`. Sélecteurs volontairement plus spécifiques que ceux
+  de `leaflet.css`, qui est chargé **après** `globals.css` (import dans les composants carte). Vaut
+  aussi pour le zoom de `EventMiniMap`.
+- **`LeafletMap.tsx`** : bouton Recentrer sans `background:white;border:none` en ligne (le style en
+  ligne écrasait le CSS), 32 px pour s'aligner sur la barre de zoom.
+- Rappel : `.glass` est déclarée **après** `@tailwind utilities`, donc elle écrase un `border-*`,
+  `shadow-*` ou `bg-*` de même spécificité. Ne pas les combiner, sauf les variantes `hover:`.
+- Hors périmètre, constaté : la barre d'outils de `PdfViewer.tsx` utilise sa propre recette
+  (`bg-surface-pane/95 backdrop-blur`). Le vrai Liquid Glass (réfraction sur les bords) n'est rendu
+  nulle part : il exige un filtre SVG dans `backdrop-filter`, que seul Chromium accepte, donc rien sur
+  iPhone.
+- Vérifié : typecheck OK ; ESLint sur les fichiers modifiés : 0 erreur, 4 avertissements, tous
+  préexistants (`set-state-in-effect`). Build et rendu à l'écran non vérifiés.
+
 ## 2026-10-08 — Liens de la page de connexion raccourcis (`main` et `refonte-verre`)
 
 Demande : sous « Se connecter », « Empreinte ou Face ID », « Créer un compte » et « Mot de passe oublié ? »,

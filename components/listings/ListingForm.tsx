@@ -547,11 +547,11 @@ export function ListingForm({ mode, listingId, initial, defaultAddress, profileH
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={imagePreview} alt="Preview" className="w-full max-h-72 object-contain rounded-xl bg-gray-100" />
                 <button type="button" onClick={() => { setImageFile(null); setImagePreview(null); setExistingImageUrl(null) }}
-                  className="absolute top-2 right-2 bg-white rounded-full px-3 py-1 text-xs font-medium shadow hover:bg-gray-50">
+                  className="absolute top-2 right-2 glass rounded-full px-3 py-1 text-xs font-medium hover:bg-gray-50">
                   Supprimer
                 </button>
                 <button type="button" onClick={() => fileRef.current?.click()}
-                  className="absolute bottom-2 right-2 bg-white rounded-full px-3 py-1 text-xs font-medium shadow hover:bg-gray-50">
+                  className="absolute bottom-2 right-2 glass rounded-full px-3 py-1 text-xs font-medium hover:bg-gray-50">
                   Changer
                 </button>
               </div>

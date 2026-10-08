@@ -248,7 +248,7 @@ export function MessageBubble({
                 {showPicker && (
                   <div
                     ref={pickerRef}
-                    className={`absolute bottom-full mb-1 z-20 bg-white border border-gray-200 rounded-2xl shadow-lg px-2 py-1.5 flex gap-1 ${
+                    className={`absolute bottom-full mb-1 z-20 glass rounded-2xl px-2 py-1.5 flex gap-1 ${
                       isMe ? 'right-0' : 'left-0'
                     }`}
                   >
@@ -309,7 +309,7 @@ export function MessageBubble({
           onClick={() => setShowPicker(false)}
         >
           <div
-            className="absolute bg-white border border-gray-200 rounded-2xl shadow-xl px-3 py-2 flex gap-2"
+            className="absolute glass rounded-2xl px-3 py-2 flex gap-2"
             style={
               pickerPos
                 ? { top: pickerPos.top, left: pickerPos.left, transform: 'translateX(-50%)' }

@@ -211,7 +211,7 @@ export default function AddressAutocomplete({
 
       {/* Dropdown suggestions */}
       {suggestions.length > 0 && (
-        <ul className="absolute top-[calc(100%-0.5rem)] mt-1 w-full bg-white rounded-xl border border-gray-200 shadow-lg z-50 overflow-hidden">
+        <ul className="absolute top-[calc(100%-0.5rem)] mt-1 w-full glass rounded-xl z-50 overflow-hidden">
           {suggestions.map(s => (
             <li key={s.properties.label} className="border-b border-gray-50 last:border-0">
               <button
