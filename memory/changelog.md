@@ -1,5 +1,16 @@
 # Historique des modifications (par session)
 
+## 2026-10-08 — Liens de la page de connexion raccourcis (`main` et `refonte-verre`)
+
+Demande : sous « Se connecter », « Empreinte ou Face ID », « Créer un compte » et « Mot de passe oublié ? »,
+au lieu des libellés longs.
+
+- **`app/auth/login/LoginClient.tsx`** : le bouton passkey s'intitule « Empreinte ou Face ID » (icône
+  empreinte inchangée) et suit directement « Se connecter ». Le séparateur « ou » est retiré, sinon on
+  lisait « ou Empreinte ou Face ID ». « Pas encore de compte ? S'inscrire » devient le lien « Créer un compte »,
+  et « Mot de passe oublié ? Le renouveler » devient le lien « Mot de passe oublié ? ». Les deux liens
+  sont empilés et centrés. Mêmes cibles (`/auth/register`, `/auth/forgot-password`).
+
 ## 2026-10-05 — Bulle de la page Profil : mêmes initiales que la Navbar
 
 - **`lib/utils.ts`** : `getInitials(name)` reprend la règle de l'ex-`initialsOf()` de la Navbar
