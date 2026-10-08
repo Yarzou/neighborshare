@@ -177,38 +177,27 @@ export default function LoginClient() {
           </form>
 
           {passkeySupported && (
-            <>
-              <div className="flex items-center gap-3 my-5 text-xs text-content-faint">
-                <span className="h-px flex-1 bg-edge" />
-                ou
-                <span className="h-px flex-1 bg-edge" />
-              </div>
-              <button
-                type="button"
-                onClick={handlePasskeyLogin}
-                disabled={loading || passkeyLoading}
-                className="w-full py-3 rounded-xl border border-edge-strong text-content-soft font-medium text-sm hover:bg-surface-sunken transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
-              >
-                {passkeyLoading
-                  ? <Loader2 size={18} className="animate-spin" />
-                  : <Fingerprint size={18} className="text-brand-600" />}
-                Se connecter avec l&apos;empreinte ou Face ID
-              </button>
-            </>
+            <button
+              type="button"
+              onClick={handlePasskeyLogin}
+              disabled={loading || passkeyLoading}
+              className="w-full py-3 mt-3 rounded-xl border border-edge-strong text-content-soft font-medium text-sm hover:bg-surface-sunken transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+            >
+              {passkeyLoading
+                ? <Loader2 size={18} className="animate-spin" />
+                : <Fingerprint size={18} className="text-brand-600" />}
+              Empreinte ou Face ID
+            </button>
           )}
 
-          <p className="text-center text-sm text-gray-500 mt-6">
-            Pas encore de compte ?{' '}
+          <div className="flex flex-col items-center gap-2 mt-6 text-sm">
             <Link href="/auth/register" className="text-brand-600 font-medium hover:underline">
-              S&apos;inscrire
+              Créer un compte
             </Link>
-          </p>
-          <p className="text-center text-sm text-gray-500 mt-2">
-            Mot de passe oublié ?{' '}
             <Link href="/auth/forgot-password" className="text-brand-600 font-medium hover:underline">
-              Le renouveler
+              Mot de passe oublié ?
             </Link>
-          </p>
+          </div>
         </div>
       </div>
     </div>
