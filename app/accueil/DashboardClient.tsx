@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { usePendingRequests } from '@/lib/hooks'
 import { readPageCache, writePageCache } from '@/lib/pageCache'
 import { documentViewerHref, formatHeldOn, todayIso } from '@/lib/documents'
-import { cn, formatDate } from '@/lib/utils'
+import { cn, formatDate, SIDE_PANE_WIDTH } from '@/lib/utils'
 import { ASL_DOCUMENT_KIND_LABELS, type AslDocumentKind } from '@/lib/types'
 
 interface Props {
@@ -250,54 +250,84 @@ export default function DashboardClient({ firstName }: Props) {
   }))
 
   const announcement = data?.announcement
+  // Desktop : rien à afficher à droite (ni info ni ligne à suivre), on le dit
+  const nothingNew = data !== null && !announcement && rows.length === 0
+
+  // Salutation et documents : en tête et en bas de la colonne sur mobile, dans le
+  // volet gauche sur desktop.
+  const greeting = (
+    <header className="flex flex-col gap-0.5">
+      {/* Date du navigateur : le serveur peut être sur un autre fuseau. */}
+      <p suppressHydrationWarning className="text-[13px] font-semibold uppercase tracking-wide text-gray-500">{today}</p>
+      <h1 className="text-[34px] leading-10 font-bold tracking-tight text-gray-900">
+        Bonjour{firstName ? ` ${firstName}` : ''}
+      </h1>
+    </header>
+  )
+  const documentsSection = documents.length > 0 && (
+    <section className="flex flex-col gap-2.5">
+      <div className="flex items-baseline justify-between">
+        <h2 className={SECTION_TITLE}>Documents de l&apos;ASL</h2>
+        <Link href="/documents" className="text-[15px] text-brand-600 hover:text-brand-700">Tout voir</Link>
+      </div>
+      <GroupedList rows={documents} />
+    </section>
+  )
 
   return (
-    <div className="max-w-2xl mx-auto px-4 pt-6 pb-6 md:pt-10 flex flex-col gap-6">
-      {/* Pas de « + » ici (retiré à la demande, 2026-10-07) : on publie depuis la Carte. */}
-      <header className="flex flex-col gap-0.5">
-        {/* Date du navigateur : le serveur peut être sur un autre fuseau. */}
-        <p suppressHydrationWarning className="text-[13px] font-semibold uppercase tracking-wide text-gray-500">{today}</p>
-        <h1 className="text-[34px] leading-10 font-bold tracking-tight text-gray-900">
-          Bonjour{firstName ? ` ${firstName}` : ''}
-        </h1>
-      </header>
+    // Desktop (md+) : toute la fenêtre, comme Demandes, Messages et le Quartier —
+    // volet gauche à la largeur commune, contenu à défilement propre à droite.
+    // Le rendu mobile ne change pas : une seule colonne.
+    <div className="md:flex md:h-[var(--app-h)]">
+      <aside className={cn('hidden md:flex md:shrink-0 md:flex-col md:gap-6 md:px-5 md:py-6 md:bg-surface-pane md:border-r md:border-edge md:overflow-y-auto', SIDE_PANE_WIDTH)}>
+        {greeting}
+        {documentsSection}
+      </aside>
 
-      {announcement && (
-        <section className="flex flex-col gap-2.5">
-          <div className="flex items-baseline justify-between">
-            <h2 className={SECTION_TITLE}>L&apos;ASL du Cèdre</h2>
-            <Link href="/infos" className="text-[15px] text-brand-600 hover:text-brand-700">Toutes les infos</Link>
-          </div>
-          <Link href="/infos" className={`${CARD} flex gap-3 p-4 hover:bg-gray-50 transition-colors`}>
-            <IconTile icon={Megaphone} filled />
-            <span className="flex-1 min-w-0 flex flex-col gap-1">
-              <span suppressHydrationWarning className="text-[13px] text-gray-500">
-                Information officielle · {formatDate(announcement.created_at).toLowerCase()}
-              </span>
-              <span className="text-[17px] leading-[22px] font-semibold text-gray-900">{announcement.title}</span>
-              {/* Deux lignes au plus : la page doit tenir sans défiler */}
-              <span className="text-[15px] leading-5 text-gray-700 line-clamp-2">{announcement.body}</span>
-            </span>
-          </Link>
-        </section>
-      )}
+      <div className="md:flex-1 md:min-w-0 md:overflow-y-auto">
+        {/* Grand écran (lg) : l'info de l'ASL et « À suivre » côte à côte */}
+        <div className="max-w-2xl mx-auto px-4 pt-6 pb-6 flex flex-col gap-6 md:max-w-none md:mx-0 md:px-8 md:pb-10 lg:grid lg:grid-cols-2 lg:items-start">
+          {/* Pas de « + » ici (retiré à la demande, 2026-10-07) : on publie depuis la Carte. */}
+          <div className="md:hidden">{greeting}</div>
 
-      {rows.length > 0 && (
-        <section className="flex flex-col gap-2.5">
-          <h2 className={SECTION_TITLE}>À suivre</h2>
-          <GroupedList rows={rows} />
-        </section>
-      )}
+          {announcement && (
+            <section className="flex flex-col gap-2.5">
+              <div className="flex items-baseline justify-between">
+                <h2 className={SECTION_TITLE}>L&apos;ASL du Cèdre</h2>
+                <Link href="/infos" className="text-[15px] text-brand-600 hover:text-brand-700">Toutes les infos</Link>
+              </div>
+              <Link href="/infos" className={`${CARD} flex gap-3 p-4 hover:bg-gray-50 transition-colors`}>
+                <IconTile icon={Megaphone} filled />
+                <span className="flex-1 min-w-0 flex flex-col gap-1">
+                  <span suppressHydrationWarning className="text-[13px] text-gray-500">
+                    Information officielle · {formatDate(announcement.created_at).toLowerCase()}
+                  </span>
+                  <span className="text-[17px] leading-[22px] font-semibold text-gray-900">{announcement.title}</span>
+                  {/* Deux lignes au plus sur mobile, pour tenir sans défiler ; la place ne manque pas sur desktop */}
+                  <span className="text-[15px] leading-5 text-gray-700 line-clamp-2 md:line-clamp-6">{announcement.body}</span>
+                </span>
+              </Link>
+            </section>
+          )}
 
-      {documents.length > 0 && (
-        <section className="flex flex-col gap-2.5">
-          <div className="flex items-baseline justify-between">
-            <h2 className={SECTION_TITLE}>Documents de l&apos;ASL</h2>
-            <Link href="/documents" className="text-[15px] text-brand-600 hover:text-brand-700">Tout voir</Link>
-          </div>
-          <GroupedList rows={documents} />
-        </section>
-      )}
+          {rows.length > 0 && (
+            <section className="flex flex-col gap-2.5">
+              <h2 className={SECTION_TITLE}>À suivre</h2>
+              <GroupedList rows={rows} />
+            </section>
+          )}
+
+          {documentsSection && <div className="md:hidden">{documentsSection}</div>}
+
+          {nothingNew && (
+            <div className="hidden md:flex lg:col-span-2 flex-col items-center justify-center text-center py-24 text-gray-400">
+              <Megaphone size={40} className="mb-3 opacity-20" />
+              <p className="font-medium text-gray-500">Rien de nouveau dans le quartier</p>
+              <p className="text-sm mt-1">Les informations de l&apos;ASL, les assemblées et les sondages apparaîtront ici.</p>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

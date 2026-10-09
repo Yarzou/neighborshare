@@ -1,5 +1,21 @@
 # Historique des modifications (par session)
 
+## 2026-10-09 — Accueil pleine largeur sur desktop (branche `refonte-verre`)
+
+Retour : « la page d'accueil version web est daubée, elle doit prendre toute la largeur comme les
+autres pages Quartier, Demandes, Messages ».
+
+- **`app/accueil/DashboardClient.tsx`** : à partir de `md`, même cadre que Demandes, Messages et le
+  Quartier (`md:flex md:h-[var(--app-h)]`) :
+  - **volet gauche** (`SIDE_PANE_WIDTH`, `bg-surface-pane`) avec la salutation et les documents de
+    l'ASL, raccourcis permanents comme le menu du Quartier ;
+  - **contenu à droite**, défilement propre : info de l'ASL (jusqu'à 6 lignes au lieu de 2) et
+    « À suivre », côte à côte à partir de `lg` ;
+  - message « Rien de nouveau dans le quartier » quand il n'y a rien à droite (desktop seulement).
+  - Mobile inchangé : salutation et documents gardent leur place dans la colonne (`md:hidden`).
+- **`app/accueil/loading.tsx`** : squelette au même cadre.
+- Vérifié : typecheck OK, ESLint sans remarque, build OK. Rendu non vérifié à l'écran.
+
 ## 2026-10-09 — Loupe de verre clair, reprise de Fridge (branche `refonte-verre`)
 
 Demande : « on a modifié le liquid glass dans l'appli Fridge, applique le même standard ici ».
