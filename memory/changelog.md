@@ -1,5 +1,18 @@
 # Historique des modifications (par session)
 
+## 2026-10-09 — Déconnecté, même règle sur le web (branche `refonte-verre`)
+
+Demande : « sur la partie web, fais pareil ».
+
+- **`components/layout/Navbar.tsx`** :
+  - nouvel état `navHidden` (page `/auth/*`, accueil public `/`, ou session lue et absente) ;
+  - le menu latéral desktop n'affiche alors que le logo et « Connexion » / « S'inscrire », sans
+    ses six entrées. Il est de nouveau rendu sur `/auth/*`, où il était masqué depuis le commit précédent ;
+  - la barre d'onglets mobile suit la même règle ;
+  - `/` compte d'emblée comme déconnecté : le serveur y redirige les comptes connectés vers
+    `/accueil`, donc rien ne clignote en attendant la session.
+- Vérifié : typecheck OK, ESLint inchangé. Rendu non vérifié à l'écran.
+
 ## 2026-10-09 — Déconnecté : on ne fait que se connecter (branche `refonte-verre`)
 
 Demande (mobile) : « quand je suis déconnecté, je dois rester sur la page d'accueil, que rien ne soit

@@ -475,15 +475,17 @@ export function Navbar() {
     </span>
   )
 
-  // Écrans d'authentification (connexion, inscription, mot de passe oublié…) :
-  // la barre du haut reste (2026-10-09 : « je perds le header, c'est bizarre »),
-  // mais ni menu latéral ni barre d'onglets — on n'y fait que se connecter.
+  // Déconnecté, rien n'est accessible en dehors de l'accueil public et de la
+  // connexion (2026-10-09, mobile puis web) : ni barre d'onglets, ni entrées du
+  // menu latéral. La barre du haut et le menu ne proposent que « Connexion » et
+  // « S'inscrire ». Même chose sur les écrans d'auth (connexion, inscription, mot
+  // de passe oublié…), qui gardent pourtant la barre du haut et le menu (« je
+  // perds le header, c'est bizarre »). L'accueil public `/` n'est servi qu'aux
+  // visiteurs sans compte (le serveur redirige les autres) : rien à attendre.
   const isAuthPage = pathname.startsWith('/auth/')
-  // Déconnecté, rien n'est accessible sur mobile en dehors de l'accueil public et
-  // de la connexion (2026-10-09) : pas de barre d'onglets. La barre du haut ne
-  // propose que « Connexion » et « S'inscrire ».
   const loggedOut = authResolved && !user
-  const showTabbar = !isAuthPage && !loggedOut && !NO_TABBAR.some(re => re.test(pathname))
+  const navHidden = isAuthPage || loggedOut || pathname === '/'
+  const showTabbar = !navHidden && !NO_TABBAR.some(re => re.test(pathname))
 
   return (
     <>
@@ -528,7 +530,7 @@ export function Navbar() {
       </header>
 
       {/* ─── Desktop : menu latéral flottant ────────────────────────────── */}
-      {!isAuthPage && <aside
+      <aside
         id="app-sidebar"
         className="hidden md:flex fixed z-[1200] left-3 top-3 bottom-3 w-[68px] lg:w-[240px] flex-col gap-4 p-2.5 lg:p-3 rounded-[22px] glass"
       >
@@ -539,7 +541,7 @@ export function Navbar() {
           </span>
         </Link>
 
-        <nav aria-label="Navigation principale" className="flex flex-col gap-1">
+        {!navHidden && <nav aria-label="Navigation principale" className="flex flex-col gap-1">
           {sidebarItems.map(item => {
             const active = isActive(item)
             const Icon = item.icon
@@ -560,7 +562,7 @@ export function Navbar() {
               </Link>
             )
           })}
-        </nav>
+        </nav>}
 
         <div className="mt-auto flex flex-col gap-1">
           {user ? (
@@ -594,7 +596,7 @@ export function Navbar() {
             </>
           )}
         </div>
-      </aside>}
+      </aside>
 
       {/* ─── Mobile : barre d'onglets flottante, avec sa goutte ──────────── */}
       {showTabbar && (
