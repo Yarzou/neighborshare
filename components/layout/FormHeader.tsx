@@ -26,7 +26,8 @@ export function FormHeader({ title, cancelHref, className }: {
       className={cn(
         'sticky top-[var(--nav-top)] z-20 -mx-4 px-4 h-12 mb-4',
         'grid grid-cols-[1fr_auto_1fr] items-center gap-2',
-        'bg-glass backdrop-blur-xl backdrop-saturate-150 border-b border-edge',
+        // Le verre de toute l'appli (`.glass`), collé aux bords : liseré en bas seulement
+        'glass rounded-none border-x-0 border-t-0',
         className,
       )}
     >

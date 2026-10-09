@@ -8,6 +8,8 @@ import type { DirectMessage, Profile } from '@/lib/types'
 import { cn, formatDate, getAvatarStyle, SIDE_PANE_WIDTH } from '@/lib/utils'
 import Segmented from '@/components/ui/Segmented'
 import { fetchRecentMessages } from '@/lib/messaging'
+import { useCurrentUser } from '@/lib/hooks'
+import { readPageCache, writePageCache } from '@/lib/pageCache'
 import {
   Loader2, MessageCircle, CheckCircle, XCircle, ArrowRight, Package, Inbox, ExternalLink,
 } from 'lucide-react'
@@ -417,16 +419,22 @@ export default function DemandesClient() {
   const router = useRouter()
   const supabase = createClient()
 
-  const [userId, setUserId] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
+  // Session : magasin partagé de `lib/hooks.ts` (lecture locale, sans appel
+  // réseau `getUser()`), déjà résolu au retour sur la page.
+  const { userId, resolved } = useCurrentUser()
+  // Cache de page (`lib/pageCache.ts`), propre à l'utilisateur : au retour, les
+  // demandes s'affichent telles qu'on les a laissées, puis se rafraîchissent.
+  const [cached] = useState(() =>
+    userId ? readPageCache<{ received: DemandeListing[]; sent: DemandeListing[] }>(`demandes:${userId}`) : undefined)
+  const [loading, setLoading] = useState(!cached)
   const [tab, setTab] = useState<'received' | 'sent'>('received')
   /** Demande ouverte dans le panneau de détail (desktop uniquement) */
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
   // Received: I am the listing owner
-  const [received, setReceived] = useState<DemandeListing[]>([])
+  const [received, setReceived] = useState<DemandeListing[]>(cached?.received ?? [])
   // Sent: I am the responder
-  const [sent, setSent] = useState<DemandeListing[]>([])
+  const [sent, setSent] = useState<DemandeListing[]>(cached?.sent ?? [])
 
   const load = async (uid: string) => {
     const [{ data: receivedRaw }, { data: sentRaw }] = await Promise.all([
@@ -459,23 +467,25 @@ export default function DemandesClient() {
       other_profile: other,
     })
 
-    setReceived((receivedRaw ?? []).map((r: any) => toItem(r, r.responder_profile)))
-    setSent((sentRaw ?? []).map((r: any) => toItem(r, r.owner_profile)))
+    const next = {
+      received: (receivedRaw ?? []).map((r: any) => toItem(r, r.responder_profile)),
+      sent: (sentRaw ?? []).map((r: any) => toItem(r, r.owner_profile)),
+    }
+    writePageCache(`demandes:${uid}`, next)
+    setReceived(next.received)
+    setSent(next.sent)
   }
 
   useEffect(() => {
-    const init = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        router.push('/auth/login?redirect=%2Fdemandes')
-        return
-      }
-      setUserId(user.id)
-      await load(user.id)
-      setLoading(false)
+    if (!resolved) return
+    if (!userId) {
+      router.push('/auth/login?redirect=%2Fdemandes')
+      return
     }
-    init()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    // Faux positif set-state-in-effect : les setState de load() sont après await.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void load(userId).then(() => setLoading(false))
+  }, [resolved, userId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const reload = () => {
     if (userId) load(userId)

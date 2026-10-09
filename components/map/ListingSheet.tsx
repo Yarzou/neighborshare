@@ -47,7 +47,7 @@ export function ListingSheet({ listing, onClose, onInsetChange }: {
         <button
           onClick={onClose}
           aria-label="Fermer la fiche"
-          className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white shadow-md border border-gray-200 text-gray-600 flex items-center justify-center z-10"
+          className="absolute top-2 right-2 w-7 h-7 rounded-full glass text-gray-600 flex items-center justify-center z-10"
         >
           <X size={14} strokeWidth={2.5} />
         </button>

@@ -9,13 +9,21 @@ import { EventCard } from '@/components/map/EventCard'
 import { MiniCalendar } from '@/components/map/MiniCalendar'
 import EventMiniMap from '@/components/map/EventMiniMapDynamic'
 import type { Event } from '@/lib/types'
+import { useCurrentUser } from '@/lib/hooks'
+import { readPageCache, writePageCache } from '@/lib/pageCache'
 import { CalendarDays, Plus, Loader2, X } from 'lucide-react'
+
+/** Clé du cache de page (`lib/pageCache.ts`) : liste mobile, vue sans filtre seulement. */
+const MOBILE_EVENTS_KEY = 'agenda:liste'
 
 export default function EvenementsPage() {
   const router = useRouter()
   const supabase = createClient()
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [userId, setUserId] = useState<string | null>(null)
+  // Session : magasin partagé de `lib/hooks.ts` (lecture locale, sans appel
+  // réseau `getUser()`), déjà résolu au retour sur l'onglet. `authResolved`
+  // évite de montrer l'encart de connexion le temps que la session soit connue.
+  const { userId, resolved: authResolved } = useCurrentUser()
+  const isLoggedIn = !!userId
 
   // Shared state between EventsList (desktop) and MiniCalendar
   const [activeDate, setActiveDate] = useState<string | null>(null)
@@ -27,9 +35,11 @@ export default function EvenementsPage() {
   // Event sélectionné complet — pour la mini-carte desktop
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
 
-  // Mobile list state
-  const [mobileEvents, setMobileEvents] = useState<Event[]>([])
-  const [mobileLoading, setMobileLoading] = useState(true)
+  // Mobile list state. Au retour sur l'onglet, la liste repart des derniers
+  // événements connus (vue sans filtre), rafraîchis aussitôt sans spinner.
+  const [cachedEvents] = useState(() => readPageCache<Event[]>(MOBILE_EVENTS_KEY))
+  const [mobileEvents, setMobileEvents] = useState<Event[]>(cachedEvents ?? [])
+  const [mobileLoading, setMobileLoading] = useState(!cachedEvents)
   const [mobileFilterFrom, setMobileFilterFrom] = useState('')
   const [mobileFilterTo, setMobileFilterTo] = useState('')
 
@@ -60,7 +70,12 @@ export default function EvenementsPage() {
   }
 
   const loadMobileEvents = useCallback(async (from: string, to: string) => {
-    setMobileLoading(true)
+    // Vue sans filtre : on affiche tout de suite les derniers événements connus,
+    // la requête les remplace. Sinon (filtre de dates), spinner comme avant.
+    const isDefault = !from && !to
+    const cached = isDefault ? readPageCache<Event[]>(MOBILE_EVENTS_KEY) : undefined
+    if (cached) setMobileEvents(cached)
+    else setMobileLoading(true)
     let query = supabase
       .from('events')
       .select('*')
@@ -70,21 +85,11 @@ export default function EvenementsPage() {
     else query = query.gte('event_date', `${new Date().getFullYear()}-01-01T00:00:00`)
     if (to) query = query.lte('event_date', `${to}T23:59:59`)
     const { data } = await query
-    setMobileEvents((data ?? []) as Event[])
+    const next = (data ?? []) as Event[]
+    if (isDefault) writePageCache(MOBILE_EVENTS_KEY, next)
+    setMobileEvents(next)
     setMobileLoading(false)
   }, [supabase])
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setIsLoggedIn(!!data.user)
-      setUserId(data.user?.id ?? null)
-    })
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
-      setIsLoggedIn(!!session?.user)
-      setUserId(session?.user?.id ?? null)
-    })
-    return () => subscription.unsubscribe()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Chargement initial et rechargement sur filtre — uniquement en vue mobile.
   useEffect(() => {
@@ -174,11 +179,14 @@ export default function EvenementsPage() {
           )}
         </div>
 
-        {isMobile !== true || mobileLoading ? (
+        {/* `mobileLoading` part à `true` sans cache : spinner tant que rien n'est
+            chargé, y compris avant de connaître la largeur d'écran (sur desktop,
+            ce bloc est masqué et ne charge rien). */}
+        {mobileLoading ? (
           <div className="flex items-center justify-center py-16">
             <Loader2 className="animate-spin text-brand-600" size={32} />
           </div>
-        ) : !isLoggedIn ? (
+        ) : authResolved && !isLoggedIn ? (
           <div className="bg-white rounded-2xl border border-gray-200">
             <LoginRequiredNotice what="les événements du quartier" redirectTo="/evenements" />
           </div>

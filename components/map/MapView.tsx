@@ -13,6 +13,12 @@ import { MapPin, Loader2, Plus, LayoutGrid } from 'lucide-react'
 import { normalizeSearch } from '@/lib/utils'
 import Segmented from '@/components/ui/Segmented'
 import { NEIGHBORHOOD_CENTER, NEIGHBORHOOD_RADIUS_KM, distanceMeters } from '@/lib/neighborhood'
+import { useCurrentUser } from '@/lib/hooks'
+import { readPageCache, writePageCache } from '@/lib/pageCache'
+
+/** Clés du cache de page (`lib/pageCache.ts`) : au retour sur l'onglet, la liste et la carte sont là tout de suite. */
+const LISTINGS_KEY = 'carte:annonces'
+const SLUGS_KEY = 'categories:slug-id'
 
 // Dynamic import pour éviter SSR avec Leaflet
 const LeafletMap = dynamic(() => import('@/components/map/LeafletMap'), {
@@ -29,7 +35,10 @@ export function MapView() {
   const router = useRouter()
   // rows = ce que la base a renvoyé, jamais filtré. `listings` en est dérivé
   // (useMemo plus bas) : catégorie et recherche ne déclenchent donc aucune requête.
-  const [rows, setRows] = useState<Listing[]>([])
+  // Au retour sur l'onglet, on repart des dernières annonces connues, rafraîchies
+  // aussitôt en arrière-plan : pas de spinner.
+  const [cachedRows] = useState(() => readPageCache<Listing[]>(LISTINGS_KEY))
+  const [rows, setRows] = useState<Listing[]>(cachedRows ?? [])
   const [selected, setSelected] = useState<Listing | null>(null)
   // Hauteur couverte en bas de la carte par la fiche ouverte (ListingSheet)
   const [sheetInset, setSheetInset] = useState(0)
@@ -39,29 +48,18 @@ export function MapView() {
   const [userGeoLocation, setUserGeoLocation] = useState<[number, number] | null>(null)
   const [category, setCategory] = useState(searchParams.get('category') || '')
   const [search, setSearch] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!cachedRows)
   const [searchedLocation, setSearchedLocation] = useState<[number, number] | null>(null)
-  const [slugToId, setSlugToId] = useState<Record<string, number>>({})
+  const [slugToId, setSlugToId] = useState<Record<string, number>>(() => readPageCache(SLUGS_KEY) ?? {})
   const [mobileView, setMobileView] = useState<'list' | 'map'>('list')
   const [isMobile, setIsMobile] = useState(false)
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
-  // Distingue « pas encore su » de « déconnecté », pour ne pas faire clignoter
-  // l'encart de connexion le temps que getUser() réponde.
-  const [authResolved, setAuthResolved] = useState(false)
+  // Session : magasin partagé de `lib/hooks.ts` (lecture locale, sans appel
+  // réseau `getUser()`), déjà résolu au retour sur l'onglet — le « + » et le
+  // voile ne clignotent plus. `resolved` distingue « pas encore su » de
+  // « déconnecté », pour ne pas faire clignoter l'encart de connexion.
+  const { userId, resolved: authResolved } = useCurrentUser()
+  const isLoggedIn = !!userId
   const supabase = createClient()
-
-  // Suivi de la session
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setIsLoggedIn(!!data.user)
-      setAuthResolved(true)
-    })
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
-      setIsLoggedIn(!!session?.user)
-      setAuthResolved(true)
-    })
-    return () => subscription.unsubscribe()
-  }, [])
 
   // Charge le mapping slug → id une seule fois
   useEffect(() => {
@@ -69,6 +67,7 @@ export function MapView() {
       if (data) {
         const map: Record<string, number> = {}
         data.forEach(c => { map[c.slug] = c.id })
+        writePageCache(SLUGS_KEY, map)
         setSlugToId(map)
       }
     })
@@ -96,9 +95,10 @@ export function MapView() {
   // Fetch annonces — ne dépend que du centre de recherche. Le filtrage (catégorie,
   // texte) se fait en mémoire dans le useMemo ci-dessous : sans cette séparation,
   // chaque caractère tapé relançait un select complet dont le résultat était identique.
+  // Pas de `setLoading(true)` ici : `loading` part déjà à `true` sans cache, et
+  // avec un cache le rafraîchissement se fait sans spinner. `searchCenter` ne
+  // change jamais, la requête ne part donc qu'au montage.
   const fetchListings = useCallback(async () => {
-    setLoading(true)
-
     // Vue `listings_geo` (migration 032) et non plus le RPC `listings_within_radius` :
     // la vue est en `l.*`, donc toute nouvelle colonne remonte sans migration. Le
     // filtrage par rayon, le calcul de distance et le tri par proximité — que faisait
@@ -125,17 +125,17 @@ export function MapView() {
 
     if (fetched) {
       const radiusM = NEIGHBORHOOD_RADIUS_KM * 1000
-      setRows(
-        fetched
-          .map(l => ({
-            ...l,
-            distance_m: l.lat_out != null && l.lng_out != null
-              ? distanceMeters(searchCenter, [l.lat_out, l.lng_out])
-              : undefined,
-          }))
-          .filter(l => l.distance_m === undefined || l.distance_m <= radiusM)
-          .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity))
-      )
+      const next = fetched
+        .map(l => ({
+          ...l,
+          distance_m: l.lat_out != null && l.lng_out != null
+            ? distanceMeters(searchCenter, [l.lat_out, l.lng_out])
+            : undefined,
+        }))
+        .filter(l => l.distance_m === undefined || l.distance_m <= radiusM)
+        .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity))
+      writePageCache(LISTINGS_KEY, next)
+      setRows(next)
     }
     setLoading(false)
   }, [searchCenter])

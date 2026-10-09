@@ -42,21 +42,25 @@
   --text-soft: #3a3a3c;       /* corps de texte              (≈ text-gray-700) */
   --text-muted: #6c6c70;      /* secondaire                  (≈ text-gray-500) */
   --text-faint: #8e8e93;      /* tertiaire, placeholders     (≈ text-gray-400) */
+  /* Verre « Liquid Glass », recette de l'app Fridge (2026-10-09) : UNE seule matière
+   * pour tout ce qui flotte au-dessus du contenu, jamais pour le contenu lui-même.
+   * Liseré clair, reflet sur l'arête haute, flou et saturation identiques partout.
+   * - verre épais (`--glass`) dès qu'il porte du texte : classe `.glass` ;
+   * - verre léger (`--glass-thin`) pour la barre d'onglets au repos, même arête. */
   --glass: rgba(255, 255, 255, 0.88);
-  --glass-edge: rgba(0, 0, 0, 0.06);
-  --glass-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  /* Barre d'onglets et bulle, repris de l'app Fridge : verre très transparent,
-   * bulle de l'onglet choisi en gris système translucide, liseré lumineux. */
-  --tabbar: rgba(255, 255, 255, 0.4);             /* au repos : on devine ce qui passe dessous */
-  --tabbar-strong: rgba(255, 255, 255, 0.85);     /* doigt posé sur la barre */
-  --lens-fill: rgba(255, 255, 255, 0.94);         /* loupe : cache les onglets réels sous la copie agrandie */
-  --tabbar-edge: rgba(255, 255, 255, 0.65);
-  --tabbar-highlight: rgba(255, 255, 255, 0.8);   /* reflet sur l'arête haute */
-  --bubble: rgba(120, 120, 128, 0.16);
-  --bubble-edge: rgba(255, 255, 255, 0.75);
-  --lens: rgba(255, 255, 255, 0.6);                /* pastille soulevée par le doigt */
+  --glass-thin: rgba(255, 255, 255, 0.42);
+  --glass-pressed: rgba(255, 255, 255, 0.94);     /* barre d'onglets, doigt posé : presque opaque */
+  --glass-rim: rgba(255, 255, 255, 0.65);         /* liseré clair */
+  --glass-highlight: rgba(255, 255, 255, 0.8);    /* reflet sur l'arête haute */
+  --glass-filter: blur(24px) saturate(1.8);       /* = backdrop-blur-xl backdrop-saturate-[1.8] */
+  --bubble: rgba(120, 120, 128, 0.16);            /* bulle de l'onglet choisi : gris système translucide */
+  --bubble-edge: rgba(255, 255, 255, 0.75);       /* liseré lumineux de la bulle */
+  --loupe: #ffffff;                               /* loupe : opaque, elle cache ce qu'elle agrandit */
+  --rim: rgba(255, 255, 255, 0.9);                /* liseré de la loupe de verre clair (interrupteur) */
   --shadow-lift: 0 1px 3px rgba(0, 0, 0, 0.08);
   --shadow-float: 0 8px 24px rgba(0, 0, 0, 0.12);
+  /* Ombre du verre : portée + reflet sur l'arête haute (= shadow-sheen) */
+  --glass-shadow: var(--shadow-float), inset 0 1px 0 var(--glass-highlight);
 
   /* ─── Gabarit de navigation ───────────────────────────────────────────────
    * Mobile : barre du haut (4 rem) + barre d'onglets flottante en bas.
@@ -86,13 +90,17 @@
   :root:has(#app-sidebar) { --sidebar-w: 16.5rem; }
 }
 
-/* Verre des éléments flottants : blanc à 88 %, flou, liseré et ombre douce. */
-.glass {
-  background-color: var(--glass);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid var(--glass-edge);
-  box-shadow: var(--glass-shadow);
+/* Verre des éléments flottants (recette Fridge) : verre épais, liseré clair, reflet
+   sur l'arête haute, flou et saturation. Dans `@layer components` : un utilitaire
+   peut l'ajuster (barres collées au bord : `rounded-none border-x-0 border-t-0`). */
+@layer components {
+  .glass {
+    background-color: var(--glass);
+    -webkit-backdrop-filter: var(--glass-filter);
+    backdrop-filter: var(--glass-filter);
+    border: 1px solid var(--glass-rim);
+    box-shadow: var(--glass-shadow);
+  }
 }
 
 html.dark {
@@ -108,17 +116,16 @@ html.dark {
   --text-soft: #cbd5e1;
   --text-muted: #64748b;
   --text-faint: #475569;
+  /* Mêmes rôles qu'en clair (valeurs de Fridge), teinte ardoise du thème sombre actuel */
   --glass: rgba(30, 41, 59, 0.88);
-  --glass-edge: rgba(255, 255, 255, 0.08);
-  --glass-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-  --tabbar: rgba(30, 41, 59, 0.42);
-  --tabbar-strong: rgba(30, 41, 59, 0.88);
-  --lens-fill: rgba(51, 65, 85, 0.96);
-  --tabbar-edge: rgba(255, 255, 255, 0.12);
-  --tabbar-highlight: rgba(255, 255, 255, 0.14);
+  --glass-thin: rgba(30, 41, 59, 0.42);
+  --glass-pressed: rgba(30, 41, 59, 0.94);
+  --glass-rim: rgba(255, 255, 255, 0.12);
+  --glass-highlight: rgba(255, 255, 255, 0.14);
   --bubble: rgba(255, 255, 255, 0.16);
   --bubble-edge: rgba(255, 255, 255, 0.24);
-  --lens: rgba(255, 255, 255, 0.2);
+  --loupe: #475569;
+  --rim: rgba(255, 255, 255, 0.4);
   --shadow-lift: none;
   --shadow-float: 0 8px 24px rgba(0, 0, 0, 0.5);
 }
@@ -216,15 +223,15 @@ html:not(.dark) .main-map .leaflet-tile-pane {
   bottom: var(--tabbar-h);
 }
 
-/* Contrôles de la carte (+/−, Recentrer) : le verre des éléments flottants, comme
-   `.glass`. leaflet.css est chargé APRÈS ce fichier (import des composants carte),
+/* Contrôles de la carte (+/−, Recentrer) : exactement le verre de `.glass` (mêmes
+   variables). leaflet.css est chargé APRÈS ce fichier (import des composants carte),
    d'où des sélecteurs plus spécifiques que les siens (`.leaflet-touch .leaflet-bar`,
    `.leaflet-bar a:hover`, `.leaflet-bar a.leaflet-disabled`). */
 .leaflet-container .leaflet-control.leaflet-bar {
   background-color: var(--glass);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid var(--glass-edge);
+  -webkit-backdrop-filter: var(--glass-filter);
+  backdrop-filter: var(--glass-filter);
+  border: 1px solid var(--glass-rim);
   box-shadow: var(--glass-shadow);
   border-radius: 12px;
   overflow: hidden;
@@ -232,7 +239,8 @@ html:not(.dark) .main-map .leaflet-tile-pane {
 .leaflet-container .leaflet-control.leaflet-bar a {
   background-color: transparent;
   color: var(--text);
-  border-bottom-color: var(--glass-edge);
+  /* Séparateur entre + et − : le liseré clair du verre y serait invisible */
+  border-bottom-color: var(--border);
 }
 .leaflet-container .leaflet-control.leaflet-bar a:hover,
 .leaflet-container .leaflet-control.leaflet-bar a:focus {

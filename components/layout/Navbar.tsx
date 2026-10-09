@@ -4,11 +4,12 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { MapPin, MessageCircle, LogOut, ClipboardList, CalendarDays, House, TreePine } from 'lucide-react'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, type PointerEvent, type ReactNode, type Ref } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { cn, getAvatarStyle, getInitials } from '@/lib/utils'
 import { useUnreadCount, usePendingRequests } from '@/lib/hooks'
 import { useTheme } from '@/components/theme/ThemeProvider'
+import { LIFT, MAGNIFY, magnifyOrigin, useLoupe, type Lens } from '@/components/ui/useLoupe'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
 
 /** Le strict nécessaire pour la pastille d'avatar. */
@@ -46,53 +47,80 @@ interface NavItem {
 }
 
 /** Marge intérieure de la barre (p-1), en px : la bulle ne la franchit pas. */
-const TAB_INSET = 4
+const INSET = 4
 /**
  * Marge de la bulle autour de l'icône et du libellé, de chaque côté. 14 px dans
  * Fridge, qui n'a que trois onglets ; avec cinq, au-delà de 10 px la bulle de
  * « Messages » mordrait sur les libellés voisins.
  */
-const TAB_PAD_X = 10
+const PAD_X = 10
 
 interface Slot {
-  /** Bord gauche du contenu (icône + libellé), depuis le bord de la barre */
+  /** Bord gauche du contenu (icône + libellé), depuis le bord intérieur de la barre */
   left: number
   width: number
 }
 
-/** Mise en page de l'intérieur d'un onglet : la même pour la rangée réelle et pour la loupe. */
-const TAB_CONTENT = 'relative flex flex-col items-center gap-0.5 text-[10.5px] leading-[13px] font-semibold'
-/** Épaisseur du liseré de la barre : les éléments en `absolute` partent de l'intérieur. */
-const TAB_BORDER = 1
-/** Hauteur intérieure de la barre (62 px moins les deux liserés). */
-const TAB_INNER_H = 60
-/** Grossissement de la loupe. */
-const LENS_ZOOM = 1.28
-/** La loupe déborde un peu de la barre, en haut et en bas, comme sur iOS. */
-const LENS_POP = 5
-/** Appui tenu (ms) avant que la loupe n'apparaisse : un simple toucher ne la montre pas. */
-const LENS_DELAY = 160
+interface Bar {
+  /** Largeur intérieure (sans la bordure) */
+  width: number
+  slots: Slot[]
+}
+
+/** Onglet sous un point de la barre (abscisse depuis son bord intérieur gauche). */
+function tabAt(x: number, bar: Bar) {
+  const count = bar.slots.length
+  return Math.min(count - 1, Math.max(0, Math.floor(((x - INSET) / (bar.width - INSET * 2)) * count)))
+}
+
+/** Largeur de la bulle autour du contenu d'un onglet. */
+function bubbleWidth(bar: Bar, i: number) {
+  return Math.min(bar.slots[i].width + PAD_X * 2, bar.width - INSET * 2)
+}
+
+/** Bord gauche d'une bulle centrée sur `center`, sans sortir de la barre. */
+function bubbleLeft(bar: Bar, center: number, width: number) {
+  return Math.min(Math.max(center - width / 2, INSET), bar.width - INSET - width)
+}
+
+type BadgeFn = (n: number | undefined, className?: string) => ReactNode
+
+/** Icône, pastille et libellé d'un onglet : dans la barre, et agrandis dans la loupe. */
+function TabContent({ item, badge, ref }: { item: NavItem; badge: BadgeFn; ref?: Ref<HTMLSpanElement> }) {
+  const Icon = item.icon
+  return (
+    <span ref={ref} className="relative flex flex-col items-center gap-0.5 text-[10.5px] leading-[13px] font-semibold">
+      <span className="relative flex">
+        <Icon size={23} strokeWidth={1.9} aria-hidden="true" />
+        {/* Pastille sur le coin de l'icône : hors mesure de la bulle */}
+        {badge(item.count, 'absolute -top-1.5 -right-3')}
+      </span>
+      {item.label}
+    </span>
+  )
+}
 
 /**
- * Barre d'onglets mobile, partie de la barre de l'app Fridge, façon « Liquid
- * Glass » d'iOS. Plus de bouton « + » à côté (2026-10-07) : il créait une annonce
- * même depuis le Quartier. Chaque page a son « + ».
+ * Barre d'onglets mobile : celle de l'app Fridge (2026-10-09, même verre et même
+ * loupe), avec cinq onglets. Plus de bouton « + » à côté (2026-10-07) : il créait
+ * une annonce même depuis le Quartier. Chaque page a son « + ».
  *
- * - **Verre** : semi-transparente au repos, peu floutée, pour deviner le contenu
- *   qui défile dessous ; elle se densifie dès que le doigt se pose dessus.
+ * - **Verre léger** (`bg-glass-thin`, flou de 10 px) : au repos on devine le
+ *   contenu qui défile dessous ; presque opaque (`bg-glass-pressed`) dès que le
+ *   doigt s'y pose. Même liseré et même reflet que tout le verre de l'appli.
  * - **Bulle** : gris système translucide, taillée autour de l'icône et du libellé
- *   de l'onglet choisi (mesurés par un ResizeObserver). Au toucher, elle part tout
- *   de suite vers l'onglet, sans attendre la page, en s'étirant comme une goutte.
- * - **Loupe** (2026-10-07) : doigt appuyé ou glissé, la bulle devient une lentille
- *   de verre qui grossit réellement les onglets situés dessous (une copie agrandie
- *   de la rangée, calée sous la lentille). Elle suit le doigt ; au lâcher, l'onglet
- *   le plus proche s'ouvre.
- * Avec « Réduire les animations », tout se déplace sans effet.
+ *   de l'onglet choisi (mesurés par un ResizeObserver).
+ * - **Loupe** : doigt posé, la bulle se soulève en loupe, rejoint le doigt, le
+ *   suit d'un onglet à l'autre et agrandit vraiment ce qu'elle couvre (une copie
+ *   des onglets, agrandie autour de son centre).
+ * - Au lâcher, elle se pose sur l'onglet touché, ou sur le plus proche après un
+ *   glissé, en s'étirant comme une goutte d'eau, sans attendre la page.
+ * Avec « Réduire les animations », elle se déplace sans effet.
  */
 function TabBar({ items, activeIndex, badge }: {
   items: NavItem[]
   activeIndex: number
-  badge: (n: number | undefined, className?: string) => React.ReactNode
+  badge: BadgeFn
 }) {
   const pathname = usePathname() ?? ''
   const router = useRouter()
@@ -100,17 +128,12 @@ function TabBar({ items, activeIndex, badge }: {
   const contentRefs = useRef<(HTMLSpanElement | null)[]>([])
   const gesture = useRef<{ startX: number; dragging: boolean } | null>(null)
   const swallowClick = useRef(false)
-  const liftTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Onglet visé au toucher, valable tant que l'URL n'a pas changé
   const [pending, setPending] = useState<{ index: number; from: string } | null>(null)
-  const [drag, setDrag] = useState<number | null>(null)
-  // Doigt posé sur la barre (elle se densifie), et abscisse de l'appui
-  const [pressX, setPressX] = useState<number | null>(null)
-  // Loupe visible : appui tenu, ou glissé
-  const [lifted, setLifted] = useState(false)
+  const { lens, grab, follow, drop } = useLoupe()
   // La goutte ne se déforme qu'après un premier geste, pas à l'ouverture de l'appli
   const [touched, setTouched] = useState(false)
-  const [bar, setBar] = useState<{ width: number; slots: Slot[] } | null>(null)
+  const [bar, setBar] = useState<Bar | null>(null)
 
   useEffect(() => {
     const el = barRef.current
@@ -118,29 +141,31 @@ function TabBar({ items, activeIndex, badge }: {
     const observer = new ResizeObserver(() => {
       const box = el.getBoundingClientRect()
       setBar({
-        width: box.width,
+        width: el.clientWidth,
         slots: contentRefs.current.map(content => {
           const r = content?.getBoundingClientRect()
-          return r ? { left: r.left - box.left, width: r.width } : { left: 0, width: 0 }
+          return r ? { left: r.left - box.left - el.clientLeft, width: r.width } : { left: 0, width: 0 }
         }),
       })
     })
     observer.observe(el)
     // Les libellés s'élargissent à l'arrivée de la police : la bulle suit.
     contentRefs.current.forEach(content => content && observer.observe(content))
-    return () => {
-      observer.disconnect()
-      if (liftTimer.current) clearTimeout(liftTimer.current)
-    }
+    return () => observer.disconnect()
   }, [])
 
-  const count = items.length
   const index = pending && pending.from === pathname ? pending.index : activeIndex
+  const lifted = lens !== null && bar !== null
+  // Doigt posé : l'onglet sous la loupe prend la couleur de l'onglet choisi
+  const highlighted = lifted ? tabAt(lens.center, bar) : index
 
-  /** Onglet sous un point de la barre (abscisse depuis son bord gauche, largeur de la barre). */
-  const tabAt = (x: number, width: number) =>
-    Math.min(count - 1, Math.max(0, Math.floor(((x - TAB_INSET) / (width - TAB_INSET * 2)) * count)))
-  const localX = (clientX: number) => clientX - barRef.current!.getBoundingClientRect().left
+  const localX = (clientX: number) => {
+    const el = barRef.current!
+    return clientX - el.getBoundingClientRect().left - el.clientLeft
+  }
+
+  /** La loupe vise le doigt, avec la largeur de l'onglet survolé. */
+  const aim = (x: number): Lens => ({ center: x, width: bar ? bubbleWidth(bar, tabAt(x, bar)) : 0 })
 
   /** La bulle part tout de suite vers l'onglet, sans attendre la page. */
   const mark = (next: number) => {
@@ -148,86 +173,57 @@ function TabBar({ items, activeIndex, badge }: {
     setPending({ index: next, from: pathname })
   }
 
-  /** Fin du geste : la barre redevient transparente, la loupe disparaît. */
-  const release = () => {
-    if (liftTimer.current) clearTimeout(liftTimer.current)
-    liftTimer.current = null
-    setPressX(null)
-    setLifted(false)
-  }
-
-  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+  const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return
+    if (!bar) return
     gesture.current = { startX: e.clientX, dragging: false }
     swallowClick.current = false
-    setPressX(localX(e.clientX))
-    liftTimer.current = setTimeout(() => setLifted(true), LENS_DELAY)
+    setTouched(true)
+    // La loupe part de la bulle de l'onglet choisi pour rejoindre le doigt.
+    const x = localX(e.clientX)
+    const start = index >= 0 ? index : tabAt(x, bar)
+    const width = bubbleWidth(bar, start)
+    grab({ center: bubbleLeft(bar, bar.slots[start].left + bar.slots[start].width / 2, width) + width / 2, width }, aim(x))
   }
 
-  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+  const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
     const g = gesture.current
     if (!g) return
-    if (!g.dragging) {
-      if (Math.abs(e.clientX - g.startX) < 8) return
+    if (!g.dragging && Math.abs(e.clientX - g.startX) >= 8) {
       g.dragging = true
-      setTouched(true)
-      setLifted(true)
       e.currentTarget.setPointerCapture(e.pointerId)
     }
-    setDrag(localX(e.clientX))
+    follow(aim(localX(e.clientX)))
   }
 
-  const onPointerEnd = (e: React.PointerEvent<HTMLDivElement>) => {
+  const onPointerEnd = (e: PointerEvent<HTMLDivElement>) => {
     const g = gesture.current
     gesture.current = null
-    release()
-    if (!g?.dragging) return
-    swallowClick.current = true
-    setDrag(null)
-    const next = tabAt(localX(e.clientX), barRef.current!.getBoundingClientRect().width)
-    mark(next)
-    if (next !== activeIndex) router.push(items[next].href)
+    drop()
+    if (!g || !bar) return
+    if (g.dragging) {
+      swallowClick.current = true
+      const next = tabAt(localX(e.clientX), bar)
+      mark(next)
+      if (next !== activeIndex) router.push(items[next].href)
+      return
+    }
+    // Simple toucher : la bulle se pose sur l'onglet touché dès le lâcher, le
+    // clic qui suit ouvre la page.
+    const tab = e.type === 'pointerup' ? (e.target as Element).closest<HTMLElement>('[data-tab]') : null
+    if (tab) mark(Number(tab.dataset.tab))
   }
 
-  // Bulle au repos : autour du contenu de l'onglet choisi, sans sortir de la barre.
+  // Bulle : autour du contenu de l'onglet choisi, ou loupe sous le doigt.
   let bubble: { left: number; width: number } | null = null
-  if (bar && index >= 0) {
-    const slot = bar.slots[index]
-    const width = Math.min(slot.width + TAB_PAD_X * 2, bar.width - TAB_INSET * 2)
-    const center = slot.left + slot.width / 2
-    const left = Math.min(Math.max(center - width / 2, TAB_INSET), bar.width - TAB_INSET - width)
-    bubble = { left, width }
+  if (lifted) {
+    bubble = { left: bubbleLeft(bar, lens.center, lens.width), width: lens.width }
+  } else if (bar && index >= 0) {
+    const width = bubbleWidth(bar, index)
+    bubble = { left: bubbleLeft(bar, bar.slots[index].left + bar.slots[index].width / 2, width), width }
   }
 
-  // Loupe : centrée sous le doigt (glissé ou appui), à la largeur de l'onglet
-  // survolé, un peu plus grande que la bulle.
-  const pointer = drag ?? pressX
-  let lens: { left: number; width: number; center: number; hovered: number } | null = null
-  if (bar && pointer !== null) {
-    const hovered = tabAt(pointer, bar.width)
-    const slot = bar.slots[hovered]
-    const width = Math.min((slot.width + TAB_PAD_X * 2) * 1.14, bar.width - 4)
-    const center = drag !== null ? drag : slot.left + slot.width / 2
-    const left = Math.min(Math.max(center - width / 2, 2), bar.width - 2 - width)
-    lens = { left, width, center: left + width / 2, hovered }
-  }
-
-  /** Intérieur d'un onglet (icône, pastille, libellé) : la rangée réelle et sa copie agrandie. */
-  const tabInner = (item: NavItem) => {
-    const Icon = item.icon
-    return (
-      <>
-        <span className="relative flex">
-          <Icon size={23} strokeWidth={1.9} aria-hidden="true" />
-          {/* Pastille sur le coin de l'icône : hors mesure de la bulle */}
-          {badge(item.count, 'absolute -top-1.5 -right-3')}
-        </span>
-        {item.label}
-      </>
-    )
-  }
-
-  const touching = pressX !== null || drag !== null
+  const columns = `repeat(${items.length}, minmax(0, 1fr))`
 
   return (
     <div
@@ -242,8 +238,8 @@ function TabBar({ items, activeIndex, badge }: {
           onPointerUp={onPointerEnd}
           onPointerCancel={onPointerEnd}
           onPointerLeave={() => {
-            // Souris sortie sans glisser : on relâche
-            if (!gesture.current?.dragging) { gesture.current = null; release() }
+            // Souris sortie sans glisser : la bulle se repose
+            if (gesture.current && !gesture.current.dragging) { gesture.current = null; drop() }
           }}
           onClickCapture={e => {
             // Fin d'un glissé : la navigation est déjà partie, pas de second clic.
@@ -255,27 +251,59 @@ function TabBar({ items, activeIndex, badge }: {
             }
           }}
           className={cn(
-            'relative grid grid-cols-5 h-[62px] p-1 touch-none select-none [-webkit-touch-callout:none] rounded-full border border-tabbar-edge shadow-tabbar',
-            'backdrop-saturate-[1.8] transition-[background-color,backdrop-filter] duration-200',
-            // Au repos : on devine le contenu qui défile dessous ; doigt posé : la barre se densifie
-            touching ? 'bg-tabbar-strong backdrop-blur-xl' : 'bg-tabbar backdrop-blur-[6px]',
+            // Verre léger et peu flouté, même arête que le reste du verre (recette Fridge).
+            // Pas de menu d'aperçu iOS sur un appui long : l'appui sert à la loupe.
+            'relative grid h-[62px] touch-none select-none [-webkit-touch-callout:none] rounded-full border border-glass-rim p-1 shadow-sheen backdrop-blur-[10px] backdrop-saturate-[1.8] transition-colors duration-200',
+            lifted ? 'bg-glass-pressed' : 'bg-glass-thin',
           )}
+          style={{ gridTemplateColumns: columns }}
         >
           {bubble && (
             <span
               aria-hidden="true"
-              className="pointer-events-none absolute inset-y-1 left-0 transition-[transform,width] duration-500 ease-[cubic-bezier(0.34,1.4,0.5,1)] motion-reduce:transition-none"
-              style={{ transform: `translateX(${bubble.left - TAB_BORDER}px)`, width: bubble.width }}
+              className={cn(
+                'pointer-events-none absolute inset-y-1 left-0',
+                // Loupe : au-dessus des onglets, qu'elle cache et remplace par leur copie agrandie.
+                // Elle suit le doigt image par image, sans transition.
+                lifted
+                  ? 'z-20'
+                  : 'transition-[transform,width] duration-500 ease-[cubic-bezier(0.34,1.4,0.5,1)] motion-reduce:transition-none',
+              )}
+              style={{ transform: `translateX(${bubble.left}px)`, width: bubble.width }}
             >
               <span
                 key={touched ? index : 'repos'}
                 className={cn(
-                  'block h-full w-full rounded-full bg-bubble shadow-bubble transition-opacity duration-150',
-                  touched && 'motion-safe:animate-bubble',
-                  // Pendant la loupe, la bulle s'efface : c'est la loupe qui marque l'onglet
-                  lifted && 'opacity-0',
+                  'relative block h-full w-full overflow-hidden rounded-full transition-[transform,background-color,box-shadow] duration-200',
+                  lifted ? 'bg-loupe shadow-lifted' : 'bg-bubble shadow-bubble',
+                  touched && !lifted && 'motion-safe:animate-bubble',
                 )}
-              />
+                style={lifted ? { transform: `scale(${LIFT})` } : undefined}
+              >
+                {lifted && (
+                  // Copie des onglets, posée exactement sur l'originale puis agrandie
+                  // autour du centre de la loupe : elle grossit ce qui est dessous.
+                  <span
+                    className="absolute inset-y-0 grid"
+                    style={{
+                      left: INSET - bubble.left,
+                      width: bar.width - INSET * 2,
+                      gridTemplateColumns: columns,
+                      transform: `scale(${MAGNIFY})`,
+                      transformOrigin: `${magnifyOrigin(lens.center, bubble.left + bubble.width / 2) - INSET}px 50%`,
+                    }}
+                  >
+                    {items.map((item, i) => (
+                      <span
+                        key={item.label}
+                        className={cn('flex items-center justify-center', i === highlighted ? 'text-brand-700' : 'text-gray-500')}
+                      >
+                        <TabContent item={item} badge={badge} />
+                      </span>
+                    ))}
+                  </span>
+                )}
+              </span>
             </span>
           )}
 
@@ -283,65 +311,27 @@ function TabBar({ items, activeIndex, badge }: {
             <Link
               key={item.label}
               href={item.href}
+              // Préchargée en entier, comme dans Fridge : même /accueil et /messages,
+              // dynamiques, s'ouvrent sans attendre le serveur.
+              prefetch
               draggable={false}
+              data-tab={i}
               onClick={() => mark(i)}
               aria-current={i === activeIndex ? 'page' : undefined}
               className={cn(
                 'relative z-10 flex items-center justify-center rounded-full transition-colors duration-300',
-                i === index ? 'text-brand-700' : 'text-gray-500',
+                i === highlighted ? 'text-brand-700' : 'text-gray-500',
               )}
             >
-              <span
+              <TabContent
+                item={item}
+                badge={badge}
                 ref={el => {
                   contentRefs.current[i] = el
                 }}
-                className={TAB_CONTENT}
-              >
-                {tabInner(item)}
-              </span>
+              />
             </Link>
           ))}
-
-          {/* Loupe : lentille de verre posée sur les onglets, qui contient une copie
-              agrandie de la rangée, calée pour que son centre coïncide avec celui
-              de la lentille. Au-dessus des onglets réels, qu'elle masque. */}
-          {lens && (
-            <span
-              aria-hidden="true"
-              className={cn(
-                'pointer-events-none absolute z-20 rounded-full overflow-hidden bg-lens-fill shadow-lens',
-                'transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none',
-                lifted ? 'opacity-100 scale-100' : 'opacity-0 scale-75',
-              )}
-              style={{
-                left: lens.left - TAB_BORDER,
-                width: lens.width,
-                top: -LENS_POP,
-                height: TAB_INNER_H + LENS_POP * 2,
-              }}
-            >
-              <span
-                className="absolute grid grid-cols-5 p-1"
-                style={{
-                  left: -(lens.left - TAB_BORDER),
-                  top: LENS_POP,
-                  width: bar!.width - TAB_BORDER * 2,
-                  height: TAB_INNER_H,
-                  transform: `scale(${LENS_ZOOM})`,
-                  transformOrigin: `${lens.center - TAB_BORDER}px ${TAB_INNER_H / 2}px`,
-                }}
-              >
-                {items.map((item, i) => (
-                  <span
-                    key={item.label}
-                    className={cn('flex items-center justify-center', i === lens!.hovered ? 'text-brand-700' : 'text-gray-500')}
-                  >
-                    <span className={TAB_CONTENT}>{tabInner(item)}</span>
-                  </span>
-                ))}
-              </span>
-            </span>
-          )}
         </div>
       </nav>
     </div>
@@ -374,7 +364,11 @@ export function Navbar() {
   const supabase = createClient()
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUser(data.user))
+    // `getSession()` et non `getUser()` : lecture locale, sans aller-retour réseau.
+    // Avec `getUser()`, les onglets visaient « / » et la connexion, et la barre du
+    // haut affichait « Connexion », le temps que le serveur d'auth réponde. Le
+    // compte ne sert ici qu'à l'interface : le RLS reste le seul verrou.
+    supabase.auth.getSession().then(({ data }) => setUser(data.session?.user ?? null))
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
       setUser(session?.user ?? null)
     })
@@ -420,6 +414,19 @@ export function Navbar() {
   }
   const sidebarItems = [...items.slice(0, 4), demandes, items[4]]
 
+  // Les liens préchargent les onglets à l'ouverture (prefetch, en production). Au
+  // retour au premier plan, le cache du routeur a pu expirer pendant la veille
+  // (5 min) : on le remplit de nouveau, pour que le prochain toucher n'attende pas
+  // le serveur. Repris de Fridge.
+  const warmHrefs = [...sidebarItems.map(item => item.href), ...(user ? ['/profile'] : [])].join(' ')
+  useEffect(() => {
+    const warm = () => {
+      if (document.visibilityState === 'visible') warmHrefs.split(' ').forEach(href => router.prefetch(href))
+    }
+    document.addEventListener('visibilitychange', warm)
+    return () => document.removeEventListener('visibilitychange', warm)
+  }, [router, warmHrefs])
+
   const isActive = (item: NavItem) => (item.matches ?? [item.href]).some(p => pathname.startsWith(p))
   const initials = initialsOf(profile, user?.email ?? undefined)
   const displayName = profile?.full_name || profile?.username || 'Mon profil'
@@ -455,7 +462,8 @@ export function Navbar() {
       {/* ─── Mobile : barre du haut ─────────────────────────────────────── */}
       <header
         id="app-topbar"
-        className="md:hidden fixed top-0 inset-x-0 z-[1200] h-16 px-4 flex items-center gap-3 bg-glass backdrop-blur-xl backdrop-saturate-150 border-b border-edge"
+        // Le verre de toute l'appli (`.glass`), collé au bord : liseré en bas seulement
+        className="md:hidden fixed top-0 inset-x-0 z-[1200] h-16 px-4 flex items-center gap-3 glass rounded-none border-x-0 border-t-0"
       >
         <Link href={homeHref} className="flex items-center gap-2 min-w-0 font-semibold text-[17px] text-gray-900">
           <Image src="/logo_cedre.png" alt="" width={38} height={38} priority className="rounded-[10px] shrink-0" />
@@ -508,6 +516,8 @@ export function Navbar() {
             const Icon = item.icon
             return (
               <Link key={item.label} href={item.href} title={item.label} aria-current={active ? 'page' : undefined}
+                // Préchargée en entier, comme la barre d'onglets mobile
+                prefetch
                 className={cn(
                   'relative h-11 rounded-xl flex items-center gap-3 justify-center lg:justify-start lg:px-3 text-[15px] transition-colors',
                   // Sélection sobre, comme une barre latérale macOS : la même bulle

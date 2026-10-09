@@ -70,25 +70,22 @@ const config: Config = {
           // En-tête d'accordéon ouvert (profil) — pastel du vert du titre
           accent: 'var(--surface-accent)',
         },
-        // Verre blanc des éléments flottants (menu latéral, barre du haut) :
-        // toujours avec `backdrop-blur`, voir la classe `.glass` de globals.css.
-        glass: 'var(--glass)',
-        // Barre d'onglets et sa bulle, repris de l'app Fridge (2026-10-06) : verre
-        // très transparent, bulle gris système translucide. Voir globals.css.
-        tabbar: {
-          DEFAULT: 'var(--tabbar)',
-          edge: 'var(--tabbar-edge)',
-          // Doigt posé sur la barre : elle se densifie (2026-10-07)
-          strong: 'var(--tabbar-strong)',
+        // Verre « Liquid Glass », recette de l'app Fridge : une seule matière pour
+        // ce qui flotte. Verre épais = classe `.glass` de globals.css ; la barre
+        // d'onglets est en verre léger (`bg-glass-thin`), avec la même arête.
+        glass: {
+          DEFAULT: 'var(--glass)',
+          thin: 'var(--glass-thin)',
+          // Barre d'onglets, doigt posé : presque opaque
+          pressed: 'var(--glass-pressed)',
+          rim: 'var(--glass-rim)',
         },
-        // Fond de la loupe de la barre d'onglets
-        'lens-fill': 'var(--lens-fill)',
         bubble: {
           DEFAULT: 'var(--bubble)',
           edge: 'var(--bubble-edge)',
         },
-        // Pastille soulevée par le doigt (contrôle segmenté) : verre clair
-        lens: 'var(--lens)',
+        // Loupe (barre d'onglets, contrôle segmenté) : opaque, elle cache ce qu'elle agrandit
+        loupe: 'var(--loupe)',
         edge: {
           DEFAULT: 'var(--border)',
           strong: 'var(--border-strong)',
@@ -125,15 +122,16 @@ const config: Config = {
         bubble: 'bubble 560ms cubic-bezier(0.2, 0.8, 0.2, 1)',
       },
       boxShadow: {
-        // Barre d'onglets : ombre portée + reflet sur l'arête haute
-        tabbar: 'var(--shadow-float), inset 0 1px 0 var(--tabbar-highlight)',
+        // Verre : ombre portée et reflet sur l'arête haute (pas « shadow-glass » : la
+        // couleur `glass` générerait la couleur d'ombre du même nom, piège vécu dans Fridge)
+        sheen: 'var(--glass-shadow)',
         bubble: 'inset 0 0 0 0.5px var(--bubble-edge), 0 2px 10px rgba(0, 0, 0, 0.1)',
         // Pastille soulevée par le doigt : plus d'ombre, pour se détacher d'une piste grise
         lifted: 'inset 0 0 0 0.5px var(--bubble-edge), 0 3px 12px rgba(0, 0, 0, 0.2)',
+        // Loupe de verre clair de l'interrupteur : liseré lumineux, reflet en haut, ombre portée
+        rim: 'inset 0 0 0 1.5px var(--rim), inset 0 2px 3px var(--rim), 0 3px 12px rgba(0, 0, 0, 0.22)',
         lift: 'var(--shadow-lift)',
         float: 'var(--shadow-float)',
-        // Loupe de la barre d'onglets : arête claire, ombre interne en bas, portée douce
-        lens: 'inset 0 0 0 0.5px var(--bubble-edge), inset 0 1px 1px rgba(255, 255, 255, 0.9), inset 0 -2px 6px rgba(0, 0, 0, 0.08), 0 8px 22px rgba(0, 0, 0, 0.18)',
       },
     },
   },

@@ -1,5 +1,84 @@
 # Historique des modifications (par session)
 
+## 2026-10-09 — Latence au clic, et le verre de Fridge partout (branche `refonte-verre`)
+
+Demandes : « j'ai l'impression qu'il y a une latence d'affichage des pages, il faut qu'au clic la
+page s'affiche directement et rapidement » ; puis « comparé à Fridge, l'effet liquid glass de la
+barre du bas est moins bien, fais le même effet », « et vérifie surtout que ce liquid glass sera
+bien le même dans toute l'appli ».
+
+### Latence : mesures
+- `x-vercel-id` en production : `cdg1::iad1::…` → les fonctions tournent à **Washington** (défaut de
+  Vercel). Supabase est en **eu-west-1** (pooler `aws-0-eu-west-1` de `scripts/db-migrate.js`) et
+  les voisins en France. Une page dynamique faisait France → Washington → Dublin (`getUser()`, puis
+  chaque requête) → Washington → France. TTFB mesuré sans session : ~220-300 ms à chaud, 1,75 s à
+  froid. Avec session, il faut ajouter `getUser()` et la lecture de `profiles`, en série, à travers l'Atlantique.
+- `next build` : `/accueil` et `/messages` (onglets) sont **dynamiques** ; `/map`, `/evenements`,
+  `/infos`, `/demandes`, `/profile` sont statiques. Par défaut, Next ne précharge d'une page
+  dynamique que son `loading.tsx`. Pour `/messages`, le layout (qui fait `getUser()`) est au-dessus
+  du `loading.tsx` : le clic attendait donc ce rendu.
+
+### Latence : corrections
+- **`vercel.json`** : `"regions": ["dub1"]`. Les fonctions tournent à côté de Supabase et près des voisins.
+  Prend effet au prochain déploiement.
+- **`Navbar.tsx`** :
+  - les liens de la barre d'onglets et du menu latéral passent en `prefetch` complet, comme dans
+    Fridge : `/accueil` et `/messages` sont rendus d'avance ;
+  - un `visibilitychange` relance `router.prefetch()` au retour au premier plan, car le cache du
+    routeur expire en 5 min, par exemple pendant la veille ;
+  - la session est lue par `getSession()` (local) au lieu de `getUser()` (réseau) : les onglets ne
+    visent plus « / » et la connexion pendant le premier aller-retour.
+- **`app/messages/layout.tsx`** : commentaire corrigé, il prétendait la vérification `getUser()` « gratuite ».
+- **Données des onglets, nouveau `lib/pageCache.ts`** : `readPageCache` / `writePageCache`, une `Map` en mémoire. Au retour sur un onglet, la page affiche ses dernières données puis se rafraîchit, sans spinner. La première visite ne change pas.
+  - Le module ne fait rien côté serveur : la `Map` y serait partagée entre voisins, et l'hydratation reste identique.
+  - Il est vidé à tout changement d'utilisateur, déconnexion comprise, et refuse les écritures une fois déconnecté.
+  - Les clés des données personnelles portent l'identifiant de l'utilisateur.
+  - Branché sur `DashboardClient` (`accueil`), `MapView` (annonces + correspondance slug → id), l'Agenda (`app/evenements/page.tsx` mobile sans filtre, `EventsList` desktop : première page + pastilles du calendrier), `MessagesClient`, `AnnouncementsSection`, `PollsSection` et `DemandesClient`.
+  - Cascades retirées : `DemandesClient` attendait un `getUser()` réseau avant ses requêtes. `MapView`, l'Agenda et `EventsList` faisaient un `getUser()` réseau pour un simple « connecté ou non » ; ils passent tous par `useCurrentUser()` (session locale, magasin partagé).
+  - Encart de l'Agenda mobile : il attend que la session soit connue (règle `LoginRequiredNotice`), alors qu'il clignotait avant.
+  - `EventsList.fetchEvents` renvoie `null` (et non `[]`) si une requête est déjà en vol. Sans ça, la sentinelle du défilement, visible dès l'affichage du cache, pouvait vider la liste.
+  - Cas limite connu : un changement de filtre de dates pendant une requête en vol est ignoré (avant : liste vidée).
+  - Risque assumé : une donnée périmée peut rester visible le temps d'un aller-retour, par exemple une annonce qu'on vient de supprimer.
+
+### Vérifications
+- `npm run typecheck` OK ; `npm run lint` : 0 erreur, **19** avertissements (base 20) ; `npm run build` OK.
+- `measure-bundle` : ~1015-1035 Ko par page, dans la fourchette de référence.
+- Classes du verre contrôlées dans le CSS produit (`.glass` avant les utilitaires).
+- **Rendu à l'écran non vérifié** : le MCP Chrome DevTools n'était pas chargé dans la session. La vitesse se juge en production ou en preview Vercel, pas en `npm run dev`, où rien n'est préchargé.
+
+### Verre : une seule recette, celle de Fridge
+Fridge avait évolué depuis la copie du 2026-10-07 (commits « loupe façon iOS 26 » et « verre Liquid
+Glass sur tout ce qui flotte »). neighborshare avait **quatre recettes de verre** :
+- `.glass` (flou 20 px, bord sombre, sans reflet) ;
+- barre du haut et `FormHeader` (saturation 150 %, bord gris) ;
+- barre d'onglets (flou 6 px animé vers 24 px) ;
+- visionneuse PDF (`bg-surface-pane/95 backdrop-blur`).
+
+Il avait aussi **deux loupes** : la lentille à délai de la barre et des segments, et la lentille floue de l'interrupteur.
+
+- **`app/globals.css`** : tokens de Fridge, `--glass`, `--glass-thin`, `--glass-pressed`, `--glass-rim`,
+  `--glass-highlight`, `--glass-filter`, `--glass-shadow`, `--loupe`, `--rim`, avec leurs valeurs
+  sombres (teinte ardoise du thème actuel). `--glass-edge`, `--tabbar*`, `--lens*` sont supprimés.
+  `.glass` adopte la recette de Fridge (liseré clair, reflet sur l'arête haute, 24 px, ×1,8) et passe dans
+  `@layer components`, pour qu'un utilitaire puisse l'ajuster. Les contrôles Leaflet utilisent les mêmes
+  variables ; le séparateur entre + et − passe en `--border`.
+- **`tailwind.config.ts`** : couleurs `glass` / `glass-thin` / `glass-pressed` / `glass-rim` / `loupe`,
+  ombres `sheen` et `rim`. `tabbar`, `lens-fill`, `lens` et `shadow-tabbar` / `shadow-lens` sont supprimés.
+- **`components/ui/useLoupe.ts`** (nouveau) : copié tel quel de Fridge.
+- **`Navbar.tsx`**, `TabBar` réécrit sur le composant actuel de Fridge :
+  - verre léger `bg-glass-thin`, flou **constant** de 10 px, `bg-glass-pressed` doigt posé ;
+  - la loupe apparaît dès l'appui, part de la bulle, suit le doigt image par image et grossit la
+    copie des onglets (×1,25 en tout) ;
+  - la bulle se pose au lâcher.
+  - Barre du haut : `.glass` avec `rounded-none border-x-0 border-t-0`.
+- **`components/ui/Segmented.tsx`** : même loupe (`useLoupe`), choix au lâcher, segments-liens,
+  icônes et pastilles conservés. Sur un lien, le clic n'est pas avalé : c'est lui qui navigue.
+- **`components/ui/Switch.tsx`** : loupe de Fridge (couleur de la piste, `shadow-rim`, ×1,15) au
+  lieu de la lentille floue ×1,35.
+- **`FormHeader.tsx`**, **`PdfViewer.tsx`** (barre d'outils) : `.glass` collé au bord.
+- **`ListingSheet.tsx`**, **`EventDetailPopup.tsx`** : le ✕ posé sur la fiche passe en `.glass`, comme
+  les flèches de photo voisines. Les fiches restent opaques (décision du 2026-10-08).
+
 ## 2026-10-08 — Verre sur les petits éléments flottants (branche `refonte-verre`)
 
 Demande : « vérifie que l'effet liquid glass d'Apple est bien présent partout ». L'audit a montré

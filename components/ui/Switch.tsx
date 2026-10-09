@@ -9,8 +9,10 @@ import { cn } from '@/lib/utils'
  * est ancrée à gauche (left-0.5) et glisse de 20 px : 2 px de marge de chaque
  * côté, sans jamais sortir de la piste.
  *
- * Comme sur iOS 26, la pastille réagit au doigt :
- * - posé, elle s'allonge (37 px) et devient une lentille de verre ;
+ * Comme sur iOS 26, la pastille réagit au doigt (loupe de Fridge, 2026-10-09) :
+ * - posé, elle s'allonge (37 px) et devient une loupe de verre clair : la
+ *   piste se voit au travers, sous un liseré lumineux (la piste est unie, il
+ *   n'y a rien à agrandir) ;
  * - glissé, elle passe du côté où va le doigt, et l'interrupteur prend cette
  *   position au lâcher ;
  * - un simple toucher bascule l'interrupteur, comme avant.
@@ -103,12 +105,12 @@ export default function Switch({
           className={cn(
             'absolute left-0.5 top-0.5 h-[27px] rounded-full',
             'transition-[transform,width,background-color,box-shadow] duration-300 ease-[cubic-bezier(0.34,1.4,0.5,1)] motion-reduce:transition-none',
-            // Pastille blanche dans les deux thèmes (pas `bg-white`, que le mode
-            // sombre repeint en ardoise)
-            // Doigt posé : la pastille devient une lentille de verre translucide, plus
-            // grande que la piste, qui laisse voir sa couleur (iOS 26, 2026-10-07)
+            // Doigt posé : loupe de verre clair, de la couleur de la piste sous un
+            // liseré lumineux (recette de Fridge)
             pressed
-              ? cn('w-[37px] bg-white/30 shadow-lens backdrop-blur-[1px] motion-safe:scale-[1.35]', on ? 'translate-x-[10px]' : 'translate-x-0')
+              ? cn('w-[37px] shadow-rim motion-safe:scale-[1.15]', on ? 'translate-x-[10px] bg-brand-600' : 'translate-x-0 bg-gray-200')
+              // Pastille blanche dans les deux thèmes (pas `bg-white`, que le mode
+              // sombre repeint en ardoise)
               : cn('w-[27px] bg-[#ffffff] shadow-[0_2px_4px_rgba(0,0,0,0.2)]', on ? 'translate-x-5' : 'translate-x-0'),
           )}
         />

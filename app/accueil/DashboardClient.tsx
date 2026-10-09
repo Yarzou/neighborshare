@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ClipboardList, Search, ChevronRight, ChartColumn } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { usePendingRequests } from '@/lib/hooks'
+import { readPageCache, writePageCache } from '@/lib/pageCache'
 import { CATEGORY_LIST } from '@/lib/categories'
 import { formatDate } from '@/lib/utils'
 import type { ListingStatus, ListingType } from '@/lib/types'
@@ -18,6 +19,10 @@ interface Props {
 interface ListingRow { id: string; title: string; type: ListingType; status: ListingStatus; category_id: number | null; created_at: string }
 interface EventRow { id: string; title: string; event_date: string; location_text: string | null }
 interface PollRow { id: string; question: string; closes_at: string | null }
+interface DashboardData { listings: ListingRow[]; nextEvent: EventRow | null; poll: PollRow | null }
+
+/** Clé du cache de page (`lib/pageCache.ts`) : au retour sur l'onglet, les blocs s'affichent tout de suite. */
+const CACHE_KEY = 'accueil'
 
 /** Carte blanche sur fond gris, ombre à peine visible (maquette « Verre et Cèdre »). */
 const CARD = 'bg-white rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06)]'
@@ -36,9 +41,12 @@ const categoryLabel = (id: number | null) => CATEGORY_LIST.find(c => c.id === id
  */
 export default function DashboardClient({ firstName }: Props) {
   const pendingRequestsCount = usePendingRequests()
-  const [listings, setListings] = useState<ListingRow[]>([])
-  const [nextEvent, setNextEvent] = useState<EventRow | null>(null)
-  const [poll, setPoll] = useState<PollRow | null>(null)
+  // Dernières données connues : affichées d'emblée au retour sur l'onglet, puis
+  // remplacées par celles de la requête ci-dessous.
+  const [cached] = useState(() => readPageCache<DashboardData>(CACHE_KEY))
+  const [listings, setListings] = useState<ListingRow[]>(cached?.listings ?? [])
+  const [nextEvent, setNextEvent] = useState<EventRow | null>(cached?.nextEvent ?? null)
+  const [poll, setPoll] = useState<PollRow | null>(cached?.poll ?? null)
 
   useEffect(() => {
     const supabase = createClient()
@@ -65,9 +73,15 @@ export default function DashboardClient({ firstName }: Props) {
         .or(`closes_at.is.null,closes_at.gt.${now}`).order('created_at', { ascending: false }).limit(1),
     ]).then(([listingRows, eventRes, pollRes]) => {
       if (cancelled) return
-      setListings(listingRows)
-      setNextEvent(((eventRes.data as EventRow[] | null) ?? [])[0] ?? null)
-      setPoll(((pollRes.data as PollRow[] | null) ?? [])[0] ?? null)
+      const data: DashboardData = {
+        listings: listingRows,
+        nextEvent: ((eventRes.data as EventRow[] | null) ?? [])[0] ?? null,
+        poll: ((pollRes.data as PollRow[] | null) ?? [])[0] ?? null,
+      }
+      writePageCache(CACHE_KEY, data)
+      setListings(data.listings)
+      setNextEvent(data.nextEvent)
+      setPoll(data.poll)
     })
     return () => { cancelled = true }
   }, [])

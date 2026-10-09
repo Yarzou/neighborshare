@@ -9,6 +9,7 @@ import { notifyQuartier } from '@/lib/pushNotifications'
 import { fetchPollResults } from '@/lib/messaging'
 import { ItemActions } from '@/components/common/ItemActions'
 import DateField from '@/components/ui/DateField'
+import { readPageCache, writePageCache } from '@/lib/pageCache'
 
 /** Borne défensive : la liste n'est pas paginée et grandit sans limite. */
 const POLLS_LIMIT = 100
@@ -26,9 +27,18 @@ interface PollState {
 
 export function PollsSection({ userId, isReferent }: Props) {
   const supabase = createClient()
-  const [polls, setPolls] = useState<Poll[]>([])
-  const [states, setStates] = useState<Record<string, PollState>>({})
-  const [loading, setLoading] = useState(true)
+  // Cache de page (`lib/pageCache.ts`), propre à l'utilisateur puisqu'il porte
+  // ses votes : au retour sur l'onglet, les sondages s'affichent tout de suite.
+  const cacheKey = `quartier:sondages:${userId}`
+  const [cached] = useState(() => readPageCache<{ polls: Poll[]; states: Record<string, PollState> }>(cacheKey))
+  const [polls, setPolls] = useState<Poll[]>(cached?.polls ?? [])
+  const [states, setStates] = useState<Record<string, PollState>>(cached?.states ?? {})
+  const [loading, setLoading] = useState(!cached)
+
+  // Le cache suit ce qui est affiché, vote qu'on vient d'émettre compris.
+  useEffect(() => {
+    if (!loading) writePageCache(cacheKey, { polls, states })
+  }, [cacheKey, polls, states, loading])
   const [creating, setCreating] = useState(false)
   /** id du sondage en cours d'édition — seules les métadonnées sont éditables,
    *  pas les options : modifier les réponses d'un sondage déjà voté corromprait le vote. */

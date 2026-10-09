@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { MessageCircle, Plus, Loader2 } from 'lucide-react'
 import type { ConversationWithDetails } from '@/lib/types'
 import { fetchConversationsOverview, createDebouncedRefresh } from '@/lib/messaging'
+import { readPageCache, writePageCache } from '@/lib/pageCache'
 import { ConversationRow } from '@/components/messages/ConversationRow'
 
 /**
@@ -21,8 +22,18 @@ export default function MessagesClient({ userId }: { userId: string }) {
   const pathname = usePathname()
   const activeId = pathname?.startsWith('/messages/') ? pathname.split('/')[2] ?? null : null
 
-  const [loading, setLoading] = useState(true)
-  const [conversations, setConversations] = useState<ConversationWithDetails[]>([])
+  // Cache de page (`lib/pageCache.ts`), propre à l'utilisateur : au retour sur
+  // l'onglet, la liste s'affiche telle qu'on l'a laissée, puis se rafraîchit.
+  const cacheKey = `messages:${userId}`
+  const [cached] = useState(() => readPageCache<ConversationWithDetails[]>(cacheKey))
+  const [loading, setLoading] = useState(!cached)
+  const [conversations, setConversations] = useState<ConversationWithDetails[]>(cached ?? [])
+
+  // Le cache suit la liste affichée, y compris une conversation qu'on vient de
+  // supprimer (retirée tout de suite, sans attendre la base).
+  useEffect(() => {
+    if (!loading) writePageCache(cacheKey, conversations)
+  }, [cacheKey, conversations, loading])
 
   /**
    * Une seule requête là où il y en avait quatre en séquence — dont un `select`

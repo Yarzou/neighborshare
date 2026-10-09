@@ -57,7 +57,7 @@ export function EventDetailPopup({ event, onClose, onDeleted }: EventDetailPopup
         {/* Close button — toujours visible, hors du scroll */}
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 bg-white rounded-full p-1.5 shadow-md border border-gray-200 z-10"
+          className="absolute top-3 right-3 glass rounded-full p-1.5 z-10"
         >
           <X size={14} />
         </button>

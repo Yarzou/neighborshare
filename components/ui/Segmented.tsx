@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from 'react'
+import { useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { LucideIcon } from 'lucide-react'
+import { LIFT, MAGNIFY, magnifyOrigin, useLoupe } from '@/components/ui/useLoupe'
 import { cn } from '@/lib/utils'
 
 export interface SegmentedOption<T extends string> {
@@ -34,28 +35,22 @@ interface SegmentedProps<T extends string> {
 /** Marge intérieure du contrôle (p-0.5) et écart entre segments (gap-0.5), en px. */
 const INSET = 2
 const GAP = 2
-/** Grossissement de la loupe (un peu moins que la barre d'onglets : libellés plus grands). */
-const LENS_ZOOM = 1.22
-/** La loupe déborde un peu du contrôle, en haut et en bas, comme sur iOS. */
-const LENS_POP = 4
-/** Appui tenu (ms) avant que la loupe n'apparaisse : un simple toucher ne la montre pas. */
-const LENS_DELAY = 160
 
 /**
- * Contrôle segmenté iOS 26, parti de celui de l'app Fridge : capsule grise,
- * segment choisi en relief blanc (une pastille qui glisse en s'étirant comme une
- * goutte d'un segment à l'autre).
- *
- * **Loupe** (2026-10-07, la même que la barre d'onglets) : appui tenu ou glissé,
- * une lentille de verre apparaît sous le doigt et grossit réellement les segments
- * situés dessous (une copie agrandie de la rangée, calée sous la lentille). Elle
- * suit le doigt ; au lâcher d'un glissé, le segment le plus proche est choisi.
+ * Contrôle segmenté iOS 26, celui de l'app Fridge (2026-10-09, même loupe que la
+ * barre d'onglets) : capsule grise, segment choisi en relief blanc. Le relief est
+ * une pastille qui se déplace, comme la bulle de la barre d'onglets :
+ * - doigt posé, elle se soulève en loupe de verre : elle rejoint le doigt, le
+ *   suit d'un segment à l'autre et agrandit les libellés qu'elle couvre ;
+ * - au lâcher, elle se pose sur le segment touché, ou sur le plus proche après
+ *   un glissé, en s'étirant comme une goutte, et ce segment est choisi.
  *
  * Un segment peut être un **lien** (`href`, onglets du Quartier) : la pastille part
  * alors tout de suite vers lui, sans attendre la page. Il peut aussi porter une
  * icône et une pastille de compteur.
- * Le défilement vertical de la page reste libre (`touch-pan-y`). Avec « Réduire
- * les animations », tout se déplace sans effet.
+ * Le défilement vertical de la page reste libre (`touch-pan-y`) : s'il prend le
+ * geste, rien n'est choisi. Avec « Réduire les animations », la pastille se
+ * déplace sans effet.
  */
 export default function Segmented<T extends string>({
   options,
@@ -70,29 +65,13 @@ export default function Segmented<T extends string>({
   const rootRef = useRef<HTMLDivElement>(null)
   const gesture = useRef<{ startX: number; dragging: boolean } | null>(null)
   const swallowClick = useRef(false)
-  const liftTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  // Abscisse de l'appui, puis du doigt pendant un glissé (px depuis le bord gauche)
-  const [pressX, setPressX] = useState<number | null>(null)
-  const [drag, setDrag] = useState<number | null>(null)
-  // Loupe visible : appui tenu, ou glissé
-  const [lifted, setLifted] = useState(false)
+  const { lens, grab, follow, drop } = useLoupe()
+  // Largeur du contrôle, mesurée quand le doigt se pose
+  const [span, setSpan] = useState(0)
   // La goutte ne se déforme qu'après un premier geste, pas à l'affichage
   const [touched, setTouched] = useState(false)
   // Segment-lien touché : la pastille y va avant que la page ne change `value`
   const [pending, setPending] = useState<{ index: number; from: T } | null>(null)
-  // Taille du contrôle, pour placer la loupe et sa copie agrandie
-  const [box, setBox] = useState<{ width: number; height: number } | null>(null)
-
-  useEffect(() => {
-    const el = rootRef.current
-    if (!el) return
-    const observer = new ResizeObserver(() => setBox({ width: el.offsetWidth, height: el.offsetHeight }))
-    observer.observe(el)
-    return () => {
-      observer.disconnect()
-      if (liftTimer.current) clearTimeout(liftTimer.current)
-    }
-  }, [])
 
   const count = options.length
   const current = options.findIndex(option => option.value === value)
@@ -102,76 +81,84 @@ export default function Segmented<T extends string>({
     Math.min(count - 1, Math.max(0, Math.floor((x - INSET + GAP / 2) / (segmentWidth(width) + GAP))))
   const localX = (clientX: number) => clientX - rootRef.current!.getBoundingClientRect().left
 
-  /** Choix d'un segment, au toucher ou au lâcher d'un glissé. */
-  const choose = (i: number, fromDrag: boolean) => {
+  /**
+   * Choix d'un segment. Un segment-lien : la pastille y part, et c'est le lien
+   * qui navigue au toucher (`navigate` faux), nous au lâcher d'un glissé.
+   */
+  const choose = (i: number, navigate: boolean) => {
     setTouched(true)
     const option = options[i]
     if (option.href) {
       setPending({ index: i, from: value })
-      // Au toucher, c'est le lien qui navigue ; au lâcher d'un glissé, c'est nous.
-      if (fromDrag && i !== current) router.push(option.href)
-    } else if (i !== current || !fromDrag) {
+      if (navigate && i !== current) router.push(option.href)
+    } else if (i !== current) {
       onChange?.(option.value)
     }
-  }
-
-  /** Fin du geste : la loupe disparaît. */
-  const release = () => {
-    if (liftTimer.current) clearTimeout(liftTimer.current)
-    liftTimer.current = null
-    gesture.current = null
-    setPressX(null)
-    setDrag(null)
-    setLifted(false)
   }
 
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return
     gesture.current = { startX: e.clientX, dragging: false }
     swallowClick.current = false
-    setPressX(localX(e.clientX))
-    liftTimer.current = setTimeout(() => setLifted(true), LENS_DELAY)
+    setTouched(true)
+    // La loupe part de la pastille du segment choisi pour rejoindre le doigt.
+    const width = rootRef.current!.getBoundingClientRect().width
+    const x = localX(e.clientX)
+    const w = segmentWidth(width)
+    const start = index >= 0 ? index : segmentAt(x, width)
+    setSpan(width)
+    grab({ center: INSET + start * (w + GAP) + w / 2, width: w }, { center: x, width: w })
   }
 
   const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
     const g = gesture.current
     if (!g) return
-    if (!g.dragging) {
-      if (Math.abs(e.clientX - g.startX) < 8) return
+    if (!g.dragging && Math.abs(e.clientX - g.startX) >= 8) {
       g.dragging = true
-      setTouched(true)
-      setLifted(true)
       e.currentTarget.setPointerCapture(e.pointerId)
     }
-    setDrag(localX(e.clientX))
+    follow({ center: localX(e.clientX), width: segmentWidth(span) })
   }
 
   const onPointerUp = (e: PointerEvent<HTMLDivElement>) => {
-    const dragging = gesture.current?.dragging
-    const x = localX(e.clientX)
-    const width = rootRef.current!.getBoundingClientRect().width
-    release()
-    if (!dragging) return
-    swallowClick.current = true
-    choose(segmentAt(x, width), true)
+    const g = gesture.current
+    gesture.current = null
+    drop()
+    if (!g) return
+    if (g.dragging) {
+      swallowClick.current = true
+      choose(segmentAt(localX(e.clientX), span), true)
+      return
+    }
+    // Simple toucher : le segment est choisi dès le lâcher, la pastille y part
+    // sans détour. Le clic qui suit n'a plus rien à faire, sauf sur un lien :
+    // c'est lui qui ouvre la page.
+    const segment = (e.target as Element).closest<HTMLElement>('[data-segment]')
+    if (!segment) return
+    const i = Number(segment.dataset.segment)
+    if (!options[i].href) swallowClick.current = true
+    choose(i, false)
   }
 
-  // Au repos, la pastille se place en pourcentages (aucune mesure).
-  const transform = `translateX(calc(${index} * (100% + ${GAP}px)))`
-
-  // Loupe : centrée sous le doigt (glissé) ou sur le segment appuyé, un peu plus
-  // grande que lui, sans sortir du contrôle.
-  const pointer = drag ?? pressX
-  let lens: { left: number; width: number; hovered: number } | null = null
-  if (box && pointer !== null) {
-    const segW = segmentWidth(box.width)
-    const hovered = segmentAt(pointer, box.width)
-    const width = Math.min(segW * 1.14, box.width)
-    const center = drag !== null ? drag : INSET + hovered * (segW + GAP) + segW / 2
-    const left = Math.min(Math.max(center - width / 2, 0), box.width - width)
-    lens = { left, width, hovered }
+  // Le navigateur a pris le geste (défilement) : rien n'est choisi
+  const onPointerCancel = () => {
+    gesture.current = null
+    drop()
   }
-  const shown = lifted && lens ? lens.hovered : index
+
+  const lifted = lens !== null && span > 0
+  const shown = lifted ? segmentAt(lens.center, span) : index
+  // Au repos, la pastille se place en pourcentages (aucune mesure) ; doigt
+  // posé, la loupe est centrée sous le doigt, sans sortir du contrôle.
+  let thumb: CSSProperties = {
+    width: `calc((100% - ${INSET * 2 + GAP * (count - 1)}px) / ${count})`,
+    transform: `translateX(calc(${index} * (100% + ${GAP}px)))`,
+  }
+  let left = 0
+  if (lifted) {
+    left = Math.min(Math.max(lens.center - lens.width / 2, INSET), span - INSET - lens.width)
+    thumb = { width: lens.width, transform: `translateX(${left - INSET}px)` }
+  }
 
   const itemClasses = (option: SegmentedOption<T>, active: boolean) => cn(
     'relative min-w-0 rounded-full px-1 text-gray-900 flex items-center justify-center',
@@ -205,15 +192,14 @@ export default function Segmented<T extends string>({
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
-      // Le navigateur a pris le geste (défilement vertical) : rien n'est choisi
-      onPointerCancel={release}
+      onPointerCancel={onPointerCancel}
       onPointerLeave={() => {
-        // Souris sortie sans glisser : on relâche
-        if (!gesture.current?.dragging) release()
+        // Souris sortie sans glisser : la pastille se repose
+        if (!gesture.current?.dragging) onPointerCancel()
       }}
       onClickCapture={e => {
-        // Fin d'un glissé : le choix est déjà fait, pas de second clic. Le
-        // clic du clavier (detail 0) n'est jamais celui d'un glissé.
+        // Choix déjà fait au lâcher : pas de second clic. Le clic du clavier
+        // (detail 0) n'est jamais celui d'un toucher.
         if (swallowClick.current && e.detail !== 0) {
           e.preventDefault()
           e.stopPropagation()
@@ -224,21 +210,51 @@ export default function Segmented<T extends string>({
       className={cn('relative grid touch-pan-y select-none [-webkit-touch-callout:none] gap-0.5 rounded-full bg-gray-200 p-0.5', className)}
       style={{ gridTemplateColumns: columns, ...style }}
     >
-      {index >= 0 && (
+      {(index >= 0 || lifted) && (
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute inset-y-0.5 left-0.5 transition-transform duration-500 ease-[cubic-bezier(0.34,1.4,0.5,1)] motion-reduce:transition-none"
-          style={{ width: `calc((100% - ${INSET * 2 + GAP * (count - 1)}px) / ${count})`, transform }}
+          className={cn(
+            'pointer-events-none absolute inset-y-0.5 left-0.5',
+            // Loupe : au-dessus des segments, qu'elle cache et remplace par leur copie
+            // agrandie. Elle suit le doigt image par image, sans transition.
+            lifted
+              ? 'z-20'
+              : 'transition-transform duration-500 ease-[cubic-bezier(0.34,1.4,0.5,1)] motion-reduce:transition-none',
+          )}
+          style={thumb}
         >
           <span
             key={touched ? index : 'repos'}
             className={cn(
-              'block h-full w-full rounded-full bg-[#ffffff] shadow-lift dark:bg-[#475569] transition-opacity duration-150',
-              touched && 'motion-safe:animate-bubble',
-              // Pendant la loupe, la pastille s'efface : c'est la loupe qui marque le segment
-              lifted && 'opacity-0',
+              'relative block h-full w-full overflow-hidden rounded-full transition-[transform,background-color,box-shadow] duration-200 motion-reduce:transition-none',
+              // Pastille blanche au repos (pas `bg-white`, que le mode sombre repeint)
+              lifted ? 'bg-loupe shadow-lifted' : 'bg-[#ffffff] shadow-lift dark:bg-[#475569]',
+              touched && !lifted && 'motion-safe:animate-bubble',
             )}
-          />
+            style={lifted ? { transform: `scale(${LIFT})` } : undefined}
+          >
+            {lifted && (
+              // Copie des segments, posée exactement sur l'originale puis agrandie
+              // autour du doigt : elle grossit ce qui est dessous.
+              <span
+                className="absolute inset-y-0 grid"
+                style={{
+                  left: INSET - left,
+                  width: span - INSET * 2,
+                  gridTemplateColumns: columns,
+                  columnGap: GAP,
+                  transform: `scale(${MAGNIFY})`,
+                  transformOrigin: `${magnifyOrigin(lens.center, left + lens.width / 2) - INSET}px 50%`,
+                }}
+              >
+                {options.map((option, i) => (
+                  <span key={option.value} className={itemClasses(option, i === shown)}>
+                    {content(option, i === shown)}
+                  </span>
+                ))}
+              </span>
+            )}
+          </span>
         </span>
       )}
 
@@ -249,6 +265,7 @@ export default function Segmented<T extends string>({
             key={option.value}
             href={option.href}
             draggable={false}
+            data-segment={i}
             aria-current={i === current ? 'page' : undefined}
             aria-label={option.ariaLabel}
             title={option.ariaLabel}
@@ -262,6 +279,7 @@ export default function Segmented<T extends string>({
             key={option.value}
             type="button"
             draggable={false}
+            data-segment={i}
             aria-pressed={i === current}
             aria-label={option.ariaLabel}
             onClick={() => choose(i, false)}
@@ -271,40 +289,6 @@ export default function Segmented<T extends string>({
           </button>
         )
       })}
-
-      {/* Loupe : lentille de verre posée sur les segments, qui contient une copie
-          agrandie de la rangée, calée pour que son centre coïncide avec celui de
-          la lentille. Au-dessus des segments réels, qu'elle masque. */}
-      {lens && box && (
-        <span
-          aria-hidden="true"
-          className={cn(
-            'pointer-events-none absolute z-20 rounded-full overflow-hidden bg-lens-fill shadow-lens',
-            'transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none',
-            lifted ? 'opacity-100 scale-100' : 'opacity-0 scale-75',
-          )}
-          style={{ left: lens.left, width: lens.width, top: -LENS_POP, height: box.height + LENS_POP * 2 }}
-        >
-          <span
-            className="absolute grid gap-0.5 p-0.5"
-            style={{
-              gridTemplateColumns: columns,
-              left: -lens.left,
-              top: LENS_POP,
-              width: box.width,
-              height: box.height,
-              transform: `scale(${LENS_ZOOM})`,
-              transformOrigin: `${lens.left + lens.width / 2}px ${box.height / 2}px`,
-            }}
-          >
-            {options.map((option, i) => (
-              <span key={option.value} className={itemClasses(option, i === lens!.hovered)}>
-                {content(option, i === lens!.hovered)}
-              </span>
-            ))}
-          </span>
-        </span>
-      )}
     </div>
   )
 }
