@@ -1,5 +1,43 @@
 # Historique des modifications (par session)
 
+## 2026-10-09 — Accueil desktop en widgets (branche `refonte-verre`)
+
+Retour sur la version à volet : « nan c'est moche, fais tout en card widget côté accueil web »,
+« reprends tes connaissances de design Apple (Adopting Liquid Glass) », « rajoute peut-être des
+infos, rends-moi ça sexy, sobre et beau ».
+
+Guide d'Apple relu, via la version JSON de la page, car la page HTML est rendue en JavaScript :
+`developer.apple.com/tutorials/data/documentation/TechnologyOverviews/adopting-liquid-glass.json`.
+Règles retenues :
+- le verre forme « a distinct functional layer for controls and navigation elements » : il ne va
+  pas sur le contenu ;
+- « Avoid overusing Liquid Glass effects » ;
+- des formes « concentric to their containers » ;
+- la couleur « judicious ».
+
+- **`app/accueil/DesktopWidgets.tsx`** (nouveau), rendu à partir de `md` (`hidden md:block`) :
+  - grille `auto-rows-[188px]` : 4 colonnes en `lg`, ce qui donne exactement 4 rangées ; 2 colonnes en `md` ;
+  - **grand** : L'ASL du Cèdre, avec la dernière information en entier (5 lignes) et les deux
+    précédentes en titre ;
+  - **moyens** : Assemblée générale (grande date, compte à rebours « Dans N jours », ordre du jour
+    en ligne ou à venir) ; Documents de l'ASL (3 au plus, chacun vers la visionneuse) ; Entre voisins
+    (nombre d'annonces disponibles et les 3 dernières, avec leur pastille et leur type) ;
+  - **petits** : Agenda, Sondage (pastille « À voter »), Achat groupé (anneau de progression),
+    Demandes, Messages non lus, Prestataires (nombre recommandé) ;
+  - chaque widget vide garde sa place, avec un état calme (« Vous êtes à jour », « Rien de prévu »…).
+    Un squelette s'affiche avant la première réponse, pour ne pas annoncer un « Rien de prévu » trompeur ;
+  - cartes blanches pleines, coins de 24 px, 8 px pour ce qui est posé dedans, étiquette verte,
+    chevron discret, ombre qui s'accentue au survol.
+- **`app/accueil/DashboardClient.tsx`** :
+  - rendu mobile inchangé (`md:hidden`), le volet desktop est retiré ;
+  - données en plus : trois informations au lieu d'une, nombre d'annonces disponibles et les 3
+    dernières (`listings_geo`, repli sur `listings`), nombre de prestataires, messages non lus
+    (`useUnreadCount`) ;
+  - clé de cache `accueil:v2`, car la forme des données change.
+- **`lib/documents.ts`** : `heldOnDate()` (date locale d'une colonne `date`), partagé par les deux fichiers.
+- **`app/accueil/loading.tsx`** : squelette mobile + grille desktop.
+- Vérifié : typecheck OK, ESLint sans remarque, build OK. **Rendu non vérifié à l'écran.**
+
 ## 2026-10-09 — Accueil pleine largeur sur desktop (branche `refonte-verre`)
 
 Retour : « la page d'accueil version web est daubée, elle doit prendre toute la largeur comme les

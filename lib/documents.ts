@@ -53,6 +53,12 @@ export function formatHeldOn(heldOn: string): string {
     .format(new Date(y, m - 1, d))
 }
 
+/** Date de tenue en heure locale, à partir d'une colonne `date` (même découpage que `formatHeldOn`) */
+export function heldOnDate(heldOn: string): Date {
+  const [y, m, d] = heldOn.split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+
 /** Année de tenue, pour le regroupement de l'historique */
 export function heldOnYear(heldOn: string): number {
   return Number(heldOn.slice(0, 4))
