@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -23,6 +23,34 @@ import { isPushSupported, activatePushNotifications, deactivatePushNotifications
 import AddressAutocomplete, { type ResolvedAddress } from '@/components/forms/AddressAutocomplete'
 import { useTheme, type ThemeChoice } from '@/components/theme/ThemeProvider'
 import PasskeySection from '@/components/profile/PasskeySection'
+import { readPageCache, writePageCache } from '@/lib/pageCache'
+
+/**
+ * Cache de page (`lib/pageCache.ts`) : au retour sur le profil, il s'affiche tout
+ * de suite avec ses dernières données, rafraîchies en arrière-plan. Vidé à tout
+ * changement d'utilisateur.
+ */
+const CACHE_KEY = 'profil'
+interface ProfileCache {
+  userId: string
+  profile: Profile
+  listings: Listing[]
+  events: Event[]
+  emailEnabled: boolean
+  pushEnabled: boolean
+}
+
+/** Valeurs du formulaire d'édition, tirées du profil */
+function formFrom(prof: Profile) {
+  return { full_name: prof.full_name || '', username: prof.username || '', bio: prof.bio || '', avatar_color: prof.avatar_color || DEFAULT_AVATAR_COLOR }
+}
+
+/** Adresse par défaut du profil, si elle est complète */
+function addressFrom(prof: Profile) {
+  return prof.address_lat && prof.address_lng && prof.address_display
+    ? { displayName: prof.address_display, road: prof.address_road || '', city: prof.address_city || '', lat: prof.address_lat, lon: prof.address_lng }
+    : null
+}
 
 const AVATAR_COLORS = [
   '#dcfce7', // vert (défaut)
@@ -49,21 +77,29 @@ export default function ProfileClient() {
   const router = useRouter()
   const supabase = createClient()
 
-  const [userId, setUserId] = useState<string | null>(null)
-  const [profile, setProfile] = useState<Profile | null>(null)
-  const [listings, setListings] = useState<Listing[]>([])
-  const [events, setEvents] = useState<Event[]>([])
-  const [pageLoading, setPageLoading] = useState(true)
+  // Dernières données connues : la page s'affiche sans attendre, puis se rafraîchit.
+  const [cached] = useState(() => readPageCache<ProfileCache>(CACHE_KEY))
+  const [userId, setUserId] = useState<string | null>(cached?.userId ?? null)
+  const [profile, setProfile] = useState<Profile | null>(cached?.profile ?? null)
+  const [listings, setListings] = useState<Listing[]>(cached?.listings ?? [])
+  const [events, setEvents] = useState<Event[]>(cached?.events ?? [])
+  const [pageLoading, setPageLoading] = useState(!cached)
 
   const [editMode, setEditMode] = useState(false)
-  const [form, setForm] = useState({ full_name: '', username: '', bio: '', avatar_color: DEFAULT_AVATAR_COLOR })
+  // Le rafraîchissement en arrière-plan ne doit pas écraser une saisie commencée
+  // sur le profil affiché depuis le cache.
+  const editingRef = useRef(false)
+  useEffect(() => { editingRef.current = editMode }, [editMode])
+  const [form, setForm] = useState(() => cached
+    ? formFrom(cached.profile)
+    : { full_name: '', username: '', bio: '', avatar_color: DEFAULT_AVATAR_COLOR })
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
 
   // Adresse par défaut du profil (null = non définie ou effacée par l'utilisateur)
   const [addressResolved, setAddressResolved] = useState<{
     displayName: string; road: string; city: string; lat: number; lon: number
-  } | null>(null)
+  } | null>(() => (cached ? addressFrom(cached.profile) : null))
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -89,8 +125,8 @@ export default function ProfileClient() {
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false)
 
   // Notifications
-  const [emailEnabled, setEmailEnabled] = useState(true)
-  const [pushEnabled, setPushEnabled] = useState(true)
+  const [emailEnabled, setEmailEnabled] = useState(cached?.emailEnabled ?? true)
+  const [pushEnabled, setPushEnabled] = useState(cached?.pushEnabled ?? true)
   const [emailSaving, setEmailSaving] = useState(false)
   const [pushSaving, setPushSaving] = useState(false)
   const [pushError, setPushError] = useState<string | null>(null)
@@ -105,7 +141,11 @@ export default function ProfileClient() {
 
   useEffect(() => {
     const load = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
+      // `getSession()` et non `getUser()` : lecture locale, sans l'aller-retour
+      // vers le serveur d'auth qui précédait toutes les requêtes. L'identifiant
+      // ne sert qu'à des requêtes dont le RLS reste l'arbitre (cf. lib/hooks.ts).
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user
       if (!user) {
         router.push('/auth/login?redirect=%2Fprofile')
         return
@@ -126,18 +166,12 @@ export default function ProfileClient() {
 
       if (prof) {
         setProfile(prof as Profile)
-        setForm({ full_name: prof.full_name || '', username: prof.username || '', bio: prof.bio || '', avatar_color: prof.avatar_color || DEFAULT_AVATAR_COLOR })
+        if (!editingRef.current) {
+          setForm(formFrom(prof as Profile))
+          setAddressResolved(addressFrom(prof as Profile))
+        }
         setEmailEnabled(prof.email_notifications_enabled ?? true)
         setPushEnabled(prof.push_notifications_enabled ?? true)
-        if (prof.address_lat && prof.address_lng && prof.address_display) {
-          setAddressResolved({
-            displayName: prof.address_display,
-            road: prof.address_road || '',
-            city: prof.address_city || '',
-            lat: prof.address_lat,
-            lon: prof.address_lng,
-          })
-        }
       }
       setListings((lists || []) as Listing[])
       setEvents((evts || []) as Event[])
@@ -145,6 +179,13 @@ export default function ProfileClient() {
     }
     load()
   }, [])
+
+  // Le cache suit ce qui est affiché, modifications comprises (profil enregistré,
+  // annonce ou événement supprimé, préférences de notification).
+  useEffect(() => {
+    if (pageLoading || !userId || !profile) return
+    writePageCache<ProfileCache>(CACHE_KEY, { userId, profile, listings, events, emailEnabled, pushEnabled })
+  }, [pageLoading, userId, profile, listings, events, emailEnabled, pushEnabled])
 
   const handleSaveProfile = async () => {
     if (!form.username.trim() || !userId) return

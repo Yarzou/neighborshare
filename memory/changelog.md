@@ -1,5 +1,21 @@
 # Historique des modifications (par session)
 
+## 2026-10-09 — Profil affiché sans attendre (branche `refonte-verre`)
+
+Retour : « l'affichage du profil est super long, fais de même que pour les autres pages ».
+
+- **`app/profile/ProfileClient.tsx`** :
+  - `getSession()` (local) au lieu de `getUser()` (réseau) : un aller-retour en moins avant les
+    requêtes. Profil, annonces et événements étaient déjà lus en parallèle, mais après lui.
+  - **Cache de page** (`profil`) : au retour sur le profil, plus de spinner. Le cache contient le
+    profil, les annonces, les événements et les préférences de notification. Il suit les
+    modifications (enregistrement, suppressions, interrupteurs) par un effet d'écriture.
+  - Le rafraîchissement en arrière-plan n'écrase pas une saisie commencée dans le formulaire (`editingRef`).
+  - Helpers `formFrom()` / `addressFrom()`.
+- Poids de la page inchangé (~1063 Ko, la plus lourde de 20 Ko seulement) : la lenteur venait de
+  l'attente des données, pas du JavaScript.
+- Vérifié : typecheck OK, ESLint sur le fichier : 2 avertissements, les mêmes qu'avant. Rendu non vérifié.
+
 ## 2026-10-09 — Accueil « Résumé ASL » (branche `refonte-verre`)
 
 Demande : « si je n'ai pas de demande en cours, c'est un peu vide », « c'est une application de l'ASL
