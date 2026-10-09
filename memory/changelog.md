@@ -1,5 +1,26 @@
 # Historique des modifications (par session)
 
+## 2026-10-09 — Accueil « Résumé ASL » (branche `refonte-verre`)
+
+Demande : « si je n'ai pas de demande en cours, c'est un peu vide », « c'est une application de l'ASL
+du Cèdre en priorité, pour les colotis de 80 maisons ». Quatre maquettes proposées sur un canevas
+(Résumé ASL, Widgets, Fiche « Le Cèdre », Sans Accueil) ; choix : **A, sans « Entre voisins »**, et
+« il ne faut pas avoir à trop scroller ».
+
+- **`app/accueil/DashboardClient.tsx`** réécrit, trois blocs qui se masquent s'ils sont vides ou si
+  leur table manque sur la base :
+  - **L'ASL du Cèdre** : dernière information (épinglée d'abord), texte limité à deux lignes, lien
+    « Toutes les infos » ;
+  - **À suivre** : seulement ce qui existe — prochaine assemblée (date à venir, sans PV, mention
+    « ordre du jour en ligne »), sondage ouvert **pas encore voté** (`poll_votes`, RLS : ses propres
+    votes), achat groupé ouvert avec sa jauge, prochain événement, demandes en cours ;
+  - **Documents de l'ASL** : documents permanents (`asl_documents`) puis dernier procès-verbal, vers la visionneuse.
+  - Retirés : le champ « Rechercher dans le quartier » (absent de la maquette retenue) et les annonces
+    « Près de chez vous », qui vivent dans l'onglet Carte.
+  - Une seule salve de 7 requêtes en parallèle ; cache de page conservé (`accueil`).
+- **`app/accueil/loading.tsx`** : squelette aligné sur la nouvelle page.
+- Vérifié : typecheck OK, ESLint sur les deux fichiers 0 erreur / 0 avertissement. Rendu à l'écran non vérifié.
+
 ## 2026-10-09 — Latence au clic, et le verre de Fridge partout (branche `refonte-verre`)
 
 Demandes : « j'ai l'impression qu'il y a une latence d'affichage des pages, il faut qu'au clic la
