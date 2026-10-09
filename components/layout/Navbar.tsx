@@ -480,7 +480,8 @@ export function Navbar() {
       <header
         id="app-topbar"
         // Le verre de toute l'appli (`.glass`), collé au bord : liseré en bas seulement
-        className="md:hidden fixed top-0 inset-x-0 z-[1200] h-16 px-4 flex items-center gap-3 glass rounded-none border-x-0 border-t-0"
+        // 4,5 rem depuis le 2026-10-09 (« agrandis un peu le header, en hauteur ») ; à garder égal à --nav-top
+        className="md:hidden fixed top-0 inset-x-0 z-[1200] h-[4.5rem] px-4 flex items-center gap-3 glass rounded-none border-x-0 border-t-0"
       >
         <Link href={homeHref} className="flex items-center gap-2 min-w-0 font-semibold text-[17px] text-gray-900">
           <Image src="/logo_cedre.png" alt="" width={38} height={38} priority className="rounded-[10px] shrink-0" />

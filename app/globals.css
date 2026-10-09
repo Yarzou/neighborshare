@@ -85,7 +85,8 @@
 }
 
 @media (max-width: 767.98px) {
-  :root:has(#app-topbar) { --nav-top: 4rem; }
+  /* = hauteur de #app-topbar (h-[4.5rem] dans Navbar.tsx) */
+  :root:has(#app-topbar) { --nav-top: 4.5rem; }
   :root:has(#app-tabbar) { --tabbar-h: calc(5.5rem + env(safe-area-inset-bottom)); }
 }
 @media (min-width: 768px) {

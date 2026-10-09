@@ -1,5 +1,15 @@
 # Historique des modifications (par session)
 
+## 2026-10-09 — Barre du haut mobile plus haute (branche `refonte-verre`)
+
+Demande : « agrandis un peu le header dans la version mobile, en hauteur ».
+
+- **`components/layout/Navbar.tsx`** : `#app-topbar` passe de `h-16` (64 px) à `h-[4.5rem]` (72 px).
+- **`app/globals.css`** : `--nav-top` passe de 4 rem à 4,5 rem. Marges du `<main>`, `--app-h`,
+  `--app-h-full` et `FormHeader` (collé sous la barre) suivent seuls.
+- `QuartierFrame.tsx` : commentaire périmé (« 100dvh - 4rem ») corrigé.
+- Vérifié : typecheck OK, ESLint inchangé. Rendu non vérifié à l'écran.
+
 ## 2026-10-09 — Accueil desktop en widgets (branche `refonte-verre`)
 
 Retour sur la version à volet : « nan c'est moche, fais tout en card widget côté accueil web »,
