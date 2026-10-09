@@ -9,7 +9,8 @@ import { createClient } from '@/lib/supabase/client'
 import { cn, getAvatarStyle, getInitials } from '@/lib/utils'
 import { useUnreadCount, usePendingRequests } from '@/lib/hooks'
 import { useTheme } from '@/components/theme/ThemeProvider'
-import { LIFT, MAGNIFY, magnifyOrigin, useLoupe, type Lens } from '@/components/ui/useLoupe'
+import { useLoupe, type Lens } from '@/components/ui/useLoupe'
+import GlassLens from '@/components/ui/GlassLens'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
 
 /** Le strict nécessaire pour la pastille d'avatar. */
@@ -54,6 +55,8 @@ const INSET = 4
  * « Messages » mordrait sur les libellés voisins.
  */
 const PAD_X = 10
+/** La loupe dépasse la bulle de 13 px de chaque côté, soit 8 px au-delà de la barre (comme Fridge). */
+const GROW = 13
 
 interface Slot {
   /** Bord gauche du contenu (icône + libellé), depuis le bord intérieur de la barre */
@@ -62,8 +65,11 @@ interface Slot {
 }
 
 interface Bar {
-  /** Largeur intérieure (sans la bordure) */
+  /** Largeur et hauteur intérieures (sans la bordure) */
   width: number
+  height: number
+  /** Épaisseur de la bordure */
+  border: number
   slots: Slot[]
 }
 
@@ -110,9 +116,10 @@ function TabContent({ item, badge, ref }: { item: NavItem; badge: BadgeFn; ref?:
  *   doigt s'y pose. Même liseré et même reflet que tout le verre de l'appli.
  * - **Bulle** : gris système translucide, taillée autour de l'icône et du libellé
  *   de l'onglet choisi (mesurés par un ResizeObserver).
- * - **Loupe** : doigt posé, la bulle se soulève en loupe, rejoint le doigt, le
- *   suit d'un onglet à l'autre et agrandit vraiment ce qu'elle couvre (une copie
- *   des onglets, agrandie autour de son centre).
+ * - **Loupe** : doigt posé, la bulle se soulève en loupe de verre clair, plus
+ *   grande que la barre (GlassLens) : elle rejoint le doigt, le suit d'un onglet
+ *   à l'autre et agrandit les icônes et les libellés qu'elle couvre. Son bord
+ *   floute et irise l'onglet voisin et la page qui passe dessous.
  * - Au lâcher, elle se pose sur l'onglet touché, ou sur le plus proche après un
  *   glissé, en s'étirant comme une goutte d'eau, sans attendre la page.
  * Avec « Réduire les animations », elle se déplace sans effet.
@@ -142,6 +149,8 @@ function TabBar({ items, activeIndex, badge }: {
       const box = el.getBoundingClientRect()
       setBar({
         width: el.clientWidth,
+        height: el.clientHeight,
+        border: el.clientLeft,
         slots: contentRefs.current.map(content => {
           const r = content?.getBoundingClientRect()
           return r ? { left: r.left - box.left - el.clientLeft, width: r.width } : { left: 0, width: 0 }
@@ -214,7 +223,8 @@ function TabBar({ items, activeIndex, badge }: {
     if (tab) mark(Number(tab.dataset.tab))
   }
 
-  // Bulle : autour du contenu de l'onglet choisi, ou loupe sous le doigt.
+  // Bulle : autour du contenu de l'onglet choisi, ou cachée sous la loupe, qu'elle
+  // suit pour partir de là au lâcher.
   let bubble: { left: number; width: number } | null = null
   if (lifted) {
     bubble = { left: bubbleLeft(bar, lens.center, lens.width), width: lens.width }
@@ -231,107 +241,114 @@ function TabBar({ items, activeIndex, badge }: {
       className="md:hidden fixed z-[1200] left-4 right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))]"
     >
       <nav aria-label="Navigation principale">
-        <div
-          ref={barRef}
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerEnd}
-          onPointerCancel={onPointerEnd}
-          onPointerLeave={() => {
-            // Souris sortie sans glisser : la bulle se repose
-            if (gesture.current && !gesture.current.dragging) { gesture.current = null; drop() }
-          }}
-          onClickCapture={e => {
-            // Fin d'un glissé : la navigation est déjà partie, pas de second clic.
-            // Le clic du clavier (detail 0) n'est jamais celui d'un glissé.
-            if (swallowClick.current && e.detail !== 0) {
-              e.preventDefault()
-              e.stopPropagation()
-              swallowClick.current = false
-            }
-          }}
-          className={cn(
-            // Verre léger et peu flouté, même arête que le reste du verre (recette Fridge).
-            // Pas de menu d'aperçu iOS sur un appui long : l'appui sert à la loupe.
-            'relative grid h-[62px] touch-none select-none [-webkit-touch-callout:none] rounded-full border border-glass-rim p-1 shadow-sheen backdrop-blur-[10px] backdrop-saturate-[1.8] transition-colors duration-200',
-            lifted ? 'bg-glass-pressed' : 'bg-glass-thin',
-          )}
-          style={{ gridTemplateColumns: columns }}
-        >
-          {bubble && (
-            <span
-              aria-hidden="true"
-              className={cn(
-                'pointer-events-none absolute inset-y-1 left-0',
-                // Loupe : au-dessus des onglets, qu'elle cache et remplace par leur copie agrandie.
-                // Elle suit le doigt image par image, sans transition.
-                lifted
-                  ? 'z-20'
-                  : 'transition-[transform,width] duration-500 ease-[cubic-bezier(0.34,1.4,0.5,1)] motion-reduce:transition-none',
-              )}
-              style={{ transform: `translateX(${bubble.left}px)`, width: bubble.width }}
-            >
+        {/* La loupe est posée à côté de la barre, pas dedans : le flou de la barre
+            limiterait le sien au contenu de la barre, et la page ne se verrait pas
+            au travers de ce qui déborde. */}
+        <div className="relative">
+          <div
+            ref={barRef}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerEnd}
+            onPointerCancel={onPointerEnd}
+            onPointerLeave={() => {
+              // Souris sortie sans glisser : la bulle se repose
+              if (gesture.current && !gesture.current.dragging) { gesture.current = null; drop() }
+            }}
+            onClickCapture={e => {
+              // Fin d'un glissé : la navigation est déjà partie, pas de second clic.
+              // Le clic du clavier (detail 0) n'est jamais celui d'un glissé.
+              if (swallowClick.current && e.detail !== 0) {
+                e.preventDefault()
+                e.stopPropagation()
+                swallowClick.current = false
+              }
+            }}
+            className={cn(
+              // Verre léger et peu flouté, même arête que le reste du verre (recette Fridge).
+              // Pas de menu d'aperçu iOS sur un appui long : l'appui sert à la loupe.
+              'relative grid h-[62px] touch-none select-none [-webkit-touch-callout:none] rounded-full border border-glass-rim p-1 shadow-sheen backdrop-blur-[10px] backdrop-saturate-[1.8] transition-colors duration-200',
+              lifted ? 'bg-glass-pressed' : 'bg-glass-thin',
+            )}
+            style={{ gridTemplateColumns: columns }}
+          >
+            {bubble && (
               <span
-                key={touched ? index : 'repos'}
+                aria-hidden="true"
                 className={cn(
-                  'relative block h-full w-full overflow-hidden rounded-full transition-[transform,background-color,box-shadow] duration-200',
-                  lifted ? 'bg-loupe shadow-lifted' : 'bg-bubble shadow-bubble',
-                  touched && !lifted && 'motion-safe:animate-bubble',
+                  'pointer-events-none absolute inset-y-1 left-0',
+                  // Sous la loupe, elle la suit image par image, sans transition.
+                  !lifted && 'transition-[transform,width] duration-500 ease-[cubic-bezier(0.34,1.4,0.5,1)] motion-reduce:transition-none',
                 )}
-                style={lifted ? { transform: `scale(${LIFT})` } : undefined}
+                style={{ transform: `translateX(${bubble.left}px)`, width: bubble.width }}
               >
-                {lifted && (
-                  // Copie des onglets, posée exactement sur l'originale puis agrandie
-                  // autour du centre de la loupe : elle grossit ce qui est dessous.
-                  <span
-                    className="absolute inset-y-0 grid"
-                    style={{
-                      left: INSET - bubble.left,
-                      width: bar.width - INSET * 2,
-                      gridTemplateColumns: columns,
-                      transform: `scale(${MAGNIFY})`,
-                      transformOrigin: `${magnifyOrigin(lens.center, bubble.left + bubble.width / 2) - INSET}px 50%`,
-                    }}
-                  >
-                    {items.map((item, i) => (
-                      <span
-                        key={item.label}
-                        className={cn('flex items-center justify-center', i === highlighted ? 'text-brand-700' : 'text-gray-500')}
-                      >
-                        <TabContent item={item} badge={badge} />
-                      </span>
-                    ))}
-                  </span>
-                )}
+                <span
+                  key={touched ? index : 'repos'}
+                  className={cn(
+                    'block h-full w-full rounded-full bg-bubble shadow-bubble',
+                    lifted ? 'opacity-0' : touched && 'motion-safe:animate-bubble',
+                  )}
+                />
               </span>
-            </span>
-          )}
+            )}
 
-          {items.map((item, i) => (
-            <Link
-              key={item.label}
-              href={item.href}
-              // Préchargée en entier, comme dans Fridge : même /accueil et /messages,
-              // dynamiques, s'ouvrent sans attendre le serveur.
-              prefetch
-              draggable={false}
-              data-tab={i}
-              onClick={() => mark(i)}
-              aria-current={i === activeIndex ? 'page' : undefined}
-              className={cn(
-                'relative z-10 flex items-center justify-center rounded-full transition-colors duration-300',
-                i === highlighted ? 'text-brand-700' : 'text-gray-500',
-              )}
+            {items.map((item, i) => (
+              <Link
+                key={item.label}
+                href={item.href}
+                // Préchargée en entier, comme dans Fridge : même /accueil et /messages,
+                // dynamiques, s'ouvrent sans attendre le serveur.
+                prefetch
+                draggable={false}
+                data-tab={i}
+                onClick={() => mark(i)}
+                aria-current={i === activeIndex ? 'page' : undefined}
+                className={cn(
+                  'relative z-10 flex items-center justify-center rounded-full transition-colors duration-300',
+                  i === highlighted ? 'text-brand-700' : 'text-gray-500',
+                )}
+              >
+                <TabContent
+                  item={item}
+                  badge={badge}
+                  ref={el => {
+                    contentRefs.current[i] = el
+                  }}
+                />
+              </Link>
+            ))}
+          </div>
+          {lifted && bubble && (
+            <GlassLens
+              rest={{
+                left: bar.border + bubble.left,
+                top: bar.border + INSET,
+                width: bubble.width,
+                height: bar.height - INSET * 2,
+              }}
+              grow={GROW}
+              surface={{ left: bar.border, top: bar.border, width: bar.width, height: bar.height }}
+              surfaceClassName="bg-loupe"
+              content={{
+                left: bar.border + INSET,
+                top: bar.border + INSET,
+                width: bar.width - INSET * 2,
+                height: bar.height - INSET * 2,
+              }}
+              focus={bar.border + lens.center}
             >
-              <TabContent
-                item={item}
-                badge={badge}
-                ref={el => {
-                  contentRefs.current[i] = el
-                }}
-              />
-            </Link>
-          ))}
+              <span className="grid h-full" style={{ gridTemplateColumns: columns }}>
+                {items.map((item, i) => (
+                  <span
+                    key={item.label}
+                    className={cn('flex items-center justify-center', i === highlighted ? 'text-brand-700' : 'text-gray-500')}
+                  >
+                    <TabContent item={item} badge={badge} />
+                  </span>
+                ))}
+              </span>
+            </GlassLens>
+          )}
         </div>
       </nav>
     </div>

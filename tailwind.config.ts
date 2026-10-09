@@ -84,8 +84,10 @@ const config: Config = {
           DEFAULT: 'var(--bubble)',
           edge: 'var(--bubble-edge)',
         },
-        // Loupe (barre d'onglets, contrôle segmenté) : opaque, elle cache ce qu'elle agrandit
+        // Centre de la loupe (barre d'onglets, contrôle segmenté) : il cache l'original qu'il agrandit
         loupe: 'var(--loupe)',
+        // Teinte de la loupe de verre clair (GlassLens, interrupteur). Pas « lens » : voir boxShadow.
+        drop: 'var(--drop)',
         edge: {
           DEFAULT: 'var(--border)',
           strong: 'var(--border-strong)',
@@ -117,19 +119,32 @@ const config: Config = {
           '62%': { transform: 'scale(0.95, 1.06)' },
           '100%': { transform: 'scale(1, 1)' },
         },
+        // Loupe qui grandit à partir de la pastille au repos (--lens-from-x/y : rapport de leurs tailles)
+        lens: {
+          '0%': { transform: 'scale(var(--lens-from-x, 0.8), var(--lens-from-y, 0.7))' },
+          '100%': { transform: 'scale(1, 1)' },
+        },
       },
       animation: {
         bubble: 'bubble 560ms cubic-bezier(0.2, 0.8, 0.2, 1)',
+        lens: 'lens 340ms cubic-bezier(0.34, 1.5, 0.5, 1)',
       },
       boxShadow: {
         // Verre : ombre portée et reflet sur l'arête haute (pas « shadow-glass » : la
         // couleur `glass` générerait la couleur d'ombre du même nom, piège vécu dans Fridge)
         sheen: 'var(--glass-shadow)',
         bubble: 'inset 0 0 0 0.5px var(--bubble-edge), 0 2px 10px rgba(0, 0, 0, 0.1)',
-        // Pastille soulevée par le doigt : plus d'ombre, pour se détacher d'une piste grise
-        lifted: 'inset 0 0 0 0.5px var(--bubble-edge), 0 3px 12px rgba(0, 0, 0, 0.2)',
-        // Loupe de verre clair de l'interrupteur : liseré lumineux, reflet en haut, ombre portée
-        rim: 'inset 0 0 0 1.5px var(--rim), inset 0 2px 3px var(--rim), 0 3px 12px rgba(0, 0, 0, 0.22)',
+        // Loupe de verre clair (GlassLens, interrupteur) : liseré, reflets sur les arêtes
+        // haute et basse, frange colorée à gauche et à droite, ombre portée.
+        // Pas « shadow-lens » : une couleur `lens` teinterait cette ombre.
+        refraction: [
+          'inset 0 0 0 0.5px var(--lens-edge)',
+          'inset 0 1.5px 1px -0.5px var(--lens-glint)',
+          'inset 0 -1.5px 2px -1px var(--lens-glint)',
+          'inset 6px 0 7px -5px var(--fringe-warm)',
+          'inset -6px 0 7px -5px var(--fringe-cool)',
+          '0 6px 16px rgba(0, 0, 0, 0.18)',
+        ].join(', '),
         lift: 'var(--shadow-lift)',
         float: 'var(--shadow-float)',
       },

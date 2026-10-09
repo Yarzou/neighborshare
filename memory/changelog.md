@@ -1,5 +1,29 @@
 # Historique des modifications (par session)
 
+## 2026-10-09 — Loupe de verre clair, reprise de Fridge (branche `refonte-verre`)
+
+Demande : « on a modifié le liquid glass dans l'appli Fridge, applique le même standard ici ».
+Reprise du commit Fridge `11ef677` (« loupe de verre clair qui déborde du contrôle, comme sur iOS 26 ») ;
+le reste du verre de Fridge n'a pas bougé depuis la reprise précédente.
+
+- **`components/ui/GlassLens.tsx`** (nouveau) et **`components/ui/useLoupe.ts`** : copiés tels quels de Fridge.
+  `useLoupe` ne garde que le mouvement (`LIFT`, `magnifyOrigin` retirés, `MAGNIFY` = 1,25).
+- **`Navbar.tsx`** (`TabBar`) :
+  - la loupe déborde la barre de 8 px (`GROW` = 13) ;
+  - elle est posée à côté de la barre, dans un conteneur `relative` commun, pour que la page se
+    voie floutée au travers de ce qui déborde ;
+  - la bulle reste montée sous la loupe, invisible ;
+  - `Bar` mesure aussi la hauteur et la bordure.
+- **`Segmented.tsx`** : même loupe, débord de 4 px, hauteur mesurée à l'appui. Segments-liens,
+  icônes et pastilles conservés (la copie agrandie réutilise `itemClasses` / `content`).
+- **`Switch.tsx`** : goutte de verre clair de 42 × 39 px qui dépasse la piste de 4 px (`bg-drop`,
+  `shadow-refraction`, flou 0,5 px, saturation 1,3).
+- **`globals.css`** : `--drop`, `--lens-edge`, `--lens-glint`, `--fringe-warm`, `--fringe-cool` (clair
+  et sombre), classes `.lens-core` / `.lens-fringe` ; `--rim` retiré.
+- **`tailwind.config.ts`** : couleur `drop`, animation `lens`, ombre `refraction` ; `lifted` et `rim` retirées.
+- Vérifié : typecheck OK, lint 0 erreur / 19 avertissements, build OK, règles présentes dans le CSS
+  produit. **Rendu au doigt non vérifié** (ni Chrome ni iPhone dans cette session).
+
 ## 2026-10-09 — Profil affiché sans attendre (branche `refonte-verre`)
 
 Retour : « l'affichage du profil est super long, fais de même que pour les autres pages ».

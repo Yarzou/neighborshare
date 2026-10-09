@@ -9,10 +9,11 @@ import { cn } from '@/lib/utils'
  * est ancrée à gauche (left-0.5) et glisse de 20 px : 2 px de marge de chaque
  * côté, sans jamais sortir de la piste.
  *
- * Comme sur iOS 26, la pastille réagit au doigt (loupe de Fridge, 2026-10-09) :
- * - posé, elle s'allonge (37 px) et devient une loupe de verre clair : la
- *   piste se voit au travers, sous un liseré lumineux (la piste est unie, il
- *   n'y a rien à agrandir) ;
+ * Comme sur iOS 26, la pastille réagit au doigt (goutte de Fridge, 2026-10-09) :
+ * - posé, elle grandit (42 × 39) et devient une goutte de verre clair qui
+ *   dépasse de la piste de 4 px : on voit au travers, flouté, la couleur de la
+ *   piste et son bord, sous un liseré, des reflets et une frange colorée
+ *   (`shadow-refraction`) ;
  * - glissé, elle passe du côté où va le doigt, et l'interrupteur prend cette
  *   position au lâcher ;
  * - un simple toucher bascule l'interrupteur, comme avant.
@@ -103,15 +104,17 @@ export default function Switch({
       >
         <span
           className={cn(
-            'absolute left-0.5 top-0.5 h-[27px] rounded-full',
-            'transition-[transform,width,background-color,box-shadow] duration-300 ease-[cubic-bezier(0.34,1.4,0.5,1)] motion-reduce:transition-none',
-            // Doigt posé : loupe de verre clair, de la couleur de la piste sous un
-            // liseré lumineux (recette de Fridge)
+            'absolute left-0.5 rounded-full',
+            'transition-[top,height,width,transform,background-color,box-shadow] duration-300 ease-[cubic-bezier(0.34,1.4,0.5,1)] motion-reduce:transition-none',
             pressed
-              ? cn('w-[37px] shadow-rim motion-safe:scale-[1.15]', on ? 'translate-x-[10px] bg-brand-600' : 'translate-x-0 bg-gray-200')
+              ? cn(
+                  // Goutte : 4 px au-delà de la piste en haut, en bas et du côté où elle est
+                  '-top-1 h-[39px] w-[42px] bg-drop shadow-refraction backdrop-blur-[0.5px] backdrop-saturate-[1.3]',
+                  on ? 'translate-x-[11px]' : '-translate-x-1.5',
+                )
               // Pastille blanche dans les deux thèmes (pas `bg-white`, que le mode
               // sombre repeint en ardoise)
-              : cn('w-[27px] bg-[#ffffff] shadow-[0_2px_4px_rgba(0,0,0,0.2)]', on ? 'translate-x-5' : 'translate-x-0'),
+              : cn('top-0.5 h-[27px] w-[27px] bg-[#ffffff] shadow-[0_2px_4px_rgba(0,0,0,0.2)]', on ? 'translate-x-5' : 'translate-x-0'),
           )}
         />
       </span>
