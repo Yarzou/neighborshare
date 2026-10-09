@@ -65,6 +65,7 @@ export default function ResetPasswordClient() {
       setDone(true)
       // Navigation complète : les Server Components relisent le cookie de session
       setTimeout(() => {
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- rechargement complet voulu, router.push garderait l'ancienne session
         window.location.href = '/accueil'
       }, 1500)
     } catch {
@@ -75,7 +76,7 @@ export default function ResetPasswordClient() {
   }
 
   const shell = (children: React.ReactNode) => (
-    <div className="min-h-screen flex items-center justify-center px-4
+    <div className="min-h-[var(--app-h)] flex items-center justify-center px-4
                     bg-gradient-to-b from-white to-brand-50
                     dark:from-gray-950 dark:to-gray-900">
       <div className="w-full max-w-md">{children}</div>

@@ -1,5 +1,272 @@
 # Historique des modifications (par session)
 
+## 2026-10-09 — Déconnecté, même règle sur le web (branche `refonte-verre`)
+
+Demande : « sur la partie web, fais pareil ».
+
+- **`components/layout/Navbar.tsx`** :
+  - nouvel état `navHidden` (page `/auth/*`, accueil public `/`, ou session lue et absente) ;
+  - le menu latéral desktop n'affiche alors que le logo et « Connexion » / « S'inscrire », sans
+    ses six entrées. Il est de nouveau rendu sur `/auth/*`, où il était masqué depuis le commit précédent ;
+  - la barre d'onglets mobile suit la même règle ;
+  - `/` compte d'emblée comme déconnecté : le serveur y redirige les comptes connectés vers
+    `/accueil`, donc rien ne clignote en attendant la session.
+- Vérifié : typecheck OK, ESLint inchangé. Rendu non vérifié à l'écran.
+
+## 2026-10-09 — Déconnecté : on ne fait que se connecter (branche `refonte-verre`)
+
+Demande (mobile) : « quand je suis déconnecté, je dois rester sur la page d'accueil, que rien ne soit
+cliquable, juste se connecter ou s'inscrire (enlève "Les événements" et "La carte du quartier") ; ces
+pages s'affichent toujours avec le header (sur connexion ou s'inscrire, je perds le header) ».
+
+- **`app/page.tsx`** : boutons « Les événements » et « La carte du quartier » retirés. Restent « Se
+  connecter » et « Créer un compte ».
+- **`components/layout/Navbar.tsx`** :
+  - sur `/auth/*`, la barre du haut est rendue, mais pas le menu latéral ni la barre d'onglets (avant : `return null`) ;
+  - barre d'onglets masquée quand on est déconnecté. Nouvel état `authResolved`, pour ne rien
+    masquer avant la lecture de la session (sinon la barre d'un voisin connecté sautait au chargement).
+- **Écrans d'auth** (`login`, `register`, `forgot-password`, `reset-password`) : `min-h-screen` →
+  `min-h-[var(--app-h)]`, pour ne pas défiler sous la barre du haut.
+- Non fait, hors demande : le menu latéral desktop reste visible et cliquable une fois déconnecté.
+  Pas de redirection serveur des pages protégées vers l'accueil : un lien partagé mène toujours à la
+  connexion avec `redirect`, puis à la page.
+- Vérifié : typecheck OK, ESLint inchangé. Rendu non vérifié à l'écran.
+
+## 2026-10-09 — Barre du haut mobile plus haute (branche `refonte-verre`)
+
+Demande : « agrandis un peu le header dans la version mobile, en hauteur ».
+
+- **`components/layout/Navbar.tsx`** : `#app-topbar` passe de `h-16` (64 px) à `h-[4.5rem]` (72 px).
+- **`app/globals.css`** : `--nav-top` passe de 4 rem à 4,5 rem. Marges du `<main>`, `--app-h`,
+  `--app-h-full` et `FormHeader` (collé sous la barre) suivent seuls.
+- `QuartierFrame.tsx` : commentaire périmé (« 100dvh - 4rem ») corrigé.
+- Vérifié : typecheck OK, ESLint inchangé. Rendu non vérifié à l'écran.
+
+## 2026-10-09 — Accueil desktop en widgets (branche `refonte-verre`)
+
+Retour sur la version à volet : « nan c'est moche, fais tout en card widget côté accueil web »,
+« reprends tes connaissances de design Apple (Adopting Liquid Glass) », « rajoute peut-être des
+infos, rends-moi ça sexy, sobre et beau ».
+
+Guide d'Apple relu, via la version JSON de la page, car la page HTML est rendue en JavaScript :
+`developer.apple.com/tutorials/data/documentation/TechnologyOverviews/adopting-liquid-glass.json`.
+Règles retenues :
+- le verre forme « a distinct functional layer for controls and navigation elements » : il ne va
+  pas sur le contenu ;
+- « Avoid overusing Liquid Glass effects » ;
+- des formes « concentric to their containers » ;
+- la couleur « judicious ».
+
+- **`app/accueil/DesktopWidgets.tsx`** (nouveau), rendu à partir de `md` (`hidden md:block`) :
+  - grille `auto-rows-[188px]` : 4 colonnes en `lg`, ce qui donne exactement 4 rangées ; 2 colonnes en `md` ;
+  - **grand** : L'ASL du Cèdre, avec la dernière information en entier (5 lignes) et les deux
+    précédentes en titre ;
+  - **moyens** : Assemblée générale (grande date, compte à rebours « Dans N jours », ordre du jour
+    en ligne ou à venir) ; Documents de l'ASL (3 au plus, chacun vers la visionneuse) ; Entre voisins
+    (nombre d'annonces disponibles et les 3 dernières, avec leur pastille et leur type) ;
+  - **petits** : Agenda, Sondage (pastille « À voter »), Achat groupé (anneau de progression),
+    Demandes, Messages non lus, Prestataires (nombre recommandé) ;
+  - chaque widget vide garde sa place, avec un état calme (« Vous êtes à jour », « Rien de prévu »…).
+    Un squelette s'affiche avant la première réponse, pour ne pas annoncer un « Rien de prévu » trompeur ;
+  - cartes blanches pleines, coins de 24 px, 8 px pour ce qui est posé dedans, étiquette verte,
+    chevron discret, ombre qui s'accentue au survol.
+- **`app/accueil/DashboardClient.tsx`** :
+  - rendu mobile inchangé (`md:hidden`), le volet desktop est retiré ;
+  - données en plus : trois informations au lieu d'une, nombre d'annonces disponibles et les 3
+    dernières (`listings_geo`, repli sur `listings`), nombre de prestataires, messages non lus
+    (`useUnreadCount`) ;
+  - clé de cache `accueil:v2`, car la forme des données change.
+- **`lib/documents.ts`** : `heldOnDate()` (date locale d'une colonne `date`), partagé par les deux fichiers.
+- **`app/accueil/loading.tsx`** : squelette mobile + grille desktop.
+- Vérifié : typecheck OK, ESLint sans remarque, build OK. **Rendu non vérifié à l'écran.**
+
+## 2026-10-09 — Accueil pleine largeur sur desktop (branche `refonte-verre`)
+
+Retour : « la page d'accueil version web est daubée, elle doit prendre toute la largeur comme les
+autres pages Quartier, Demandes, Messages ».
+
+- **`app/accueil/DashboardClient.tsx`** : à partir de `md`, même cadre que Demandes, Messages et le
+  Quartier (`md:flex md:h-[var(--app-h)]`) :
+  - **volet gauche** (`SIDE_PANE_WIDTH`, `bg-surface-pane`) avec la salutation et les documents de
+    l'ASL, raccourcis permanents comme le menu du Quartier ;
+  - **contenu à droite**, défilement propre : info de l'ASL (jusqu'à 6 lignes au lieu de 2) et
+    « À suivre », côte à côte à partir de `lg` ;
+  - message « Rien de nouveau dans le quartier » quand il n'y a rien à droite (desktop seulement).
+  - Mobile inchangé : salutation et documents gardent leur place dans la colonne (`md:hidden`).
+- **`app/accueil/loading.tsx`** : squelette au même cadre.
+- Vérifié : typecheck OK, ESLint sans remarque, build OK. Rendu non vérifié à l'écran.
+
+## 2026-10-09 — Loupe de verre clair, reprise de Fridge (branche `refonte-verre`)
+
+Demande : « on a modifié le liquid glass dans l'appli Fridge, applique le même standard ici ».
+Reprise du commit Fridge `11ef677` (« loupe de verre clair qui déborde du contrôle, comme sur iOS 26 ») ;
+le reste du verre de Fridge n'a pas bougé depuis la reprise précédente.
+
+- **`components/ui/GlassLens.tsx`** (nouveau) et **`components/ui/useLoupe.ts`** : copiés tels quels de Fridge.
+  `useLoupe` ne garde que le mouvement (`LIFT`, `magnifyOrigin` retirés, `MAGNIFY` = 1,25).
+- **`Navbar.tsx`** (`TabBar`) :
+  - la loupe déborde la barre de 8 px (`GROW` = 13) ;
+  - elle est posée à côté de la barre, dans un conteneur `relative` commun, pour que la page se
+    voie floutée au travers de ce qui déborde ;
+  - la bulle reste montée sous la loupe, invisible ;
+  - `Bar` mesure aussi la hauteur et la bordure.
+- **`Segmented.tsx`** : même loupe, débord de 4 px, hauteur mesurée à l'appui. Segments-liens,
+  icônes et pastilles conservés (la copie agrandie réutilise `itemClasses` / `content`).
+- **`Switch.tsx`** : goutte de verre clair de 42 × 39 px qui dépasse la piste de 4 px (`bg-drop`,
+  `shadow-refraction`, flou 0,5 px, saturation 1,3).
+- **`globals.css`** : `--drop`, `--lens-edge`, `--lens-glint`, `--fringe-warm`, `--fringe-cool` (clair
+  et sombre), classes `.lens-core` / `.lens-fringe` ; `--rim` retiré.
+- **`tailwind.config.ts`** : couleur `drop`, animation `lens`, ombre `refraction` ; `lifted` et `rim` retirées.
+- Vérifié : typecheck OK, lint 0 erreur / 19 avertissements, build OK, règles présentes dans le CSS
+  produit. **Rendu au doigt non vérifié** (ni Chrome ni iPhone dans cette session).
+
+## 2026-10-09 — Profil affiché sans attendre (branche `refonte-verre`)
+
+Retour : « l'affichage du profil est super long, fais de même que pour les autres pages ».
+
+- **`app/profile/ProfileClient.tsx`** :
+  - `getSession()` (local) au lieu de `getUser()` (réseau) : un aller-retour en moins avant les
+    requêtes. Profil, annonces et événements étaient déjà lus en parallèle, mais après lui.
+  - **Cache de page** (`profil`) : au retour sur le profil, plus de spinner. Le cache contient le
+    profil, les annonces, les événements et les préférences de notification. Il suit les
+    modifications (enregistrement, suppressions, interrupteurs) par un effet d'écriture.
+  - Le rafraîchissement en arrière-plan n'écrase pas une saisie commencée dans le formulaire (`editingRef`).
+  - Helpers `formFrom()` / `addressFrom()`.
+- Poids de la page inchangé (~1063 Ko, la plus lourde de 20 Ko seulement) : la lenteur venait de
+  l'attente des données, pas du JavaScript.
+- Vérifié : typecheck OK, ESLint sur le fichier : 2 avertissements, les mêmes qu'avant. Rendu non vérifié.
+
+## 2026-10-09 — Accueil « Résumé ASL » (branche `refonte-verre`)
+
+Demande : « si je n'ai pas de demande en cours, c'est un peu vide », « c'est une application de l'ASL
+du Cèdre en priorité, pour les colotis de 80 maisons ». Quatre maquettes proposées sur un canevas
+(Résumé ASL, Widgets, Fiche « Le Cèdre », Sans Accueil) ; choix : **A, sans « Entre voisins »**, et
+« il ne faut pas avoir à trop scroller ».
+
+- **`app/accueil/DashboardClient.tsx`** réécrit, trois blocs qui se masquent s'ils sont vides ou si
+  leur table manque sur la base :
+  - **L'ASL du Cèdre** : dernière information (épinglée d'abord), texte limité à deux lignes, lien
+    « Toutes les infos » ;
+  - **À suivre** : seulement ce qui existe — prochaine assemblée (date à venir, sans PV, mention
+    « ordre du jour en ligne »), sondage ouvert **pas encore voté** (`poll_votes`, RLS : ses propres
+    votes), achat groupé ouvert avec sa jauge, prochain événement, demandes en cours ;
+  - **Documents de l'ASL** : documents permanents (`asl_documents`) puis dernier procès-verbal, vers la visionneuse.
+  - Retirés : le champ « Rechercher dans le quartier » (absent de la maquette retenue) et les annonces
+    « Près de chez vous », qui vivent dans l'onglet Carte.
+  - Une seule salve de 7 requêtes en parallèle ; cache de page conservé (`accueil`).
+- **`app/accueil/loading.tsx`** : squelette aligné sur la nouvelle page.
+- Vérifié : typecheck OK, ESLint sur les deux fichiers 0 erreur / 0 avertissement. Rendu à l'écran non vérifié.
+
+## 2026-10-09 — Latence au clic, et le verre de Fridge partout (branche `refonte-verre`)
+
+Demandes : « j'ai l'impression qu'il y a une latence d'affichage des pages, il faut qu'au clic la
+page s'affiche directement et rapidement » ; puis « comparé à Fridge, l'effet liquid glass de la
+barre du bas est moins bien, fais le même effet », « et vérifie surtout que ce liquid glass sera
+bien le même dans toute l'appli ».
+
+### Latence : mesures
+- `x-vercel-id` en production : `cdg1::iad1::…` → les fonctions tournent à **Washington** (défaut de
+  Vercel). Supabase est en **eu-west-1** (pooler `aws-0-eu-west-1` de `scripts/db-migrate.js`) et
+  les voisins en France. Une page dynamique faisait France → Washington → Dublin (`getUser()`, puis
+  chaque requête) → Washington → France. TTFB mesuré sans session : ~220-300 ms à chaud, 1,75 s à
+  froid. Avec session, il faut ajouter `getUser()` et la lecture de `profiles`, en série, à travers l'Atlantique.
+- `next build` : `/accueil` et `/messages` (onglets) sont **dynamiques** ; `/map`, `/evenements`,
+  `/infos`, `/demandes`, `/profile` sont statiques. Par défaut, Next ne précharge d'une page
+  dynamique que son `loading.tsx`. Pour `/messages`, le layout (qui fait `getUser()`) est au-dessus
+  du `loading.tsx` : le clic attendait donc ce rendu.
+
+### Latence : corrections
+- **`vercel.json`** : `"regions": ["dub1"]`. Les fonctions tournent à côté de Supabase et près des voisins.
+  Prend effet au prochain déploiement.
+- **`Navbar.tsx`** :
+  - les liens de la barre d'onglets et du menu latéral passent en `prefetch` complet, comme dans
+    Fridge : `/accueil` et `/messages` sont rendus d'avance ;
+  - un `visibilitychange` relance `router.prefetch()` au retour au premier plan, car le cache du
+    routeur expire en 5 min, par exemple pendant la veille ;
+  - la session est lue par `getSession()` (local) au lieu de `getUser()` (réseau) : les onglets ne
+    visent plus « / » et la connexion pendant le premier aller-retour.
+- **`app/messages/layout.tsx`** : commentaire corrigé, il prétendait la vérification `getUser()` « gratuite ».
+- **Données des onglets, nouveau `lib/pageCache.ts`** : `readPageCache` / `writePageCache`, une `Map` en mémoire. Au retour sur un onglet, la page affiche ses dernières données puis se rafraîchit, sans spinner. La première visite ne change pas.
+  - Le module ne fait rien côté serveur : la `Map` y serait partagée entre voisins, et l'hydratation reste identique.
+  - Il est vidé à tout changement d'utilisateur, déconnexion comprise, et refuse les écritures une fois déconnecté.
+  - Les clés des données personnelles portent l'identifiant de l'utilisateur.
+  - Branché sur `DashboardClient` (`accueil`), `MapView` (annonces + correspondance slug → id), l'Agenda (`app/evenements/page.tsx` mobile sans filtre, `EventsList` desktop : première page + pastilles du calendrier), `MessagesClient`, `AnnouncementsSection`, `PollsSection` et `DemandesClient`.
+  - Cascades retirées : `DemandesClient` attendait un `getUser()` réseau avant ses requêtes. `MapView`, l'Agenda et `EventsList` faisaient un `getUser()` réseau pour un simple « connecté ou non » ; ils passent tous par `useCurrentUser()` (session locale, magasin partagé).
+  - Encart de l'Agenda mobile : il attend que la session soit connue (règle `LoginRequiredNotice`), alors qu'il clignotait avant.
+  - `EventsList.fetchEvents` renvoie `null` (et non `[]`) si une requête est déjà en vol. Sans ça, la sentinelle du défilement, visible dès l'affichage du cache, pouvait vider la liste.
+  - Cas limite connu : un changement de filtre de dates pendant une requête en vol est ignoré (avant : liste vidée).
+  - Risque assumé : une donnée périmée peut rester visible le temps d'un aller-retour, par exemple une annonce qu'on vient de supprimer.
+
+### Vérifications
+- `npm run typecheck` OK ; `npm run lint` : 0 erreur, **19** avertissements (base 20) ; `npm run build` OK.
+- `measure-bundle` : ~1015-1035 Ko par page, dans la fourchette de référence.
+- Classes du verre contrôlées dans le CSS produit (`.glass` avant les utilitaires).
+- **Rendu à l'écran non vérifié** : le MCP Chrome DevTools n'était pas chargé dans la session. La vitesse se juge en production ou en preview Vercel, pas en `npm run dev`, où rien n'est préchargé.
+
+### Verre : une seule recette, celle de Fridge
+Fridge avait évolué depuis la copie du 2026-10-07 (commits « loupe façon iOS 26 » et « verre Liquid
+Glass sur tout ce qui flotte »). neighborshare avait **quatre recettes de verre** :
+- `.glass` (flou 20 px, bord sombre, sans reflet) ;
+- barre du haut et `FormHeader` (saturation 150 %, bord gris) ;
+- barre d'onglets (flou 6 px animé vers 24 px) ;
+- visionneuse PDF (`bg-surface-pane/95 backdrop-blur`).
+
+Il avait aussi **deux loupes** : la lentille à délai de la barre et des segments, et la lentille floue de l'interrupteur.
+
+- **`app/globals.css`** : tokens de Fridge, `--glass`, `--glass-thin`, `--glass-pressed`, `--glass-rim`,
+  `--glass-highlight`, `--glass-filter`, `--glass-shadow`, `--loupe`, `--rim`, avec leurs valeurs
+  sombres (teinte ardoise du thème actuel). `--glass-edge`, `--tabbar*`, `--lens*` sont supprimés.
+  `.glass` adopte la recette de Fridge (liseré clair, reflet sur l'arête haute, 24 px, ×1,8) et passe dans
+  `@layer components`, pour qu'un utilitaire puisse l'ajuster. Les contrôles Leaflet utilisent les mêmes
+  variables ; le séparateur entre + et − passe en `--border`.
+- **`tailwind.config.ts`** : couleurs `glass` / `glass-thin` / `glass-pressed` / `glass-rim` / `loupe`,
+  ombres `sheen` et `rim`. `tabbar`, `lens-fill`, `lens` et `shadow-tabbar` / `shadow-lens` sont supprimés.
+- **`components/ui/useLoupe.ts`** (nouveau) : copié tel quel de Fridge.
+- **`Navbar.tsx`**, `TabBar` réécrit sur le composant actuel de Fridge :
+  - verre léger `bg-glass-thin`, flou **constant** de 10 px, `bg-glass-pressed` doigt posé ;
+  - la loupe apparaît dès l'appui, part de la bulle, suit le doigt image par image et grossit la
+    copie des onglets (×1,25 en tout) ;
+  - la bulle se pose au lâcher.
+  - Barre du haut : `.glass` avec `rounded-none border-x-0 border-t-0`.
+- **`components/ui/Segmented.tsx`** : même loupe (`useLoupe`), choix au lâcher, segments-liens,
+  icônes et pastilles conservés. Sur un lien, le clic n'est pas avalé : c'est lui qui navigue.
+- **`components/ui/Switch.tsx`** : loupe de Fridge (couleur de la piste, `shadow-rim`, ×1,15) au
+  lieu de la lentille floue ×1,35.
+- **`FormHeader.tsx`**, **`PdfViewer.tsx`** (barre d'outils) : `.glass` collé au bord.
+- **`ListingSheet.tsx`**, **`EventDetailPopup.tsx`** : le ✕ posé sur la fiche passe en `.glass`, comme
+  les flèches de photo voisines. Les fiches restent opaques (décision du 2026-10-08).
+
+## 2026-10-08 — Verre sur les petits éléments flottants (branche `refonte-verre`)
+
+Demande : « vérifie que l'effet liquid glass d'Apple est bien présent partout ». L'audit a montré
+que le verre était posé sur la navigation (barre d'onglets, barre du haut, menu latéral,
+`FormHeader`, loupes), mais que les éléments qui flottent ailleurs restaient en blanc opaque.
+Décision de l'utilisateur : **seulement les petits éléments**. La fiche d'annonce de la carte
+(`ListingSheet`) et le détail d'un événement (`EventDetailPopup`) restent opaques, car ce sont de
+grandes surfaces de texte.
+
+- **`PushNotificationBanner.tsx`, `PWAInstallBanner.tsx`** : bandeaux en `.glass` (au lieu de
+  `bg-white shadow-xl border`).
+- **`MessageBubble.tsx`** : palettes de réactions desktop (survol) et mobile (appui long) en `.glass`.
+- **`AddressAutocomplete.tsx`** : liste des suggestions en `.glass`.
+- **Boutons posés sur une photo**, en `.glass` : flèches du carrousel (`EventDetailClient.tsx`,
+  `EventDetailPopup.tsx`), « Supprimer »/« Changer » (`ListingForm.tsx`), croix de retrait d'image
+  (`EventForm.tsx`).
+- **`app/globals.css`** : contrôles Leaflet (`.leaflet-bar` : +/−, Recentrer) avec la recette
+  `.glass`, coins de 12 px, survol en `--bubble`. Sélecteurs volontairement plus spécifiques que ceux
+  de `leaflet.css`, qui est chargé **après** `globals.css` (import dans les composants carte). Vaut
+  aussi pour le zoom de `EventMiniMap`.
+- **`LeafletMap.tsx`** : bouton Recentrer sans `background:white;border:none` en ligne (le style en
+  ligne écrasait le CSS), 32 px pour s'aligner sur la barre de zoom.
+- Rappel : `.glass` est déclarée **après** `@tailwind utilities`, donc elle écrase un `border-*`,
+  `shadow-*` ou `bg-*` de même spécificité. Ne pas les combiner, sauf les variantes `hover:`.
+- Hors périmètre, constaté : la barre d'outils de `PdfViewer.tsx` utilise sa propre recette
+  (`bg-surface-pane/95 backdrop-blur`). Le vrai Liquid Glass (réfraction sur les bords) n'est rendu
+  nulle part : il exige un filtre SVG dans `backdrop-filter`, que seul Chromium accepte, donc rien sur
+  iPhone.
+- Vérifié : typecheck OK ; ESLint sur les fichiers modifiés : 0 erreur, 4 avertissements, tous
+  préexistants (`set-state-in-effect`). Build et rendu à l'écran non vérifiés.
+
 ## 2026-10-08 — Liens de la page de connexion raccourcis (`main` et `refonte-verre`)
 
 Demande : sous « Se connecter », « Empreinte ou Face ID », « Créer un compte » et « Mot de passe oublié ? »,
@@ -10,6 +277,214 @@ au lieu des libellés longs.
   lisait « ou Empreinte ou Face ID ». « Pas encore de compte ? S'inscrire » devient le lien « Créer un compte »,
   et « Mot de passe oublié ? Le renouveler » devient le lien « Mot de passe oublié ? ». Les deux liens
   sont empilés et centrés. Mêmes cibles (`/auth/register`, `/auth/forgot-password`).
+
+## 2026-10-07 — Couleurs Apple, repères de carte, bulle partout, fin du « + » global (branche `refonte-verre`)
+
+Retour : « garde la refonte », mais « des couleurs à la Apple, pas de teinte de vert », « garde les
+icônes en vert », la lettre du type disparue de la carte, le « + » de la barre qui crée une annonce
+même depuis le Quartier, et « l'effet bulle, je le veux partout ». Décisions par questions : « + »
+supprimé de la barre (un « + » par page), boutons en vert plein Apple, repère rond + icône + lettre,
+logo et nom sur une ligne.
+
+- **`tailwind.config.ts`** : `gray-*` = gris système d'iOS neutres (`#f2f2f7` → `#1c1c1e`) ;
+  `brand-600` `#23843b` (vert Apple assombri, 4,7:1 avec du blanc), `brand-400` `#34c759` ;
+  `brand-50` à `brand-300` **neutralisés** (gris) pour supprimer les verts pâles de toute l'appli.
+- **`app/globals.css`** : tokens neutres, surcharges sombres sans vert pâle, grappes en vert franc,
+  point de position en bleu Apple, nouveau repère (rond blanc, icône verte, cercle et pastille-lettre
+  à la couleur du type via `--type`).
+- **`lib/types.ts`** : types en couleurs système d'Apple contrastées (bleu, rose, violet, orange,
+  rouge, toutes ≥ 4,5:1). **`lib/categories.ts`** : plus de nuances de vert par catégorie.
+  **`lib/utils.ts`** : avatar par défaut gris.
+- **`CategoryIcon.tsx`** : `categoryIconSvg()` (tracés lucide en SVG brut) pour les repères Leaflet.
+- **`Navbar.tsx`** : « + » retiré de la barre d'onglets et du menu latéral ; nom sur une ligne ; icônes
+  du menu latéral vertes. **Accueil** et **Carte** (mobile) gagnent leur « + » en haut à droite.
+- **`components/ui/Segmented.tsx`** : segments-liens (`href`), `icon`, `badge`. Utilisé désormais par
+  `QuartierTabs` (bulle sur Quartier / Achats / Presta. / Docs ASL), Demandes (Reçues / Envoyées) et
+  le thème du Profil (Clair / Sombre / Auto). `QuartierSidebar` : sélection en bulle.
+- Nouveau **`components/ui/Switch.tsx`** (repris de Fridge) pour les interrupteurs de notifications
+  (Profil, `NotificationSettings`) ; icônes des réglages en vert.
+- Vérifié : typecheck OK, lint 0 erreur / 20 avertissements ; serveur de dev lancé pour revue en
+  direct par l'utilisateur.
+
+Suite, même jour (revue en direct) : « supprime le + de l'accueil » ; sur la création d'annonce et
+d'événement, « un Annuler en haut à gauche serait plus parlant (à la Apple) » au lieu de « Retour
+aux événements ».
+- Nouveau **`components/layout/FormHeader.tsx`** : barre collante en verre, « Annuler » à gauche,
+  titre centré. Posée sur `listings/new` (→ `/map`), `listings/[id]/edit` (→ la fiche ; remplace
+  « ← Retour au profil »), et `EventForm` en création (→ `/evenements`) comme en modification
+  (→ l'événement). Le bouton « Annuler » du bas d'`EventForm` est retiré.
+- **`DashboardClient`** : « + » retiré de l'en-tête.
+
+Suite : « fais de même pour les messages » ; sur la carte, « que la carte puisse remonter ou
+redescendre pour toujours voir les bulles malgré l'ouverture de l'annonce ». (Fausse alerte « je n'ai
+plus rien sur la carte » : un filtre était actif.)
+- **`app/messages/new/page.tsx`** : `FormHeader` « Nouvelle conversation », Annuler → `/messages`
+  (remplace « ← Retour aux messages »).
+- Nouveau **`components/map/ListingSheet.tsx`** : la fiche choisie sur la carte devient un panneau à
+  poignée, façon Plans d'Apple — déplié (fiche entière) ou réduit (une ligne), au glissé ou au
+  toucher ; l'état est gardé d'une annonce à l'autre. Remplace le popup fixe de `MapView`.
+- **`LeafletMap`** : prop `bottomInset` (hauteur couverte par le panneau, remontée par
+  `onInsetChange`) ; à la sélection et à chaque pli/dépli, `map.panInside` garde le repère choisi
+  visible au-dessus du panneau.
+
+Suite : « supprime cette poignée qui sert à rien ! je ne te l'ai pas demandée », et « la poubelle en
+filigrane dans la liste des messages, est-ce réel ? » (oui).
+- **`ListingSheet`** : poignée, glissé et état réduit retirés ; reste une fiche simple avec sa croix.
+  Le recadrage automatique de la carte (`bottomInset` + `panInside`) est conservé.
+- **`ConversationRow`** : la zone rouge de suppression a une largeur nulle au repos et suit le
+  glissé (comme `MessageBubble`) ; la carte de conversation est toujours opaque (blanc, ou gris si
+  active). Cause du filigrane : `bg-brand-50/40` translucide sur les non-lus.
+- Bulles reçues et indicateur de frappe : gris iMessage `#e9e9eb` (au lieu d'un gris verdâtre).
+- Barre d'onglets (« la liste ne passe pas derrière », « semi-transparente sauf si je passe le doigt
+  dessus », « effet loupe à la Apple », « pour toutes les pages ») : verre moins flouté au repos
+  (`bg-tabbar`, 6 px), densifié au toucher (`bg-tabbar-strong`) ; loupe = lentille contenant une
+  copie agrandie ×1,28 de la rangée, à l'appui tenu (160 ms) ou au glissé. Carte : `--app-h-full`
+  + `-mb-[var(--tabbar-h)]` pour descendre sous la barre, marge basse de la liste, fiche et
+  attribution OSM remontées au-dessus de la barre. Nouveaux tokens `--tabbar-strong`,
+  `--lens-fill`, ombre `lens`.
+- Accueil, « Près de chez vous » : 16 px de marge à gauche et à droite, y compris après défilement (`scroll-px-4` contre l'aimantation au bord, espaceur final car Safari ignore le padding de fin d'une zone défilante).
+- « L'effet iOS 26 ne s'applique pas partout (Quartier, Liste/Carte) » : `Segmented` reçoit la même loupe
+  que la barre d'onglets (appui tenu 160 ms ou glissé, lentille contenant une copie agrandie ×1,22,
+  pastille masquée pendant la loupe), donc onglets du Quartier, Liste/Carte, Demandes, thème du Profil,
+  Je propose / Je cherche. `[-webkit-touch-callout:none]` sur la barre et les segments (appui long sur
+  un lien = pas de menu d'aperçu iOS).
+- « Le choix catégorie est immense », « le choix de la date c'est n'importe quoi » (test dans l'émulation
+  mobile de Chrome, où les fenêtres natives s'affichent à l'échelle du PC) : nouveau
+  `components/ui/DateField.tsx` (calendrier dans la page, lundi en premier, `min`, `clearable`,
+  `trailing` pour l'heure). Remplace les dates d'`EventForm` (début, fin) et de `ListingForm`
+  (garde : début / fin recomposés en 'YYYY-MM-DDTHH:mm', créneau ponctuel, expiration). Catégorie
+  d'annonce : grille de 8 tuiles au lieu du `<select>`. Erreur passagère « CategoryIcon is not
+  defined » vue dans le navigateur pendant l'édition (import ajouté juste après) : disparue à la
+  recompilation suivante.
+- « Reproduire la bulle iOS 26 sur les switchs » : la pastille de `Switch` devient sous le doigt une
+  lentille translucide ×1,35 (`bg-white/30`, `shadow-lens`).
+- Garde d'enfant, « je propose des dispos » : le bouton « Ajouter » des créneaux (récurrents et ponctuels) sortait du cadre sur mobile. Heures en grille `minmax(0,1fr) auto minmax(0,1fr)` (`min-w-0`), bouton en pleine largeur dessous.
+- « Date de l'assemblée dépasse du champ » : `DateField` aussi pour la date d'une assemblée (`AssemblyForm`), la date limite d'un achat groupé (sortie de la grille, qui passe à 3 colonnes) et la clôture d'un sondage. Restent natifs : les filtres Du / Au de l'Agenda (compacts, prévus pour rétrécir).
+- Barre du haut mobile agrandie (« agrandis un petit peu le header ») : 56 → 64 px (`--nav-top` 4 rem), logo 38 px, nom en 17 px, avatar 40 px.
+
+## 2026-10-06 (fin) — La vraie « goutte d'eau » de Fridge (branche `refonte-verre`)
+
+Retour : « l'effet goutte d'eau est vraiment moche », « sur le web c'est super moche et ça donne un
+aspect vieux », « je parlais de l'effet goutte d'eau de l'app Fridge (d:/GIT/fridge) », « garder un
+aspect Apple-like ». Ma version (dégradé radial vert, ombres intérieures, reflet sur le « + ») est
+retirée et remplacée par le portage du code de Fridge.
+
+- **`tailwind.config.ts`** : couleurs `tabbar`, `bubble`, `lens` ; ombres `tabbar`, `bubble`,
+  `lifted`, `lift`, `float` ; keyframes et animation `bubble` (copiées de Fridge).
+- **`app/globals.css`** : variables `--tabbar*`, `--bubble*`, `--lens`, `--shadow-lift`,
+  `--shadow-float` en clair et en sombre ; classes `.droplet`, `.tab-droplet*`, `.btn-drop` supprimées.
+- **`components/layout/Navbar.tsx`** : `TabBar` réécrit d'après `fridge/components/layout/TabBar.tsx`
+  (bulle gris translucide mesurée par ResizeObserver, onglet visé marqué au toucher sans attendre
+  la page, glissé du doigt, `animate-bubble`), adapté à cinq onglets (`TAB_PAD_X` 10 px au lieu
+  de 14). Menu latéral : entrée active en `bg-bubble shadow-bubble`. Publier : aplat sans reflet.
+- **Nouveau `components/ui/Segmented.tsx`** (repris de Fridge) : capsule, pastille qui glisse, se
+  soulève et suit le doigt. Utilisé pour la bascule Liste/Carte (`MapView`) et Je propose / Je
+  cherche (`ListingForm`). **`QuartierTabs`** passe en capsule (liens, sans pastille animée).
+- Vérifié : typecheck OK, lint 0 erreur / 20 avertissements, build OK, barre d'onglets présente sur
+  `next start`. **Rendu et animation non vus à l'écran.**
+
+## 2026-10-06 (suite) — Couleur par type, Accueil allégé, goutte d'eau (branche `refonte-verre`)
+
+Retour sur la maquette : « trop juste teinte de vert » pour les types, Accueil à simplifier, effet
+goutte d'eau sur l'onglet actif « à la taille du texte + image » comme l'app Fridge. Maquette mise à
+jour puis validée (« parfait »).
+
+- **`lib/types.ts`** : `LISTING_TYPE_MARKER_COLORS` par type — Prêt `#2f6fb3`, Don `#b03a6e`,
+  Échange `#6b4fa8`, Service `#c46a12`, Vente `#c2413a` (blanc dessus ≥ 4,5:1). Lettre d'Échange :
+  « É ».
+- **`TypeBadge`** : lettre sur la couleur du type. **`CategoryTile`** : prop `type`, le fond prend la
+  couleur du type et l'icône reste celle de la catégorie ; utilisée par `ListingCard`, la page
+  annonce et l'Accueil.
+- **`LeafletMap`** + **`globals.css`** : marqueur = carré rempli de la couleur du type, lettre
+  blanche (l'émoji de catégorie disparaît de la carte), demande en tirets, sélection agrandie et
+  cerclée de vert (classe `custom-marker--selected` au lieu d'une bordure rouge en ligne). Le titre
+  injecté dans l'attribut HTML est maintenant échappé. Surcharge sombre qui écrasait le fond retirée.
+- **`ListingForm`** : choix du type avec la lettre colorée au lieu des émojis ; Je propose / Je
+  cherche en contrôle segmenté iOS (fini l'ambre).
+- **`app/accueil/`** allégé : salutation, champ de recherche (vers la carte), demandes en cours,
+  « Près de chez vous », « À venir » (prochain événement + sondage ouvert, liste groupée). Retirés :
+  tuiles Proposer / Chercher, info ASL, raccourcis Quartier.
+- **`components/layout/Navbar.tsx`** : nouveau composant `TabBar` avec la goutte (mesure en
+  `useLayoutEffect`, glissement + étirement, re-mesure sur redimensionnement et chargement de la
+  police) ; entrée active du menu latéral en `.droplet` ; reflet `.btn-drop` sur les boutons Publier.
+- Vérifié : typecheck OK, lint 0 erreur / 20 avertissements, build OK, `next start` : goutte et
+  barre d'onglets présentes sur /map, /evenements, /infos, /accueil, absentes sur /.
+  **Animation non vue à l'écran** (pas de navigateur piloté).
+
+## 2026-10-06 — Refonte « Verre et Cèdre », branche `refonte-verre` (à tester)
+
+Maquette validée : https://claude.ai/artifact/LpHNwVNvDmrguJ6pLKeNw3 — fond gris très clair, cartes
+blanches, vert Cèdre réservé aux actions, verre pour ce qui flotte. Première version « tout en vert »
+refusée (« trop de vert clair, il faut garder du blanc ») ; la version retenue suit la maquette Fridge.
+
+- **`tailwind.config.ts`** : `white` redevient `#ffffff` ; `gray-*` neutres (`#f2f5f3` → `#1c1c1e`) ;
+  `brand-*` recentré sur `#1f6f47` (600) ; nouveau token `glass`.
+- **`app/globals.css`** : tokens clairs réalignés, `--glass*` (clair et sombre), classe `.glass`.
+  Gabarit de navigation par variables : `--nav-top`, `--tabbar-h`, `--sidebar-w`, déduites de la
+  présence de `#app-topbar`, `#app-tabbar` et `#app-sidebar` via `:root:has()`, et `--app-h`.
+  Marqueurs Leaflet en carré arrondi blanc, demande en tirets, tuiles OSM désaturées en clair,
+  grappes et position en vert Cèdre.
+- **`components/layout/Navbar.tsx`** (réécrit) : barre du haut mobile, barre d'onglets flottante
+  mobile (masquée sur `NO_TABBAR`), menu latéral desktop (rail en md, libellés en lg). Compteurs
+  verts. « Événements » s'appelle « Agenda » dans la navigation.
+- **`app/layout.tsx`** : le `<main>` prend ses marges des variables. Les `calc(100dvh-4rem)` de neuf
+  fichiers passent à `var(--app-h)`. Les bannières PWA et notifications se posent au-dessus de la
+  barre d'onglets.
+- **`lib/types.ts`**, **`StatusBadge`**, **`TypeBadge`** : statuts en plein, contour ou gris, avec
+  icône ; types en pastille neutre avec la lettre sur fond vert ; marqueurs tous verts.
+  ⚠️ Remplace la règle « bleu / orange » du 2026-10-02 (CLAUDE.md mis à jour).
+- **`lib/categories.ts`** + nouveau **`components/listings/CategoryIcon.tsx`** : cartes blanches pour
+  toutes les catégories, pastille d'icône lucide sur une nuance de vert (`tile`), helpers
+  `getCategorySlug` et `getCategoryTileClass`.
+- **`ListingCard`**, **`FilterBar`**, **`MapView`** : pastilles d'icône au lieu des émojis et
+  dégradés, recherche façon iOS, bascule Liste/Carte en contrôle segmenté, bouton flottant
+  « Publier » retiré (il est dans la barre d'onglets).
+- **`app/accueil/`** (réécrit) : salutation datée, demandes en cours, Proposer / Chercher,
+  « Près de chez vous » (8 dernières annonces disponibles), « Prochainement » (2 événements),
+  « Vie du quartier » (dernière info ASL, sondage ouvert, raccourcis). Chaque bloc se masque s'il
+  est vide ou si sa table manque. Squelette de chargement assorti.
+- **`QuartierTabs`** en contrôle segmenté iOS, **`QuartierSidebar`** en sélection douce.
+- **Messagerie** : bulles envoyées en vert Cèdre, reçues en gris clair (`#eef1ef`, `#334155` en sombre).
+- **Page annonce**, **Demandes**, **ListingActions** : violet, indigo, ambre, orange, rose et
+  vert vif ramenés à la palette.
+- **`app/profile/ProfileClient.tsx`** : bouton « Se déconnecter » en mobile (le menu déroulant
+  qui le portait a disparu).
+- Vérifié : typecheck OK, lint 0 erreur / 20 avertissements, build OK, pages publiques en 200 avec
+  la bonne navigation (test de fumée sur `next start`), poids des pages inchangé (~1007-1050 Ko).
+  **Rendu visuel non contrôlé** : pas de navigateur piloté dans cette session.
+- Non traité : mode sombre de la nouvelle palette (tokens posés, rendu non revu), formulaire
+  d'annonce (`ListingForm`, encore 31 classes hors palette), page Agenda, profil public,
+  `EventDetailPopup` (positionné pour l'ancienne barre du haut).
+
+## 2026-10-06 — Mises à jour de sécurité (npm audit : 36 → 15 alertes)
+
+- **`package.json`** : `next` et `eslint-config-next` 16.2.4 → **16.3.8** (épinglés exacts, comme
+  avant), `@next/bundle-analyzer` ^16.3.8, `nodemailer` ^8.0.7 → **^10.0.15**, `firebase-admin`
+  ^13.8.0 → **^14.5.0**. `@types/nodemailer` retiré : nodemailer 10 embarque ses types.
+  Puis `npm audit fix` sans `--force` pour les dépendances transitives.
+- **`lib/fcm-admin.ts`** : firebase-admin 14 supprime l'espace de noms `admin.*`. Passage à l'API
+  modulaire : `initializeApp` / `getApps` / `cert` de `firebase-admin/app`, `getMessaging` de
+  `firebase-admin/messaging`. Toujours en `require` paresseux. Contrôlé : ces exports existent,
+  `require('firebase-admin').messaging` vaut `undefined` en v14. **Envoi réel non testé**.
+- **`app/auth/reset-password/ResetPasswordClient.tsx`** : `eslint-config-next` 16.3 ajoute
+  `@next/next/no-location-assign-relative-destination`, qui signale `window.location.href = '/accueil'`.
+  Le rechargement complet est voulu, pour que les Server Components relisent le cookie de session.
+  La règle est donc désactivée sur cette ligne, avec la raison.
+- ⚠️ **firebase-admin 14 exige Node ≥ 22** (nodemailer 10 : ≥ 20, Next 16.3 : ≥ 20.9). Il faut
+  vérifier la version Node du projet Vercel (Settings → Build and Deployment).
+- Vérifié : `typecheck` OK, `build` OK, lint **0 erreur / 20 avertissements**, la base est inchangée.
+  Poids des pages (`measure-bundle.js`) : **−54 Ko par page** (/profile 1103,9 → 1049,4 Ko,
+  /login 1064,2 → 1009,8 Ko). Les ressources communes passent de 608,6 à 538,8 Ko.
+- **15 alertes restantes, toutes sans correctif amont ou hors du chemin d'exécution :**
+  - `braces`, `micromatch`, `chokidar`, `fast-glob`, `postcss-selector-parser` sont tirés par
+    **Tailwind 3** et par `eslint-config-next`. Ce sont des outils de build, qui ne lisent que nos
+    propres motifs. Le seul correctif est **Tailwind 4**, une migration complète.
+  - `@grpc/grpc-js ~1.9` est tiré par `firebase` client (`@firebase/firestore`), même dans sa
+    dernière version 12.19. Firestore n'est jamais importé par l'app, et le correctif proposé par npm
+    (`firebase@9.14`) est une régression.
+  - `uuid` < 11.1.1 passe par `@google-cloud/storage` 8.2 (dernière version), dépendance optionnelle
+    de firebase-admin, puis par `gaxios` 6. La faille porte sur v3/v5/v6 avec un `buf` fourni, et
+    Storage n'est pas utilisé.
 
 ## 2026-10-05 — Bulle de la page Profil : mêmes initiales que la Navbar
 

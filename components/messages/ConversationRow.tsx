@@ -81,22 +81,32 @@ export function ConversationRow({ conv, userId, active = false, onDelete }: Prop
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Zone rouge (derrière la carte, révélée par swipe) — mobile uniquement */}
+      {/* Zone rouge derrière la carte — mobile uniquement. Comme pour les bulles
+          (MessageBubble), sa largeur suit le glissé et vaut 0 au repos : la
+          poubelle n'existe pas à l'écran tant qu'on ne glisse pas, pas même un
+          liseré rouge aux coins arrondis. L'icône est calée à droite dans une
+          largeur fixe, donc dévoilée au fil du geste. */}
       <div
-        className="md:hidden absolute inset-y-0 right-0 flex items-center justify-center bg-red-500 rounded-r-2xl"
-        style={{ width: SWIPE_THRESHOLD }}
+        className="md:hidden absolute inset-y-0 right-0 flex items-center justify-end overflow-hidden bg-red-500 rounded-r-2xl"
+        style={{
+          width: swipeX < 0 ? -swipeX + 16 : 0,
+          transition: swiping ? 'none' : 'width 0.2s ease',
+        }}
         onClick={handleDelete}
       >
-        <Trash2 className="text-white" size={18} />
+        <span className="flex items-center justify-center flex-shrink-0" style={{ width: SWIPE_THRESHOLD }}>
+          <Trash2 className="text-white" size={18} />
+        </span>
       </div>
 
       {/* Carte principale */}
       <div
         aria-current={active ? 'page' : undefined}
-        className={`relative bg-white rounded-2xl border p-4 flex items-center gap-3 w-full cursor-pointer hover:border-brand-300 transition-colors ${
-          active
-            ? 'border-brand-400 bg-brand-50'
-            : hasUnread ? 'border-brand-200 bg-brand-50/40' : 'border-gray-200'
+        // Fond TOUJOURS opaque : la zone rouge de suppression est juste derrière.
+        // Un fond translucide (l'ancien `bg-brand-50/40` des non-lus) laissait voir
+        // la poubelle en filigrane. Le non-lu se lit au gras et au point vert.
+        className={`relative rounded-2xl border p-4 flex items-center gap-3 w-full cursor-pointer hover:border-gray-300 transition-colors ${
+          active ? 'bg-gray-100 border-gray-300' : 'bg-white border-gray-200'
         }`}
         style={{
           transform: `translateX(${swipeX}px)`,

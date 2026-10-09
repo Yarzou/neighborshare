@@ -8,12 +8,12 @@ const pinIconHtml = `
   <div style="display:flex;flex-direction:column;align-items:center;gap:0">
     <div style="
       width:22px;height:22px;
-      background:#16a34a;
+      background:#23843b;
       border:2.5px solid white;
       border-radius:50%;
       box-shadow:0 2px 6px rgba(0,0,0,0.3);
     "></div>
-    <div style="width:2px;height:10px;background:#16a34a;margin-top:-1px;border-radius:0 0 2px 2px"></div>
+    <div style="width:2px;height:10px;background:#23843b;margin-top:-1px;border-radius:0 0 2px 2px"></div>
   </div>
 `
 

@@ -10,6 +10,7 @@ import { ListingActions } from '@/components/listings/ListingActions'
 import CarpoolMiniMap from '@/components/map/CarpoolMiniMapDynamic'
 import { TypeBadge } from '@/components/listings/TypeBadge'
 import { StatusBadge } from '@/components/listings/StatusBadge'
+import { CategoryIcon, CategoryTile } from '@/components/listings/CategoryIcon'
 
 type ListingWithJoins = Listing
 
@@ -72,8 +73,8 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
               arrivalLabel={typedListing.carpool_arrival_address ?? 'Arrivée'}
               className="w-full h-56"
             />
-            <div className="flex flex-col gap-1 px-4 py-3 bg-indigo-50 border-b border-indigo-100 text-sm">
-              <span className="flex items-center gap-2 text-green-700 font-medium">
+            <div className="flex flex-col gap-1 px-4 py-3 bg-gray-50 border-b border-gray-200 text-sm">
+              <span className="flex items-center gap-2 text-brand-700 font-medium">
                 <span className="text-base">🟢</span> {typedListing.carpool_departure_address}
               </span>
               <span className="flex items-center gap-2 text-red-700 font-medium">
@@ -82,15 +83,15 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
             </div>
           </div>
         ) : typedListing.childcare_slots && typedListing.childcare_slots.length > 0 ? (
-          <div className="w-full bg-violet-50 border-b border-violet-100">
+          <div className="w-full bg-gray-50 border-b border-gray-200">
             <div className="flex flex-col items-center justify-center gap-3 py-8 px-6">
-              <CalendarDays size={36} className="text-violet-400" />
+              <CalendarDays size={36} className="text-brand-600" />
               <div className="text-center w-full">
-                <p className="text-xs font-semibold uppercase tracking-wide text-violet-400 mb-3">Disponibilités proposées</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-3">Disponibilités proposées</p>
                 {/* Recurring slots */}
                 {typedListing.childcare_slots.filter(s => s.type === 'recurring').length > 0 && (
                   <div className="mb-2">
-                    <p className="text-xs text-violet-400 uppercase tracking-wide mb-1.5 flex items-center justify-center gap-1">
+                    <p className="text-xs text-gray-500 uppercase tracking-wide mb-1.5 flex items-center justify-center gap-1">
                       <RefreshCw size={11} /> Récurrents
                     </p>
                     <div className="flex flex-wrap justify-center gap-1.5">
@@ -98,7 +99,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
                         const slot = s as Extract<typeof s, { type: 'recurring' }>
                         const days = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam']
                         return (
-                          <span key={i} className="bg-violet-100 text-violet-800 text-xs font-medium px-2.5 py-1 rounded-full">
+                          <span key={i} className="bg-white text-gray-800 ring-1 ring-inset ring-gray-200 text-xs font-medium px-2.5 py-1 rounded-full">
                             {days[slot.day]} {slot.start_time.replace(':', 'h')}–{slot.end_time.replace(':', 'h')}
                           </span>
                         )
@@ -109,7 +110,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
                 {/* Once slots */}
                 {typedListing.childcare_slots.filter(s => s.type === 'once').length > 0 && (
                   <div>
-                    <p className="text-xs text-violet-400 uppercase tracking-wide mb-1.5 mt-2 flex items-center justify-center gap-1">
+                    <p className="text-xs text-gray-500 uppercase tracking-wide mb-1.5 mt-2 flex items-center justify-center gap-1">
                       <CalendarDays size={11} /> Ponctuels
                     </p>
                     <div className="flex flex-wrap justify-center gap-1.5">
@@ -117,7 +118,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
                         const slot = s as Extract<typeof s, { type: 'once' }>
                         const label = new Date(slot.date).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })
                         return (
-                          <span key={i} className="bg-violet-100 text-violet-800 text-xs font-medium px-2.5 py-1 rounded-full">
+                          <span key={i} className="bg-white text-gray-800 ring-1 ring-inset ring-gray-200 text-xs font-medium px-2.5 py-1 rounded-full">
                             {label} {slot.start_time.replace(':', 'h')}–{slot.end_time.replace(':', 'h')}
                           </span>
                         )
@@ -131,16 +132,16 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
         ) : typedListing.childcare_start_at && typedListing.childcare_end_at ? (() => {
           const { startLabel, endLabel, sameDay } = formatChildcarePeriod(typedListing.childcare_start_at!, typedListing.childcare_end_at!)
           return (
-            <div className="w-full bg-violet-50 border-b border-violet-100">
+            <div className="w-full bg-gray-50 border-b border-gray-200">
               <div className="flex flex-col items-center justify-center gap-3 py-8 px-6">
-                <CalendarDays size={36} className="text-violet-400" />
+                <CalendarDays size={36} className="text-brand-600" />
                 <div className="text-center">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-violet-400 mb-2">Période de garde</p>
-                  <p className="text-base font-semibold text-violet-800">{startLabel}</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Période de garde</p>
+                  <p className="text-base font-semibold text-gray-900">{startLabel}</p>
                   {sameDay ? (
-                    <p className="text-sm text-violet-600">jusqu&apos;à {endLabel}</p>
+                    <p className="text-sm text-gray-600">jusqu&apos;à {endLabel}</p>
                   ) : (
-                    <p className="text-sm text-violet-600">→ {endLabel}</p>
+                    <p className="text-sm text-gray-600">→ {endLabel}</p>
                   )}
                 </div>
               </div>
@@ -151,8 +152,8 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
             <Image src={typedListing.image_url} alt={typedListing.title} width={0} height={0} sizes="100vw" className="w-full h-auto max-h-[40vh] object-contain" />
           </div>
         ) : (
-          <div className="w-full h-40 bg-gradient-to-br from-brand-50 to-brand-100 flex items-center justify-center text-6xl">
-            {typedListing.categories?.icon || '📍'}
+          <div className="w-full h-40 bg-gray-100 flex items-center justify-center">
+            <CategoryTile id={typedListing.category_id} type={listingType} size="lg" />
           </div>
         )}
 
@@ -163,7 +164,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
             <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
               <TypeBadge type={listingType} className="text-sm px-3 py-1" />
               {listingType === 'vente' && typedListing.price != null && (
-                <span className="text-base font-bold px-3 py-1 rounded-full bg-rose-50 text-rose-700">
+                <span className="text-base font-bold px-3 py-1 rounded-full bg-gray-100 text-gray-900">
                   {typedListing.price % 1 === 0
                     ? `${typedListing.price} €`
                     : `${Number(typedListing.price).toFixed(2).replace('.', ',')} €`}
@@ -176,7 +177,9 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
           {/* Catégorie + date */}
           <div className="flex items-center gap-4 text-sm text-gray-400">
             {typedListing.categories && (
-              <span>{typedListing.categories.icon} {typedListing.categories.label}</span>
+              <span className="flex items-center gap-1">
+                <CategoryIcon id={typedListing.category_id} size={14} className="text-brand-600" /> {typedListing.categories.label}
+              </span>
             )}
             <span className="flex items-center gap-1">
               <Clock size={13} /> {formatDate(typedListing.created_at)}
@@ -195,9 +198,9 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
 
           {/* Fiche livre */}
           {(typedListing.book_author || typedListing.book_condition || typedListing.book_genre) && (
-            <div className="bg-amber-50 rounded-2xl p-4 flex flex-col gap-2">
-              <p className="text-xs font-medium text-amber-800 uppercase tracking-wide">
-                📚 Le livre
+            <div className="bg-gray-50 rounded-2xl p-4 flex flex-col gap-2">
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                Le livre
               </p>
               <dl className="flex flex-col gap-1.5 text-sm">
                 {typedListing.book_author && (
@@ -243,9 +246,9 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
           {isOwner && responderProfile && (typedListing.status === 'en_cours' || typedListing.status === 'validee') && (
             <>
               <div className="border-t border-gray-100" />
-              <div className="bg-orange-50 rounded-2xl p-4">
-                <p className="text-xs font-medium text-orange-600 mb-2 uppercase tracking-wide">
-                  {typedListing.status === 'validee' ? '✅ Demande validée' : '⏳ Demande en cours'}
+              <div className="bg-gray-50 rounded-2xl p-4">
+                <p className="text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">
+                  {typedListing.status === 'validee' ? 'Demande validée' : 'Demande en cours'}
                 </p>
                 <div className="flex items-center gap-3">
                   <div

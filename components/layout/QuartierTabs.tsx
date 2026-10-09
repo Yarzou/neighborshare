@@ -1,9 +1,8 @@
 'use client'
 
-import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Megaphone, ShoppingCart, Wrench, FileText } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import Segmented from '@/components/ui/Segmented'
 
 /**
  * Les quatre sections « Quartier », source unique pour les onglets mobiles
@@ -24,38 +23,29 @@ export const QUARTIER_SECTIONS = [
  * Onglets des pages « Quartier » — **mobile uniquement** : à partir de md le
  * layout du route group `app/(quartier)/` les remplace par `QuartierSidebar`.
  *
- * Contrôle segmenté en `grid-cols-4` : chaque onglet occupe un quart de la
- * largeur, donc la barre ne peut pas déborder — pas de défilement horizontal,
- * les quatre destinations restent visibles d'un coup d'œil. L'icône passe
- * au-dessus du libellé pour libérer de la largeur.
+ * Contrôle segmenté iOS 26 (`Segmented`, repris de Fridge) dont chaque segment
+ * est un lien : la bulle glisse vers l'onglet touché sans attendre la page, et
+ * suit le doigt si on le fait glisser (2026-10-07). Quatre cases égales : la
+ * barre ne peut pas déborder, les quatre destinations restent visibles d'un coup
+ * d'œil. L'icône passe au-dessus du libellé pour libérer de la largeur.
  */
 export function QuartierTabs() {
-  const pathname = usePathname()
+  const pathname = usePathname() ?? ''
+  const current = QUARTIER_SECTIONS.find(tab => pathname.startsWith(tab.href))?.href ?? ''
 
   return (
-    <nav className="grid grid-cols-4 gap-1 rounded-2xl border border-edge bg-surface-sunken p-1">
-      {QUARTIER_SECTIONS.map(tab => {
-        const active = pathname?.startsWith(tab.href)
-        const Icon = tab.icon
-        return (
-          <Link
-            key={tab.href}
-            href={tab.href}
-            aria-current={active ? 'page' : undefined}
-            title={tab.label}
-            className={cn(
-              'flex flex-col items-center justify-center gap-1',
-              'rounded-xl px-1 py-2 text-center text-xs font-medium leading-tight transition-colors',
-              active
-                ? 'bg-brand-600 text-white shadow-sm'
-                : 'text-content-muted hover:bg-surface hover:text-brand-700'
-            )}
-          >
-            <Icon size={16} className="shrink-0" />
-            <span>{tab.short}</span>
-          </Link>
-        )
-      })}
+    <nav aria-label="Rubriques du quartier">
+      <Segmented
+        label="Rubriques du quartier"
+        value={current}
+        options={QUARTIER_SECTIONS.map(tab => ({
+          value: tab.href,
+          href: tab.href,
+          label: tab.short,
+          icon: tab.icon,
+        }))}
+        itemClassName="py-2 text-xs leading-tight"
+      />
     </nav>
   )
 }

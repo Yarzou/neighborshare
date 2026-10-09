@@ -7,10 +7,18 @@ import { createClient } from '@/lib/supabase/client'
 import type { Listing } from '@/lib/types'
 import { ListingCard } from '@/components/listings/ListingCard'
 import { FilterBar } from '@/components/map/FilterBar'
+import { ListingSheet } from '@/components/map/ListingSheet'
 import { LoginRequiredNotice } from '@/components/layout/LoginRequiredNotice'
-import { MapPin, Loader2, X, Map, List, Plus, LayoutGrid } from 'lucide-react'
-import { normalizeSearch, cn } from '@/lib/utils'
+import { MapPin, Loader2, Plus, LayoutGrid } from 'lucide-react'
+import { normalizeSearch } from '@/lib/utils'
+import Segmented from '@/components/ui/Segmented'
 import { NEIGHBORHOOD_CENTER, NEIGHBORHOOD_RADIUS_KM, distanceMeters } from '@/lib/neighborhood'
+import { useCurrentUser } from '@/lib/hooks'
+import { readPageCache, writePageCache } from '@/lib/pageCache'
+
+/** Clés du cache de page (`lib/pageCache.ts`) : au retour sur l'onglet, la liste et la carte sont là tout de suite. */
+const LISTINGS_KEY = 'carte:annonces'
+const SLUGS_KEY = 'categories:slug-id'
 
 // Dynamic import pour éviter SSR avec Leaflet
 const LeafletMap = dynamic(() => import('@/components/map/LeafletMap'), {
@@ -27,37 +35,31 @@ export function MapView() {
   const router = useRouter()
   // rows = ce que la base a renvoyé, jamais filtré. `listings` en est dérivé
   // (useMemo plus bas) : catégorie et recherche ne déclenchent donc aucune requête.
-  const [rows, setRows] = useState<Listing[]>([])
+  // Au retour sur l'onglet, on repart des dernières annonces connues, rafraîchies
+  // aussitôt en arrière-plan : pas de spinner.
+  const [cachedRows] = useState(() => readPageCache<Listing[]>(LISTINGS_KEY))
+  const [rows, setRows] = useState<Listing[]>(cachedRows ?? [])
   const [selected, setSelected] = useState<Listing | null>(null)
+  // Hauteur couverte en bas de la carte par la fiche ouverte (ListingSheet)
+  const [sheetInset, setSheetInset] = useState(0)
   // searchCenter: centre utilisé pour le rayon de recherche (La Chapelle par défaut)
   const [searchCenter, setSearchCenter] = useState<[number, number]>(NEIGHBORHOOD_CENTER)
   // userGeoLocation: position GPS réelle (uniquement pour le marqueur bleu)
   const [userGeoLocation, setUserGeoLocation] = useState<[number, number] | null>(null)
   const [category, setCategory] = useState(searchParams.get('category') || '')
   const [search, setSearch] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!cachedRows)
   const [searchedLocation, setSearchedLocation] = useState<[number, number] | null>(null)
-  const [slugToId, setSlugToId] = useState<Record<string, number>>({})
+  const [slugToId, setSlugToId] = useState<Record<string, number>>(() => readPageCache(SLUGS_KEY) ?? {})
   const [mobileView, setMobileView] = useState<'list' | 'map'>('list')
   const [isMobile, setIsMobile] = useState(false)
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
-  // Distingue « pas encore su » de « déconnecté », pour ne pas faire clignoter
-  // l'encart de connexion le temps que getUser() réponde.
-  const [authResolved, setAuthResolved] = useState(false)
+  // Session : magasin partagé de `lib/hooks.ts` (lecture locale, sans appel
+  // réseau `getUser()`), déjà résolu au retour sur l'onglet — le « + » et le
+  // voile ne clignotent plus. `resolved` distingue « pas encore su » de
+  // « déconnecté », pour ne pas faire clignoter l'encart de connexion.
+  const { userId, resolved: authResolved } = useCurrentUser()
+  const isLoggedIn = !!userId
   const supabase = createClient()
-
-  // Suivi de la session
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setIsLoggedIn(!!data.user)
-      setAuthResolved(true)
-    })
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
-      setIsLoggedIn(!!session?.user)
-      setAuthResolved(true)
-    })
-    return () => subscription.unsubscribe()
-  }, [])
 
   // Charge le mapping slug → id une seule fois
   useEffect(() => {
@@ -65,6 +67,7 @@ export function MapView() {
       if (data) {
         const map: Record<string, number> = {}
         data.forEach(c => { map[c.slug] = c.id })
+        writePageCache(SLUGS_KEY, map)
         setSlugToId(map)
       }
     })
@@ -92,9 +95,10 @@ export function MapView() {
   // Fetch annonces — ne dépend que du centre de recherche. Le filtrage (catégorie,
   // texte) se fait en mémoire dans le useMemo ci-dessous : sans cette séparation,
   // chaque caractère tapé relançait un select complet dont le résultat était identique.
+  // Pas de `setLoading(true)` ici : `loading` part déjà à `true` sans cache, et
+  // avec un cache le rafraîchissement se fait sans spinner. `searchCenter` ne
+  // change jamais, la requête ne part donc qu'au montage.
   const fetchListings = useCallback(async () => {
-    setLoading(true)
-
     // Vue `listings_geo` (migration 032) et non plus le RPC `listings_within_radius` :
     // la vue est en `l.*`, donc toute nouvelle colonne remonte sans migration. Le
     // filtrage par rayon, le calcul de distance et le tri par proximité — que faisait
@@ -121,17 +125,17 @@ export function MapView() {
 
     if (fetched) {
       const radiusM = NEIGHBORHOOD_RADIUS_KM * 1000
-      setRows(
-        fetched
-          .map(l => ({
-            ...l,
-            distance_m: l.lat_out != null && l.lng_out != null
-              ? distanceMeters(searchCenter, [l.lat_out, l.lng_out])
-              : undefined,
-          }))
-          .filter(l => l.distance_m === undefined || l.distance_m <= radiusM)
-          .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity))
-      )
+      const next = fetched
+        .map(l => ({
+          ...l,
+          distance_m: l.lat_out != null && l.lng_out != null
+            ? distanceMeters(searchCenter, [l.lat_out, l.lng_out])
+            : undefined,
+        }))
+        .filter(l => l.distance_m === undefined || l.distance_m <= radiusM)
+        .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity))
+      writePageCache(LISTINGS_KEY, next)
+      setRows(next)
     }
     setLoading(false)
   }, [searchCenter])
@@ -177,35 +181,33 @@ export function MapView() {
           )}
         </div>
 
-        {/* Toggle mobile */}
-        <div className="md:hidden flex border-b border-gray-200 bg-white shrink-0">
-          <button
-              onClick={() => setMobileView('list')}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium transition-colors ${
-                  mobileView === 'list'
-                      ? 'text-brand-600 border-b-2 border-brand-600'
-                      : 'text-gray-500'
-              }`}
-          >
-            <List size={16} /> Liste
-          </button>
-          <button
-              onClick={() => setMobileView('map')}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium transition-colors ${
-                  mobileView === 'map'
-                      ? 'text-brand-600 border-b-2 border-brand-600'
-                      : 'text-gray-500'
-              }`}
-          >
-            <Map size={16} /> Carte
-          </button>
+        {/* Toggle mobile : contrôle segmenté iOS 26 (capsule, pastille qui glisse) */}
+        <div className="md:hidden px-4 pt-3 pb-2 bg-gray-50 shrink-0 flex items-center gap-3">
+          <Segmented
+            label="Affichage"
+            value={mobileView}
+            onChange={setMobileView}
+            options={[{ value: 'list', label: 'Liste' }, { value: 'map', label: 'Carte' }]}
+            className="flex-1"
+            itemClassName="h-8 text-[13px]"
+          />
+          {/* « + » de la page (le « + » global de la barre d'onglets a disparu) */}
+          {isLoggedIn && (
+            <button
+              onClick={() => router.push('/listings/new')}
+              aria-label="Publier une annonce"
+              className="w-9 h-9 rounded-full bg-brand-600 hover:bg-brand-700 text-white flex items-center justify-center shrink-0 shadow-lift transition-colors"
+            >
+              <Plus size={19} strokeWidth={2.4} />
+            </button>
+          )}
         </div>
 
         {/* Body: sidebar + map */}
         <div className="flex flex-1 overflow-hidden flex-col md:flex-row">
 
         {/* Sidebar */}
-        <div className={`w-full md:w-96 flex flex-col bg-white md:bg-surface-pane border-r border-gray-200 overflow-hidden z-10 ${mobileView === 'map' ? 'hidden md:flex' : 'flex'}`}>
+        <div className={`w-full md:w-96 flex flex-col bg-gray-50 md:bg-surface-pane border-r border-gray-200 overflow-hidden z-10 ${mobileView === 'map' ? 'hidden md:flex' : 'flex'}`}>
           <FilterBar
               category={category}
               onCategoryChange={setCategory}
@@ -215,7 +217,9 @@ export function MapView() {
               onSearchChange={setSearch}
           />
 
-          <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
+          {/* Marge basse = la barre d'onglets : la liste passe dessous, mais la
+              dernière annonce peut remonter au-dessus d'elle (0 sur desktop) */}
+          <div className="flex-1 overflow-y-auto p-3 pb-[calc(var(--tabbar-h)+0.75rem)] flex flex-col gap-2">
             {loading ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="animate-spin text-brand-600" size={28} />
@@ -258,6 +262,7 @@ export function MapView() {
               selectedId={selected?.id}
               searchedLocation={searchedLocation}
               visible={mobileView === 'map'}
+              bottomInset={selected ? sheetInset : 0}
           />
 
           {/* Voile visiteur non connecté : la carte serait sinon affichée vide,
@@ -274,38 +279,16 @@ export function MapView() {
               </div>
           )}
 
-          {/* Popup détail sélectionné */}
+          {/* Fiche de l'annonce choisie : la carte se recadre pour garder le
+              repère visible au-dessus d'elle (pas de poignée, retirée à la demande) */}
           {selected && (
-              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-80 z-[1200] max-h-[calc(100dvh-5rem)] overflow-y-auto rounded-2xl shadow-xl">
-                <div className="relative">
-                  <button onClick={() => setSelected(null)}
-                          className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md border border-gray-200 z-10">
-                    <X size={14} />
-                  </button>
-                  <ListingCard listing={selected} outlineOnly />
-                </div>
-              </div>
+              <ListingSheet listing={selected} onClose={() => setSelected(null)} onInsetChange={setSheetInset} />
           )}
         </div>
 
         </div>{/* end Body */}
-
-        {/* FAB mobile — Publier une annonce (connecté uniquement) */}
-        {isLoggedIn && (
-        <button
-          onClick={() => router.push('/listings/new')}
-          className={cn(
-            'fixed md:hidden z-[1100]',
-            'w-14 h-14 rounded-full bg-brand-600 text-white shadow-xl',
-            'flex items-center justify-center',
-            'hover:bg-brand-700 active:scale-95 transition-all duration-150',
-            'right-4 bottom-6',
-          )}
-          aria-label="Publier une annonce"
-        >
-          <Plus size={26} strokeWidth={2.5} />
-        </button>
-        )}
+        {/* Plus de bouton flottant « Publier » en mobile : il vit désormais à
+            côté de la barre d'onglets, sur toutes les pages. */}
       </div>
   )
 }

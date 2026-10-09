@@ -67,14 +67,14 @@ export default function EventDetailClient({ event }: Props) {
               <>
                 <button
                   onClick={() => setPhotoIndex(i => (i - 1 + photos.length) % photos.length)}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 rounded-full p-1.5 shadow"
+                  className="absolute left-2 top-1/2 -translate-y-1/2 glass rounded-full p-1.5"
                   aria-label="Photo précédente"
                 >
                   <ChevronLeft size={18} />
                 </button>
                 <button
                   onClick={() => setPhotoIndex(i => (i + 1) % photos.length)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 rounded-full p-1.5 shadow"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 glass rounded-full p-1.5"
                   aria-label="Photo suivante"
                 >
                   <ChevronRight size={18} />

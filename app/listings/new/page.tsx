@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Loader2 } from 'lucide-react'
 import { ListingForm, type ListingFormDefaultAddress } from '@/components/listings/ListingForm'
+import { FormHeader } from '@/components/layout/FormHeader'
 
 export default function NewListingPage() {
   const router = useRouter()
@@ -59,8 +60,9 @@ export default function NewListingPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-1">Publier une annonce</h1>
+    <div className="max-w-2xl mx-auto px-4 pb-8">
+      {/* « Annuler » ramène à la liste des annonces */}
+      <FormHeader title="Nouvelle annonce" cancelHref="/map" />
       <p className="text-gray-500 mb-8">Partagez un objet, un service ou une compétence avec vos voisins.</p>
 
       <ListingForm

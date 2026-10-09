@@ -11,7 +11,7 @@ const BUBBLES = [
 
 export default function Loading() {
   return (
-    <div className="flex flex-col h-[calc(100dvh-4rem)] max-w-5xl mx-auto w-full">
+    <div className="flex flex-col h-[var(--app-h)] max-w-5xl mx-auto w-full">
       {/* En-tête de conversation */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-edge bg-surface flex-shrink-0">
         <SkeletonBlock className="h-5 w-5" />

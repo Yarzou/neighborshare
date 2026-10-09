@@ -4,8 +4,10 @@ import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import AddressAutocomplete, { type ResolvedAddress } from '@/components/forms/AddressAutocomplete'
-import { Upload, X, Loader2, CalendarDays, MapPin, Image as ImageIcon, ChevronLeft } from 'lucide-react'
+import { Upload, X, Loader2, CalendarDays, MapPin, Image as ImageIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { FormHeader } from '@/components/layout/FormHeader'
+import DateField from '@/components/ui/DateField'
 import { notifyQuartier } from '@/lib/pushNotifications'
 import type { Event } from '@/lib/types'
 
@@ -196,22 +198,14 @@ export default function EventForm({ initialEvent }: EventFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-xl mx-auto px-4 py-8 flex flex-col gap-6">
-      <button
-        type="button"
-        onClick={() => router.push('/evenements')}
-        className="flex items-center gap-1 text-sm text-brand-600 hover:text-brand-700 font-medium w-fit -mb-2"
-      >
-        <ChevronLeft size={16} />
-        Retour aux événements
-      </button>
-
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-1">
-          {isEdit ? 'Modifier l\'événement' : 'Créer un événement'}
-        </h1>
-        <p className="text-sm text-gray-500">Partagez un événement avec vos voisins du Cèdre.</p>
-      </div>
+    <form onSubmit={handleSubmit} className="max-w-xl mx-auto px-4 pb-8 flex flex-col gap-6">
+      {/* Barre façon iOS : « Annuler » ramène à l'agenda (ou à l'événement modifié) */}
+      <FormHeader
+        title={isEdit ? 'Modifier l\'événement' : 'Nouvel événement'}
+        cancelHref={isEdit ? `/evenements/${initialEvent!.id}` : '/evenements'}
+        className="mb-0"
+      />
+      <p className="text-sm text-gray-500 -mt-2">Partagez un événement avec vos voisins du Cèdre.</p>
 
       {/* Titre */}
       <div className="flex flex-col gap-1.5">
@@ -246,24 +240,21 @@ export default function EventForm({ initialEvent }: EventFormProps) {
           <label className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
             <CalendarDays size={14} /> Date de début *
           </label>
-          <div className="flex gap-2">
-            <input
-              type="date"
-              name="event_date"
-              value={form.event_date}
-              onChange={handleChange}
-              required
-              className="flex-1 border border-gray-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
-            />
-            <input
-              type="time"
-              name="event_time"
-              value={form.event_time}
-              onChange={handleChange}
-              placeholder="Heure (optionnelle)"
-              className="w-32 border border-gray-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
-            />
-          </div>
+          {/* Calendrier dans la page, façon iOS ; l'heure reste un champ simple */}
+          <DateField
+            value={form.event_date}
+            onChange={v => setForm(f => ({ ...f, event_date: v }))}
+            trailing={
+              <input
+                type="time"
+                name="event_time"
+                value={form.event_time}
+                onChange={handleChange}
+                aria-label="Heure de début (facultative)"
+                className="w-28 border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+              />
+            }
+          />
         </div>
 
         {/* Fin */}
@@ -271,24 +262,24 @@ export default function EventForm({ initialEvent }: EventFormProps) {
           <label className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
             <CalendarDays size={14} /> Date de fin
           </label>
-          <div className="flex gap-2">
-            <input
-              type="date"
-              name="event_end_date"
-              value={form.event_end_date}
-              min={form.event_date || undefined}
-              onChange={handleChange}
-              className="flex-1 border border-gray-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
-            />
-            <input
-              type="time"
-              name="event_end_time"
-              value={form.event_end_time}
-              onChange={handleChange}
-              disabled={!form.event_end_date}
-              className="w-32 border border-gray-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 disabled:opacity-40 disabled:cursor-not-allowed"
-            />
-          </div>
+          <DateField
+            value={form.event_end_date}
+            min={form.event_date || undefined}
+            placeholder="Facultative"
+            clearable
+            onChange={v => setForm(f => ({ ...f, event_end_date: v, ...(v ? {} : { event_end_time: '' }) }))}
+            trailing={
+              <input
+                type="time"
+                name="event_end_time"
+                value={form.event_end_time}
+                onChange={handleChange}
+                disabled={!form.event_end_date}
+                aria-label="Heure de fin (facultative)"
+                className="w-28 border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 disabled:opacity-40 disabled:cursor-not-allowed"
+              />
+            }
+          />
         </div>
       </div>
 
@@ -321,7 +312,7 @@ export default function EventForm({ initialEvent }: EventFormProps) {
                 <button
                   type="button"
                   onClick={() => removeExistingImage(url)}
-                  className="absolute top-1 right-1 bg-white rounded-full p-0.5 shadow border border-gray-200"
+                  className="absolute top-1 right-1 glass rounded-full p-0.5"
                 >
                   <X size={12} />
                 </button>
@@ -340,7 +331,7 @@ export default function EventForm({ initialEvent }: EventFormProps) {
                 <button
                   type="button"
                   onClick={() => removeNewImage(i)}
-                  className="absolute top-1 right-1 bg-white rounded-full p-0.5 shadow border border-gray-200"
+                  className="absolute top-1 right-1 glass rounded-full p-0.5"
                 >
                   <X size={12} />
                 </button>
@@ -376,14 +367,8 @@ export default function EventForm({ initialEvent }: EventFormProps) {
         </p>
       )}
 
+      {/* Un seul « Annuler », en haut à gauche comme sur iOS : en bas, l'action seule */}
       <div className="flex gap-3">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="flex-1 py-3 rounded-xl border border-gray-300 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
-        >
-          Annuler
-        </button>
         <button
           type="submit"
           disabled={loading}

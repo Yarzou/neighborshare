@@ -5,6 +5,7 @@ import { Loader2, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Assembly } from '@/lib/types'
 import { todayIso } from '@/lib/documents'
+import DateField from '@/components/ui/DateField'
 
 interface Props {
   /** Assemblée à modifier — `null` en création */
@@ -79,15 +80,11 @@ export function AssemblyForm({ assembly, userId, onClose, onSaved }: Props) {
         />
       </label>
 
-      <label className="flex flex-col gap-1 text-sm text-content-soft">
-        Date de l&apos;assemblée
-        <input
-          type="date"
-          value={heldOn}
-          onChange={e => setHeldOn(e.target.value)}
-          className="w-full px-4 py-2.5 rounded-xl border border-edge bg-surface text-sm text-content focus:outline-none focus:ring-2 focus:ring-brand-500"
-        />
-      </label>
+      {/* Calendrier dans la page (DateField) : le sélecteur natif débordait du champ sur mobile */}
+      <div className="flex flex-col gap-1 text-sm text-content-soft">
+        <span>Date de l&apos;assemblée</span>
+        <DateField value={heldOn} onChange={setHeldOn} />
+      </div>
 
       {!assembly && (
         <p className="text-xs text-content-faint">

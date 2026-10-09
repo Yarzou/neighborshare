@@ -8,6 +8,8 @@ import { formatDate } from '@/lib/utils'
 import { notifyQuartier } from '@/lib/pushNotifications'
 import { fetchPollResults } from '@/lib/messaging'
 import { ItemActions } from '@/components/common/ItemActions'
+import DateField from '@/components/ui/DateField'
+import { readPageCache, writePageCache } from '@/lib/pageCache'
 
 /** Borne défensive : la liste n'est pas paginée et grandit sans limite. */
 const POLLS_LIMIT = 100
@@ -25,9 +27,18 @@ interface PollState {
 
 export function PollsSection({ userId, isReferent }: Props) {
   const supabase = createClient()
-  const [polls, setPolls] = useState<Poll[]>([])
-  const [states, setStates] = useState<Record<string, PollState>>({})
-  const [loading, setLoading] = useState(true)
+  // Cache de page (`lib/pageCache.ts`), propre à l'utilisateur puisqu'il porte
+  // ses votes : au retour sur l'onglet, les sondages s'affichent tout de suite.
+  const cacheKey = `quartier:sondages:${userId}`
+  const [cached] = useState(() => readPageCache<{ polls: Poll[]; states: Record<string, PollState> }>(cacheKey))
+  const [polls, setPolls] = useState<Poll[]>(cached?.polls ?? [])
+  const [states, setStates] = useState<Record<string, PollState>>(cached?.states ?? {})
+  const [loading, setLoading] = useState(!cached)
+
+  // Le cache suit ce qui est affiché, vote qu'on vient d'émettre compris.
+  useEffect(() => {
+    if (!loading) writePageCache(cacheKey, { polls, states })
+  }, [cacheKey, polls, states, loading])
   const [creating, setCreating] = useState(false)
   /** id du sondage en cours d'édition — seules les métadonnées sont éditables,
    *  pas les options : modifier les réponses d'un sondage déjà voté corromprait le vote. */
@@ -265,10 +276,13 @@ export function PollsSection({ userId, isReferent }: Props) {
             <label className="block text-xs font-medium text-content-muted mb-1.5">
               Clôture <span className="font-normal">(optionnel)</span>
             </label>
-            <input type="date" value={form.closes_at}
+            <DateField
+              value={form.closes_at}
               min={new Date().toISOString().slice(0, 10)}
-              onChange={e => setForm(f => ({ ...f, closes_at: e.target.value }))}
-              className="w-full px-4 py-2.5 rounded-xl border border-edge bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+              placeholder="Pas de clôture"
+              clearable
+              onChange={v => setForm(f => ({ ...f, closes_at: v }))}
+            />
           </div>
 
           <button type="submit" disabled={saving}

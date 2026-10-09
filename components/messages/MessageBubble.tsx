@@ -248,7 +248,7 @@ export function MessageBubble({
                 {showPicker && (
                   <div
                     ref={pickerRef}
-                    className={`absolute bottom-full mb-1 z-20 bg-white border border-gray-200 rounded-2xl shadow-lg px-2 py-1.5 flex gap-1 ${
+                    className={`absolute bottom-full mb-1 z-20 glass rounded-2xl px-2 py-1.5 flex gap-1 ${
                       isMe ? 'right-0' : 'left-0'
                     }`}
                   >
@@ -271,8 +271,8 @@ export function MessageBubble({
               ref={bubbleRef}
               className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed select-none ${
                 isMe
-                  ? 'bg-green-500 text-white rounded-br-sm'
-                  : 'bg-blue-500 text-white rounded-bl-sm'
+                  ? 'bg-brand-600 text-white rounded-br-md'
+                  : 'bg-[#e9e9eb] dark:bg-[#334155] text-gray-900 rounded-bl-md'
               } ${isTemp ? 'opacity-60' : ''}`}
             >
               {msg.content}
@@ -309,7 +309,7 @@ export function MessageBubble({
           onClick={() => setShowPicker(false)}
         >
           <div
-            className="absolute bg-white border border-gray-200 rounded-2xl shadow-xl px-3 py-2 flex gap-2"
+            className="absolute glass rounded-2xl px-3 py-2 flex gap-2"
             style={
               pickerPos
                 ? { top: pickerPos.top, left: pickerPos.left, transform: 'translateX(-50%)' }

@@ -11,40 +11,44 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Palette claire « B2 » (2026-10-02) : les gris Tailwind sont remplacés par
-        // une gamme ardoise, gris bleuté. Toutes les classes `gray-*` de l'app
-        // (fond de page, bordures, textes secondaires) basculent d'un coup, sans
-        // toucher au mode sombre, dont le bloc de surcharges emploie des hex.
-        // gray-50 est le fond de page, gray-100 les zones en retrait, gray-200 les
-        // bordures. Trois niveaux depuis le 2026-10-02 : page #e9edf2 < volets
-        // #f1f4f7 < cartes #f9fafb (cf. `white` ci-dessus et les tokens de globals.css).
-        // Plus aucun blanc pur : `bg-white` (cartes, lignes, formulaires) devient un
-        // gris à peine teinté, sur toutes les pages d'un coup. `text-white` sur les
-        // boutons verts en hérite sans différence perceptible.
-        white: '#f9fafb',
+        // Refonte « Verre et Cèdre », couleurs Apple (2026-10-07) : fond gris clair,
+        // cartes blanches, texte presque noir. Demande utilisateur : « des couleurs
+        // à la Apple, pas de teinte de vert ». Les gris sont donc les gris système
+        // d'iOS, neutres (plus aucun gris verdâtre). Toutes les classes `gray-*`
+        // basculent d'un coup ; le mode sombre garde son bloc de surcharges en hex.
+        // gray-50 est le fond de page, gray-100 les remplissages (champs), gray-200
+        // les séparateurs et la piste des contrôles segmentés.
+        // `white` est un blanc pur : c'est la couleur des cartes.
+        white: '#ffffff',
         gray: {
-          50:  '#e9edf2',
-          100: '#e2e8f0',
-          200: '#d7dee6',
-          300: '#b7c1cd',
-          400: '#94a3b8',
-          500: '#64748b',
-          600: '#475569',
-          700: '#334155',
-          800: '#1e293b',
-          900: '#0f172a',
+          50:  '#f2f2f7',
+          100: '#e9e9ee',
+          200: '#e3e3e8',
+          300: '#d1d1d6',
+          400: '#8e8e93',
+          500: '#6c6c70',
+          600: '#545458',
+          700: '#3a3a3c',
+          800: '#2c2c2e',
+          900: '#1c1c1e',
         },
+        // Vert « système » d'Apple, en version contrastée : le vert reste la base de
+        // l'appli (actions, icônes), mais en aplat franc. brand-600 #23843b est le
+        // vert des boutons (blanc dessus : 4,7:1) ; brand-400 est le vert système.
+        // ⚠️ brand-50 à brand-300 sont volontairement NEUTRES (gris système) : ils
+        // servaient de fonds et de bordures vert pâle dans toute l'appli (sélection,
+        // survol, pastilles), et l'utilisateur ne veut plus de vert pâle.
         brand: {
-          50:  '#f0fdf4',
-          100: '#dcfce7',
-          200: '#bbf7d0',
-          300: '#86efac',
-          400: '#4ade80',
-          500: '#22c55e',
-          600: '#16a34a',
-          700: '#15803d',
-          800: '#166534',
-          900: '#14532d',
+          50:  '#f2f2f7',
+          100: '#e9e9ee',
+          200: '#d1d1d6',
+          300: '#c7c7cc',
+          400: '#34c759',
+          500: '#2aa14b',
+          600: '#23843b',
+          700: '#1d7032',
+          800: '#175a28',
+          900: '#11441e',
         },
         warm: {
           50:  '#fefce8',
@@ -66,6 +70,24 @@ const config: Config = {
           // En-tête d'accordéon ouvert (profil) — pastel du vert du titre
           accent: 'var(--surface-accent)',
         },
+        // Verre « Liquid Glass », recette de l'app Fridge : une seule matière pour
+        // ce qui flotte. Verre épais = classe `.glass` de globals.css ; la barre
+        // d'onglets est en verre léger (`bg-glass-thin`), avec la même arête.
+        glass: {
+          DEFAULT: 'var(--glass)',
+          thin: 'var(--glass-thin)',
+          // Barre d'onglets, doigt posé : presque opaque
+          pressed: 'var(--glass-pressed)',
+          rim: 'var(--glass-rim)',
+        },
+        bubble: {
+          DEFAULT: 'var(--bubble)',
+          edge: 'var(--bubble-edge)',
+        },
+        // Centre de la loupe (barre d'onglets, contrôle segmenté) : il cache l'original qu'il agrandit
+        loupe: 'var(--loupe)',
+        // Teinte de la loupe de verre clair (GlassLens, interrupteur). Pas « lens » : voir boxShadow.
+        drop: 'var(--drop)',
         edge: {
           DEFAULT: 'var(--border)',
           strong: 'var(--border-strong)',
@@ -87,6 +109,44 @@ const config: Config = {
       borderRadius: {
         '2xl': '1rem',
         '3xl': '1.5rem',
+      },
+      // « Goutte d'eau » de la barre d'onglets et des contrôles segmentés (repris
+      // de Fridge) : la bulle s'étire en partant, se tasse, puis se pose.
+      keyframes: {
+        bubble: {
+          '0%': { transform: 'scale(1, 1)' },
+          '30%': { transform: 'scale(1.24, 0.84)' },
+          '62%': { transform: 'scale(0.95, 1.06)' },
+          '100%': { transform: 'scale(1, 1)' },
+        },
+        // Loupe qui grandit à partir de la pastille au repos (--lens-from-x/y : rapport de leurs tailles)
+        lens: {
+          '0%': { transform: 'scale(var(--lens-from-x, 0.8), var(--lens-from-y, 0.7))' },
+          '100%': { transform: 'scale(1, 1)' },
+        },
+      },
+      animation: {
+        bubble: 'bubble 560ms cubic-bezier(0.2, 0.8, 0.2, 1)',
+        lens: 'lens 340ms cubic-bezier(0.34, 1.5, 0.5, 1)',
+      },
+      boxShadow: {
+        // Verre : ombre portée et reflet sur l'arête haute (pas « shadow-glass » : la
+        // couleur `glass` générerait la couleur d'ombre du même nom, piège vécu dans Fridge)
+        sheen: 'var(--glass-shadow)',
+        bubble: 'inset 0 0 0 0.5px var(--bubble-edge), 0 2px 10px rgba(0, 0, 0, 0.1)',
+        // Loupe de verre clair (GlassLens, interrupteur) : liseré, reflets sur les arêtes
+        // haute et basse, frange colorée à gauche et à droite, ombre portée.
+        // Pas « shadow-lens » : une couleur `lens` teinterait cette ombre.
+        refraction: [
+          'inset 0 0 0 0.5px var(--lens-edge)',
+          'inset 0 1.5px 1px -0.5px var(--lens-glint)',
+          'inset 0 -1.5px 2px -1px var(--lens-glint)',
+          'inset 6px 0 7px -5px var(--fringe-warm)',
+          'inset -6px 0 7px -5px var(--fringe-cool)',
+          '0 6px 16px rgba(0, 0, 0, 0.18)',
+        ].join(', '),
+        lift: 'var(--shadow-lift)',
+        float: 'var(--shadow-float)',
       },
     },
   },

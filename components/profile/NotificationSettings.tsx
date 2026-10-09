@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { isPushSupported, activatePushNotifications, deactivatePushNotifications } from '@/lib/pushNotifications'
 import { Bell, Mail, Loader2, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import Switch from '@/components/ui/Switch'
 
 interface Props {
   userId: string
@@ -69,35 +70,22 @@ export default function NotificationSettings({ userId, initialEmailEnabled, init
         {/* Toggle email */}
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-start gap-3">
-            <Mail size={17} className="text-gray-400 mt-0.5 flex-shrink-0" />
+            <Mail size={17} className="text-brand-600 mt-0.5 flex-shrink-0" />
             <div>
               <p className="text-sm font-medium text-gray-800">Notifications par email</p>
               <p className="text-xs text-gray-400">Nouvelles annonces et nouveaux messages</p>
             </div>
           </div>
-          <button
-            role="switch"
-            aria-checked={emailEnabled}
-            disabled={emailSaving}
-            onClick={() => handleEmailToggle(!emailEnabled)}
-            className={cn(
-              'relative inline-flex w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-brand-400',
-              emailEnabled ? 'bg-brand-600' : 'bg-gray-200',
-              emailSaving && 'opacity-50 cursor-not-allowed',
-            )}
-          >
-            <span className={cn(
-              'inline-block w-5 h-5 bg-white rounded-full shadow transition-transform mt-0.5',
-              emailEnabled ? 'translate-x-5' : 'translate-x-0.5',
-            )} />
-            {emailSaving && <Loader2 size={10} className="absolute inset-0 m-auto animate-spin text-white" />}
-          </button>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {emailSaving && <Loader2 size={14} className="animate-spin text-gray-400" aria-hidden="true" />}
+            <Switch checked={emailEnabled} onChange={handleEmailToggle} label="Notifications par email" disabled={emailSaving} />
+          </div>
         </div>
 
         {/* Toggle push */}
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-start gap-3">
-            <Bell size={17} className="text-gray-400 mt-0.5 flex-shrink-0" />
+            <Bell size={17} className="text-brand-600 mt-0.5 flex-shrink-0" />
             <div>
               <p className="text-sm font-medium text-gray-800">Notifications push</p>
               <p className="text-xs text-gray-400">
@@ -107,23 +95,10 @@ export default function NotificationSettings({ userId, initialEmailEnabled, init
               </p>
             </div>
           </div>
-          <button
-            role="switch"
-            aria-checked={pushEnabled}
-            disabled={pushSaving || !pushSupported}
-            onClick={() => handlePushToggle(!pushEnabled)}
-            className={cn(
-              'relative inline-flex w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-brand-400',
-              pushEnabled ? 'bg-brand-600' : 'bg-gray-200',
-              (pushSaving || !pushSupported) && 'opacity-50 cursor-not-allowed',
-            )}
-          >
-            <span className={cn(
-              'inline-block w-5 h-5 bg-white rounded-full shadow transition-transform mt-0.5',
-              pushEnabled ? 'translate-x-5' : 'translate-x-0.5',
-            )} />
-            {pushSaving && <Loader2 size={10} className="absolute inset-0 m-auto animate-spin text-white" />}
-          </button>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {pushSaving && <Loader2 size={14} className="animate-spin text-gray-400" aria-hidden="true" />}
+            <Switch checked={pushEnabled} onChange={handlePushToggle} label="Notifications push" disabled={pushSaving || !pushSupported} />
+          </div>
         </div>
 
         {pushError && (

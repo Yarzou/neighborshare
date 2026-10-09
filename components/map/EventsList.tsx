@@ -9,8 +9,19 @@ import { MiniCalendar } from './MiniCalendar'
 import { LoginRequiredNotice } from '@/components/layout/LoginRequiredNotice'
 import { CalendarDays, Loader2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useCurrentUser } from '@/lib/hooks'
+import { readPageCache, writePageCache } from '@/lib/pageCache'
 
 const PAGE_SIZE = 10
+
+/**
+ * Cache de page (`lib/pageCache.ts`) : au retour sur l'Agenda, la première page
+ * de la liste (pour ces dates) et les pastilles du calendrier s'affichent tout
+ * de suite, puis sont rafraîchies sans spinner.
+ */
+interface CachedPage { events: Event[]; hasMore: boolean }
+const pageKey = (from: string, to: string) => `agenda:grille:${from}:${to}`
+const DATES_KEY = 'agenda:dates'
 
 interface EventsListProps {
   className?: string
@@ -50,18 +61,6 @@ export function EventsList({
   onEventSelect,
 }: EventsListProps) {
   const supabase = createClient()
-  const [events, setEvents] = useState<Event[]>([])
-  const [loading, setLoading] = useState(true)
-  const [loadingMore, setLoadingMore] = useState(false)
-  const [hasMore, setHasMore] = useState(true)
-  const [internalActiveDate, setInternalActiveDate] = useState<string | null>(null)
-  const [markedDates, setMarkedDates] = useState<Set<string>>(new Set())
-  const [showCalendar, setShowCalendar] = useState(false)
-  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
-  // Distingue « pas encore su » de « déconnecté », pour ne pas faire clignoter
-  // l'encart de connexion le temps que getUser() réponde.
-  const [authResolved, setAuthResolved] = useState(false)
 
   // Internal filter state (mobile) — controlled by parent on desktop
   const [internalFilterFrom, setInternalFilterFrom] = useState(`${new Date().getFullYear()}-01-01`)
@@ -72,17 +71,38 @@ export function EventsList({
   const filterTo = isControlled ? (externalFilterTo ?? '') : internalFilterTo
   const hasFilter = !!(filterFrom || filterTo)
 
+  // Dernière première page connue pour ces dates, et dernières pastilles du calendrier
+  const [cachedPage] = useState(() => readPageCache<CachedPage>(pageKey(filterFrom, filterTo)))
+  const [events, setEvents] = useState<Event[]>(cachedPage?.events ?? [])
+  const [loading, setLoading] = useState(!cachedPage)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(cachedPage?.hasMore ?? true)
+  const [internalActiveDate, setInternalActiveDate] = useState<string | null>(null)
+  const [markedDates, setMarkedDates] = useState<Set<string>>(() => readPageCache(DATES_KEY) ?? new Set())
+  const [showCalendar, setShowCalendar] = useState(false)
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
+  // Session : magasin partagé de `lib/hooks.ts` (lecture locale, sans appel
+  // réseau `getUser()`). `authResolved` distingue « pas encore su » de
+  // « déconnecté », pour ne pas faire clignoter l'encart de connexion.
+  const { userId: currentUserId, resolved: authResolved } = useCurrentUser()
+
   const activeDate = externalActiveDate !== undefined ? externalActiveDate : internalActiveDate
 
   const listRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
   const observerRef = useRef<IntersectionObserver | null>(null)
-  const offsetRef = useRef(0)
+  const offsetRef = useRef(cachedPage?.events.length ?? 0)
   const isFetchingRef = useRef(false)
   const lastScrollTriggerSeq = useRef<number>(-1)
 
-  const fetchEvents = useCallback(async (offset: number, from: string, to: string): Promise<Event[]> => {
-    if (isFetchingRef.current) return []
+  /**
+   * `null` si une autre requête est déjà en vol : l'appelant ne touche alors à
+   * rien. Un tableau vide aurait vidé la liste, rempli le cache d'une page vide
+   * ou arrêté le défilement infini — ce qui arrive dès que la liste du cache est
+   * affichée : la sentinelle du défilement est visible avant la fin du rafraîchissement.
+   */
+  const fetchEvents = useCallback(async (offset: number, from: string, to: string): Promise<Event[] | null> => {
+    if (isFetchingRef.current) return null
     isFetchingRef.current = true
 
     let query = supabase
@@ -107,20 +127,35 @@ export function EventsList({
 
   const loadEvents = useCallback(async (from: string, to: string, reset: boolean) => {
     if (reset) {
-      setLoading(true)
-      setEvents([])
-      offsetRef.current = 0
+      // Première page déjà vue pour ces dates : affichée tout de suite, la
+      // requête la remplace. Sinon, spinner comme avant.
+      const cached = readPageCache<CachedPage>(pageKey(from, to))
+      if (cached) {
+        setEvents(cached.events)
+        setHasMore(cached.hasMore)
+        offsetRef.current = cached.events.length
+      } else {
+        setLoading(true)
+        setEvents([])
+        offsetRef.current = 0
+      }
     }
 
     const data = await fetchEvents(reset ? 0 : offsetRef.current, from, to)
+    if (!data) {
+      setLoading(false)
+      return
+    }
+    // When filter active, no more pagination needed
+    const more = (from || to) ? false : data.length === PAGE_SIZE
     if (reset) {
+      writePageCache<CachedPage>(pageKey(from, to), { events: data, hasMore: more })
       setEvents(data)
     } else {
       setEvents(prev => [...prev, ...data])
     }
     offsetRef.current = (reset ? 0 : offsetRef.current) + data.length
-    // When filter active, no more pagination needed
-    setHasMore((from || to) ? false : data.length === PAGE_SIZE)
+    setHasMore(more)
     setLoading(false)
   }, [fetchEvents])
 
@@ -131,6 +166,10 @@ export function EventsList({
 
   // Pastilles du calendrier : dates seules, sur une fenêtre glissante
   useEffect(() => {
+    // Dernières pastilles connues : le calendrier du parent les montre tout de suite
+    const cachedDates = readPageCache<Set<string>>(DATES_KEY)
+    if (cachedDates) onMarkedDatesReady?.(cachedDates)
+
     const loadMarked = async () => {
       // Bornée à ±1 an. La requête ramenait TOUS les événements depuis toujours,
       // pour n'en garder que la partie « date » — or le mini-calendrier ne
@@ -147,14 +186,11 @@ export function EventsList({
         .lte('event_date', to)
 
       const dates = new Set((data ?? []).map((e: { event_date: string }) => e.event_date.slice(0, 10)))
+      writePageCache(DATES_KEY, dates)
       setMarkedDates(dates)
       onMarkedDatesReady?.(dates)
     }
     loadMarked()
-    supabase.auth.getUser().then(({ data }) => {
-      setCurrentUserId(data.user?.id ?? null)
-      setAuthResolved(true)
-    })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Infinite scroll sentinel
@@ -164,6 +200,10 @@ export function EventsList({
       if (entries[0].isIntersecting && hasMore && !loadingMore && !hasFilter) {
         setLoadingMore(true)
         const data = await fetchEvents(offsetRef.current, filterFrom, filterTo)
+        if (!data) {
+          setLoadingMore(false)
+          return
+        }
         setEvents(prev => [...prev, ...data])
         offsetRef.current += data.length
         setHasMore(data.length === PAGE_SIZE)

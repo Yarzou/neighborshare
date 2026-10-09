@@ -7,6 +7,10 @@ import type { Announcement } from '@/lib/types'
 import { formatDate, getAvatarStyle } from '@/lib/utils'
 import { notifyQuartier } from '@/lib/pushNotifications'
 import { ItemActions } from '@/components/common/ItemActions'
+import { readPageCache, writePageCache } from '@/lib/pageCache'
+
+/** Clé du cache de page (`lib/pageCache.ts`) : au retour sur l'onglet, les infos s'affichent tout de suite. */
+const CACHE_KEY = 'quartier:infos'
 
 interface Props {
   userId: string | null
@@ -15,8 +19,9 @@ interface Props {
 
 export function AnnouncementsSection({ userId, isReferent }: Props) {
   const supabase = createClient()
-  const [announcements, setAnnouncements] = useState<Announcement[]>([])
-  const [loading, setLoading] = useState(true)
+  const [cached] = useState(() => readPageCache<Announcement[]>(CACHE_KEY))
+  const [announcements, setAnnouncements] = useState<Announcement[]>(cached ?? [])
+  const [loading, setLoading] = useState(!cached)
   const [creating, setCreating] = useState(false)
   /** id de l'annonce en cours d'édition — le formulaire sert aux deux modes */
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -49,7 +54,9 @@ export function AnnouncementsSection({ userId, isReferent }: Props) {
       // Borne défensive : la liste n'est pas paginée. Les plus anciennes infos
       // n'intéressent personne, mais elles seraient transférées à chaque visite.
       .limit(100)
-    setAnnouncements((data ?? []) as Announcement[])
+    const list = (data ?? []) as Announcement[]
+    writePageCache(CACHE_KEY, list)
+    setAnnouncements(list)
     setLoading(false)
   }
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -10,17 +10,47 @@ import { getCategoryEmoji } from '@/lib/categories'
 import { EventActions } from '@/components/map/EventActions'
 import { formatDate } from '@/lib/utils'
 import { cn, SIDE_PANE_WIDTH } from '@/lib/utils'
+import Switch from '@/components/ui/Switch'
+import Segmented from '@/components/ui/Segmented'
 import { getAvatarStyle, getInitials, DEFAULT_AVATAR_COLOR } from '@/lib/utils'
 import { TypeBadge } from '@/components/listings/TypeBadge'
 import {
   Package, Pencil, Trash2, Edit2,
   Check, X, Loader2, AlertCircle,
-  Lock, ShieldAlert, Eye, EyeOff, Bell, Mail, ChevronDown, MapPin, CalendarDays,
+  Lock, ShieldAlert, Eye, EyeOff, Bell, Mail, ChevronDown, MapPin, CalendarDays, LogOut, Palette,
 } from 'lucide-react'
 import { isPushSupported, activatePushNotifications, deactivatePushNotifications } from '@/lib/pushNotifications'
 import AddressAutocomplete, { type ResolvedAddress } from '@/components/forms/AddressAutocomplete'
 import { useTheme, type ThemeChoice } from '@/components/theme/ThemeProvider'
 import PasskeySection from '@/components/profile/PasskeySection'
+import { readPageCache, writePageCache } from '@/lib/pageCache'
+
+/**
+ * Cache de page (`lib/pageCache.ts`) : au retour sur le profil, il s'affiche tout
+ * de suite avec ses dernières données, rafraîchies en arrière-plan. Vidé à tout
+ * changement d'utilisateur.
+ */
+const CACHE_KEY = 'profil'
+interface ProfileCache {
+  userId: string
+  profile: Profile
+  listings: Listing[]
+  events: Event[]
+  emailEnabled: boolean
+  pushEnabled: boolean
+}
+
+/** Valeurs du formulaire d'édition, tirées du profil */
+function formFrom(prof: Profile) {
+  return { full_name: prof.full_name || '', username: prof.username || '', bio: prof.bio || '', avatar_color: prof.avatar_color || DEFAULT_AVATAR_COLOR }
+}
+
+/** Adresse par défaut du profil, si elle est complète */
+function addressFrom(prof: Profile) {
+  return prof.address_lat && prof.address_lng && prof.address_display
+    ? { displayName: prof.address_display, road: prof.address_road || '', city: prof.address_city || '', lat: prof.address_lat, lon: prof.address_lng }
+    : null
+}
 
 const AVATAR_COLORS = [
   '#dcfce7', // vert (défaut)
@@ -47,21 +77,29 @@ export default function ProfileClient() {
   const router = useRouter()
   const supabase = createClient()
 
-  const [userId, setUserId] = useState<string | null>(null)
-  const [profile, setProfile] = useState<Profile | null>(null)
-  const [listings, setListings] = useState<Listing[]>([])
-  const [events, setEvents] = useState<Event[]>([])
-  const [pageLoading, setPageLoading] = useState(true)
+  // Dernières données connues : la page s'affiche sans attendre, puis se rafraîchit.
+  const [cached] = useState(() => readPageCache<ProfileCache>(CACHE_KEY))
+  const [userId, setUserId] = useState<string | null>(cached?.userId ?? null)
+  const [profile, setProfile] = useState<Profile | null>(cached?.profile ?? null)
+  const [listings, setListings] = useState<Listing[]>(cached?.listings ?? [])
+  const [events, setEvents] = useState<Event[]>(cached?.events ?? [])
+  const [pageLoading, setPageLoading] = useState(!cached)
 
   const [editMode, setEditMode] = useState(false)
-  const [form, setForm] = useState({ full_name: '', username: '', bio: '', avatar_color: DEFAULT_AVATAR_COLOR })
+  // Le rafraîchissement en arrière-plan ne doit pas écraser une saisie commencée
+  // sur le profil affiché depuis le cache.
+  const editingRef = useRef(false)
+  useEffect(() => { editingRef.current = editMode }, [editMode])
+  const [form, setForm] = useState(() => cached
+    ? formFrom(cached.profile)
+    : { full_name: '', username: '', bio: '', avatar_color: DEFAULT_AVATAR_COLOR })
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
 
   // Adresse par défaut du profil (null = non définie ou effacée par l'utilisateur)
   const [addressResolved, setAddressResolved] = useState<{
     displayName: string; road: string; city: string; lat: number; lon: number
-  } | null>(null)
+  } | null>(() => (cached ? addressFrom(cached.profile) : null))
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -87,8 +125,8 @@ export default function ProfileClient() {
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false)
 
   // Notifications
-  const [emailEnabled, setEmailEnabled] = useState(true)
-  const [pushEnabled, setPushEnabled] = useState(true)
+  const [emailEnabled, setEmailEnabled] = useState(cached?.emailEnabled ?? true)
+  const [pushEnabled, setPushEnabled] = useState(cached?.pushEnabled ?? true)
   const [emailSaving, setEmailSaving] = useState(false)
   const [pushSaving, setPushSaving] = useState(false)
   const [pushError, setPushError] = useState<string | null>(null)
@@ -103,7 +141,11 @@ export default function ProfileClient() {
 
   useEffect(() => {
     const load = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
+      // `getSession()` et non `getUser()` : lecture locale, sans l'aller-retour
+      // vers le serveur d'auth qui précédait toutes les requêtes. L'identifiant
+      // ne sert qu'à des requêtes dont le RLS reste l'arbitre (cf. lib/hooks.ts).
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user
       if (!user) {
         router.push('/auth/login?redirect=%2Fprofile')
         return
@@ -124,18 +166,12 @@ export default function ProfileClient() {
 
       if (prof) {
         setProfile(prof as Profile)
-        setForm({ full_name: prof.full_name || '', username: prof.username || '', bio: prof.bio || '', avatar_color: prof.avatar_color || DEFAULT_AVATAR_COLOR })
+        if (!editingRef.current) {
+          setForm(formFrom(prof as Profile))
+          setAddressResolved(addressFrom(prof as Profile))
+        }
         setEmailEnabled(prof.email_notifications_enabled ?? true)
         setPushEnabled(prof.push_notifications_enabled ?? true)
-        if (prof.address_lat && prof.address_lng && prof.address_display) {
-          setAddressResolved({
-            displayName: prof.address_display,
-            road: prof.address_road || '',
-            city: prof.address_city || '',
-            lat: prof.address_lat,
-            lon: prof.address_lng,
-          })
-        }
       }
       setListings((lists || []) as Listing[])
       setEvents((evts || []) as Event[])
@@ -143,6 +179,13 @@ export default function ProfileClient() {
     }
     load()
   }, [])
+
+  // Le cache suit ce qui est affiché, modifications comprises (profil enregistré,
+  // annonce ou événement supprimé, préférences de notification).
+  useEffect(() => {
+    if (pageLoading || !userId || !profile) return
+    writePageCache<ProfileCache>(CACHE_KEY, { userId, profile, listings, events, emailEnabled, pushEnabled })
+  }, [pageLoading, userId, profile, listings, events, emailEnabled, pushEnabled])
 
   const handleSaveProfile = async () => {
     if (!form.username.trim() || !userId) return
@@ -248,6 +291,15 @@ export default function ProfileClient() {
     router.push('/')
   }
 
+  // Déconnexion mobile : le menu déroulant qui la portait a laissé place à la barre
+  // d'onglets (refonte 2026-10-06). Sur desktop, le menu latéral la propose déjà.
+  const handleLogout = async () => {
+    setTheme('system')
+    await supabase.auth.signOut()
+    router.push('/')
+    router.refresh()
+  }
+
   const handleEmailToggle = async (enabled: boolean) => {
     setEmailEnabled(enabled)
     setEmailSaving(true)
@@ -320,7 +372,7 @@ export default function ProfileClient() {
   // du flex racine et c'est `order-*` qui fixe l'ordre ; à partir de md ils
   // deviennent de vrais volets et `md:order-none` rend la main à l'ordre du DOM.
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8 flex flex-col gap-6 md:max-w-none md:mx-0 md:px-0 md:py-0 md:flex-row md:gap-0 md:h-[calc(100dvh-4rem)]">
+    <div className="max-w-2xl mx-auto px-4 py-8 flex flex-col gap-6 md:max-w-none md:mx-0 md:px-0 md:py-0 md:flex-row md:gap-0 md:h-[var(--app-h)]">
       <div className={cn('contents md:flex md:flex-col md:gap-4 md:shrink-0 md:bg-surface-pane md:border-r md:border-edge md:overflow-y-auto md:p-4', SIDE_PANE_WIDTH)}>
 
       {/* ── Hero ── */}
@@ -464,68 +516,47 @@ export default function ProfileClient() {
         {/* Apparence */}
         <div className="flex items-center justify-between gap-4 px-6 py-4 border-b border-gray-100">
           <div className="flex items-start gap-3">
-            <span className="text-gray-400 mt-0.5 flex-shrink-0 text-base leading-none">🎨</span>
+            <Palette size={17} className="text-brand-600 mt-0.5 flex-shrink-0" aria-hidden="true" />
             <div>
               <p className="text-sm font-medium text-gray-800">Apparence</p>
               <p className="text-xs text-gray-400">Thème de l&apos;interface</p>
             </div>
           </div>
-          <div className="flex gap-1 bg-gray-100 p-1 rounded-xl flex-shrink-0">
-            {([
-              { value: 'light',  label: '☀️', title: 'Clair' },
-              { value: 'dark',   label: '🌙', title: 'Sombre' },
-              { value: 'system', label: '💻', title: 'Système' },
-            ] as { value: ThemeChoice; label: string; title: string }[]).map(opt => (
-              <button
-                key={opt.value}
-                onClick={() => setTheme(opt.value)}
-                title={opt.title}
-                className={cn(
-                  'px-2.5 py-1.5 rounded-lg text-sm transition-all',
-                  theme === opt.value
-                    ? 'bg-white text-gray-900 shadow-sm font-medium'
-                    : 'text-gray-500 hover:text-gray-700'
-                )}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
+          {/* Contrôle segmenté iOS 26 (bulle qui glisse, repris de Fridge) */}
+          <Segmented
+            label="Thème de l'interface"
+            value={theme}
+            onChange={setTheme}
+            options={[
+              { value: 'light', label: 'Clair' },
+              { value: 'dark', label: 'Sombre' },
+              { value: 'system', label: 'Auto' },
+            ] satisfies { value: ThemeChoice; label: string }[]}
+            className="w-[204px] flex-shrink-0"
+            itemClassName="h-8 text-[13px]"
+          />
         </div>
 
         {/* Notifications email */}
         <div className="flex items-center justify-between gap-4 px-6 py-4 border-b border-gray-100">
           <div className="flex items-start gap-3">
-            <Mail size={17} className="text-gray-400 mt-0.5 flex-shrink-0" />
+            <Mail size={17} className="text-brand-600 mt-0.5 flex-shrink-0" />
             <div>
               <p className="text-sm font-medium text-gray-800">Notifications par email</p>
               <p className="text-xs text-gray-400">Nouvelles annonces et messages</p>
             </div>
           </div>
-          <button
-            role="switch"
-            aria-checked={emailEnabled}
-            disabled={emailSaving}
-            onClick={() => handleEmailToggle(!emailEnabled)}
-            className={cn(
-              'relative inline-flex w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-brand-400',
-              emailEnabled ? 'bg-brand-600' : 'bg-gray-200',
-              emailSaving && 'opacity-50 cursor-not-allowed',
-            )}
-          >
-            <span className={cn(
-              'inline-block w-5 h-5 bg-white rounded-full shadow transition-transform mt-0.5',
-              emailEnabled ? 'translate-x-5' : 'translate-x-0.5',
-            )} />
-            {emailSaving && <Loader2 size={10} className="absolute inset-0 m-auto animate-spin text-white" />}
-          </button>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {emailSaving && <Loader2 size={14} className="animate-spin text-gray-400" aria-hidden="true" />}
+            <Switch checked={emailEnabled} onChange={handleEmailToggle} label="Notifications par email" disabled={emailSaving} />
+          </div>
         </div>
 
         {/* Notifications push */}
         <div className="flex flex-col border-b border-gray-100">
           <div className="flex items-center justify-between gap-4 px-6 py-4">
             <div className="flex items-start gap-3">
-              <Bell size={17} className="text-gray-400 mt-0.5 flex-shrink-0" />
+              <Bell size={17} className="text-brand-600 mt-0.5 flex-shrink-0" />
               <div>
                 <p className="text-sm font-medium text-gray-800">Notifications push</p>
                 <p className="text-xs text-gray-400">
@@ -533,23 +564,10 @@ export default function ProfileClient() {
                 </p>
               </div>
             </div>
-            <button
-              role="switch"
-              aria-checked={pushEnabled}
-              disabled={pushSaving || !pushSupported}
-              onClick={() => handlePushToggle(!pushEnabled)}
-              className={cn(
-                'relative inline-flex w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-brand-400',
-                pushEnabled ? 'bg-brand-600' : 'bg-gray-200',
-                (pushSaving || !pushSupported) && 'opacity-50 cursor-not-allowed',
-              )}
-            >
-              <span className={cn(
-                'inline-block w-5 h-5 bg-white rounded-full shadow transition-transform mt-0.5',
-                pushEnabled ? 'translate-x-5' : 'translate-x-0.5',
-              )} />
-              {pushSaving && <Loader2 size={10} className="absolute inset-0 m-auto animate-spin text-white" />}
-            </button>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {pushSaving && <Loader2 size={14} className="animate-spin text-gray-400" aria-hidden="true" />}
+              <Switch checked={pushEnabled} onChange={handlePushToggle} label="Notifications push" disabled={pushSaving || !pushSupported} />
+            </div>
           </div>
           {pushError && (
             <div className="flex items-center gap-2 text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2 mx-6 mb-3">
@@ -627,6 +645,14 @@ export default function ProfileClient() {
           )}
         </div>
       </div>
+
+      {/* ── Déconnexion (mobile) ── */}
+      <button
+        onClick={handleLogout}
+        className="order-5 md:hidden w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-3xl bg-white shadow-sm text-[15px] font-semibold text-red-600 hover:bg-red-50 transition-colors"
+      >
+        <LogOut size={17} /> Se déconnecter
+      </button>
 
       {/* ── Supprimer le compte ── */}
       <div className="order-5 md:order-none md:shrink-0 bg-white md:bg-surface-raised rounded-3xl border border-red-100 shadow-sm overflow-hidden">

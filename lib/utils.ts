@@ -87,7 +87,7 @@ export function formatChildcareSlots(slots: ChildcareSlot[]): string {
 
 // ── Avatar helpers ───────────────────────────────────────────────────────────
 
-export const DEFAULT_AVATAR_COLOR = '#dcfce7'
+export const DEFAULT_AVATAR_COLOR = '#e5e5ea'
 
 /** Retourne la couleur de texte (sombre ou blanc) optimale pour un fond hex donné. */
 function getAvatarTextColor(hex: string): string {
@@ -95,7 +95,7 @@ function getAvatarTextColor(hex: string): string {
   const g = parseInt(hex.slice(3, 5), 16)
   const b = parseInt(hex.slice(5, 7), 16)
   const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
-  return luminance > 0.6 ? '#1a3c2a' : '#ffffff'
+  return luminance > 0.6 ? '#1c1c1e' : '#ffffff'
 }
 
 /**
