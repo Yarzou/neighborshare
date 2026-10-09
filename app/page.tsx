@@ -1,8 +1,13 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { MapPin, ArrowRight, LogIn, CalendarDays } from 'lucide-react'
+import { ArrowRight, LogIn } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 
+/**
+ * Accueil public, pour un visiteur sans compte. On n'y fait que se connecter ou
+ * s'inscrire (2026-10-09) : les liens « Les événements » et « La carte du
+ * quartier » sont retirés, puisque tout est réservé aux habitants (migration 030).
+ */
 export default async function HomePage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -24,20 +29,8 @@ export default async function HomePage() {
         Outils · Services · Entraide
       </p>
 
-      {/* CTAs */}
+      {/* CTA */}
       <div className="flex flex-col sm:flex-row items-center gap-3 mb-5">
-        <Link
-          href="/evenements"
-          className="inline-flex items-center gap-2 bg-white border border-brand-300 text-brand-700 font-semibold px-7 py-3.5 rounded-2xl hover:bg-brand-50 transition-colors shadow-sm">
-          <CalendarDays size={18} />
-          Les événements
-        </Link>
-        <Link
-          href="/map"
-          className="inline-flex items-center gap-2 bg-white border border-brand-300 text-brand-700 font-semibold px-7 py-3.5 rounded-2xl hover:bg-brand-50 transition-colors shadow-sm">
-          <MapPin size={18} />
-          La carte du quartier
-        </Link>
         <Link
           href="/auth/login"
           className="inline-flex items-center gap-2 bg-brand-600 text-white font-semibold px-7 py-3.5 rounded-2xl hover:bg-brand-700 transition-colors shadow-md">

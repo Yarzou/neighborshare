@@ -1,5 +1,24 @@
 # Historique des modifications (par session)
 
+## 2026-10-09 — Déconnecté : on ne fait que se connecter (branche `refonte-verre`)
+
+Demande (mobile) : « quand je suis déconnecté, je dois rester sur la page d'accueil, que rien ne soit
+cliquable, juste se connecter ou s'inscrire (enlève "Les événements" et "La carte du quartier") ; ces
+pages s'affichent toujours avec le header (sur connexion ou s'inscrire, je perds le header) ».
+
+- **`app/page.tsx`** : boutons « Les événements » et « La carte du quartier » retirés. Restent « Se
+  connecter » et « Créer un compte ».
+- **`components/layout/Navbar.tsx`** :
+  - sur `/auth/*`, la barre du haut est rendue, mais pas le menu latéral ni la barre d'onglets (avant : `return null`) ;
+  - barre d'onglets masquée quand on est déconnecté. Nouvel état `authResolved`, pour ne rien
+    masquer avant la lecture de la session (sinon la barre d'un voisin connecté sautait au chargement).
+- **Écrans d'auth** (`login`, `register`, `forgot-password`, `reset-password`) : `min-h-screen` →
+  `min-h-[var(--app-h)]`, pour ne pas défiler sous la barre du haut.
+- Non fait, hors demande : le menu latéral desktop reste visible et cliquable une fois déconnecté.
+  Pas de redirection serveur des pages protégées vers l'accueil : un lien partagé mène toujours à la
+  connexion avec `redirect`, puis à la page.
+- Vérifié : typecheck OK, ESLint inchangé. Rendu non vérifié à l'écran.
+
 ## 2026-10-09 — Barre du haut mobile plus haute (branche `refonte-verre`)
 
 Demande : « agrandis un peu le header dans la version mobile, en hauteur ».

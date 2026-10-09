@@ -373,6 +373,9 @@ export function Navbar() {
   const router = useRouter()
   const { setTheme } = useTheme()
   const [user, setUser] = useState<SupabaseUser | null>(null)
+  // Session connue (connecté ou non) : avant, on ne masque rien, pour ne pas faire
+  // sauter la barre d'onglets d'un voisin connecté le temps de la lecture.
+  const [authResolved, setAuthResolved] = useState(false)
   const [profile, setProfile] = useState<NavProfile | null>(null)
   // Compteurs factorisés dans lib/hooks.ts : un seul magasin et un seul abonnement
   // Realtime par compteur, quel que soit le nombre de pastilles affichées.
@@ -385,9 +388,13 @@ export function Navbar() {
     // Avec `getUser()`, les onglets visaient « / » et la connexion, et la barre du
     // haut affichait « Connexion », le temps que le serveur d'auth réponde. Le
     // compte ne sert ici qu'à l'interface : le RLS reste le seul verrou.
-    supabase.auth.getSession().then(({ data }) => setUser(data.session?.user ?? null))
+    supabase.auth.getSession().then(({ data }) => {
+      setUser(data.session?.user ?? null)
+      setAuthResolved(true)
+    })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
       setUser(session?.user ?? null)
+      setAuthResolved(true)
     })
     return () => subscription.unsubscribe()
   }, [])
@@ -469,10 +476,14 @@ export function Navbar() {
   )
 
   // Écrans d'authentification (connexion, inscription, mot de passe oublié…) :
-  // conçus plein écran, sans barre. Après tous les hooks (règle des hooks).
-  if (pathname.startsWith('/auth/')) return null
-
-  const showTabbar = !NO_TABBAR.some(re => re.test(pathname))
+  // la barre du haut reste (2026-10-09 : « je perds le header, c'est bizarre »),
+  // mais ni menu latéral ni barre d'onglets — on n'y fait que se connecter.
+  const isAuthPage = pathname.startsWith('/auth/')
+  // Déconnecté, rien n'est accessible sur mobile en dehors de l'accueil public et
+  // de la connexion (2026-10-09) : pas de barre d'onglets. La barre du haut ne
+  // propose que « Connexion » et « S'inscrire ».
+  const loggedOut = authResolved && !user
+  const showTabbar = !isAuthPage && !loggedOut && !NO_TABBAR.some(re => re.test(pathname))
 
   return (
     <>
@@ -517,7 +528,7 @@ export function Navbar() {
       </header>
 
       {/* ─── Desktop : menu latéral flottant ────────────────────────────── */}
-      <aside
+      {!isAuthPage && <aside
         id="app-sidebar"
         className="hidden md:flex fixed z-[1200] left-3 top-3 bottom-3 w-[68px] lg:w-[240px] flex-col gap-4 p-2.5 lg:p-3 rounded-[22px] glass"
       >
@@ -583,7 +594,7 @@ export function Navbar() {
             </>
           )}
         </div>
-      </aside>
+      </aside>}
 
       {/* ─── Mobile : barre d'onglets flottante, avec sa goutte ──────────── */}
       {showTabbar && (
