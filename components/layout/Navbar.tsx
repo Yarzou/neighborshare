@@ -376,7 +376,9 @@ export function Navbar() {
   // Session connue (connecté ou non) : avant, on ne masque rien, pour ne pas faire
   // sauter la barre d'onglets d'un voisin connecté le temps de la lecture.
   const [authResolved, setAuthResolved] = useState(false)
-  const [profile, setProfile] = useState<NavProfile | null>(null)
+  // Pastille chargée, et pour quel compte : `data` reste `null` si la lecture échoue
+  // ou si le profil manque, la pastille retombe alors sur l'email.
+  const [profile, setProfile] = useState<{ userId: string; data: NavProfile | null } | null>(null)
   // Compteurs factorisés dans lib/hooks.ts : un seul magasin et un seul abonnement
   // Realtime par compteur, quel que soit le nombre de pastilles affichées.
   const unreadCount = useUnreadCount()
@@ -404,13 +406,17 @@ export function Navbar() {
     // Pas de remise à null synchrone (règle set-state-in-effect) : déconnecté, la
     // pastille n'est pas rendue, et une nouvelle session remplace le profil.
     if (!user) return
+    const userId = user.id
     let cancelled = false
+    // Même en échec, la pastille est « chargée » : l'avatar n'attend qu'elle pour
+    // s'afficher, il ne doit pas rester masqué faute de réseau.
+    const done = (data: NavProfile | null) => { if (!cancelled) setProfile({ userId, data }) }
     supabase
       .from('profiles')
       .select('full_name, username, avatar_color')
-      .eq('id', user.id)
+      .eq('id', userId)
       .maybeSingle()
-      .then(({ data }) => { if (!cancelled) setProfile((data as NavProfile | null) ?? null) })
+      .then(({ data }) => done((data as NavProfile | null) ?? null), () => done(null))
     return () => { cancelled = true }
   }, [user?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -452,8 +458,9 @@ export function Navbar() {
   }, [router, warmHrefs])
 
   const isActive = (item: NavItem) => (item.matches ?? [item.href]).some(p => pathname.startsWith(p))
-  const initials = initialsOf(profile, user?.email ?? undefined)
-  const displayName = profile?.full_name || profile?.username || 'Mon profil'
+  const navProfile = profile && profile.userId === user?.id ? profile.data : null
+  const initials = initialsOf(navProfile, user?.email ?? undefined)
+  const displayName = navProfile?.full_name || navProfile?.username || 'Mon profil'
 
   // Pastille de compteur : verte, détourée de blanc pour se détacher de l'icône.
   const badge = (n: number | undefined, className?: string) => (n ?? 0) > 0 && (
@@ -469,7 +476,7 @@ export function Navbar() {
   const avatar = (size: string) => (
     <span
       className={cn('rounded-full flex items-center justify-center font-bold shrink-0', size, initials.length > 2 ? 'text-xs' : 'text-sm')}
-      style={getAvatarStyle(profile?.avatar_color)}
+      style={getAvatarStyle(navProfile?.avatar_color)}
     >
       {initials}
     </span>
@@ -487,6 +494,14 @@ export function Navbar() {
   const navHidden = isAuthPage || loggedOut || pathname === '/'
   const showTabbar = !navHidden && !NO_TABBAR.some(re => re.test(pathname))
 
+  // Emplacement du compte (avatar, ou « Connexion » / « S'inscrire ») : vide tant
+  // qu'on ne sait pas quoi y mettre. Le HTML du serveur ne connaît pas la session,
+  // donc avant, un voisin connecté qui rouvrait l'appli voyait « Connexion », puis
+  // une pastille grise aux initiales de son email, puis enfin son avatar
+  // (2026-10-14). Désormais l'emplacement reste vide, puis l'avatar arrive d'un
+  // coup, une fois la pastille chargée.
+  const accountReady = user !== null && profile?.userId === user.id
+
   return (
     <>
       {/* ─── Mobile : barre du haut ─────────────────────────────────────── */}
@@ -501,7 +516,7 @@ export function Navbar() {
           <span className="truncate">Les voisins du Cèdre</span>
         </Link>
         <div className="ml-auto flex items-center gap-2">
-          {user ? (
+          {accountReady ? (
             <>
               <Link href="/demandes" aria-label="Mes demandes"
                 className={cn(
@@ -516,7 +531,7 @@ export function Navbar() {
                 {avatar('w-10 h-10')}
               </Link>
             </>
-          ) : (
+          ) : loggedOut && (
             <>
               <Link href="/auth/login" className="px-3 py-2 rounded-full text-sm font-medium text-gray-700 hover:bg-gray-100">
                 Connexion
@@ -565,7 +580,7 @@ export function Navbar() {
         </nav>}
 
         <div className="mt-auto flex flex-col gap-1">
-          {user ? (
+          {accountReady ? (
             <>
               <Link href="/profile" title="Mon profil"
                 className={cn(
@@ -584,7 +599,7 @@ export function Navbar() {
                 <span className="sr-only lg:not-sr-only">Déconnexion</span>
               </button>
             </>
-          ) : (
+          ) : loggedOut && (
             <>
               <Link href="/auth/login" className="h-10 rounded-xl flex items-center justify-center text-sm font-medium text-gray-700 hover:bg-gray-100">
                 Connexion

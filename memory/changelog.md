@@ -1,5 +1,27 @@
 # Historique des modifications (par session)
 
+## 2026-10-14 — Header : plus de « Connexion » à la réouverture
+
+Demande : « quand je rouvre l'application (et que je suis connecté) le header passe de connexion à je
+ne sais pas quoi avant ».
+
+Cause : la Navbar est rendue par le serveur sans session (le layout racine ne lit pas les cookies).
+Le HTML affichait donc « Connexion » / « S'inscrire ». Après l'hydratation, `getSession()` faisait
+apparaître une pastille grise aux initiales de l'email, puis la lecture de `profiles` donnait enfin
+l'avatar. Trois états successifs, dont deux faux.
+
+- **`components/layout/Navbar.tsx`** :
+  - l'emplacement du compte (barre du haut mobile, bas du menu latéral desktop) reste **vide** tant
+    que la session n'est pas lue ;
+  - connecté, il reste vide jusqu'à ce que la pastille soit chargée (`accountReady`). « Demandes » et
+    l'avatar arrivent ensemble, sans initiales d'email intermédiaires ;
+  - l'état `profile` retient pour quel compte il a été lu (`{ userId, data }`) ; une lecture en échec
+    compte comme chargée (repli sur l'email), pour ne jamais laisser l'avatar masqué ;
+  - « Connexion » / « S'inscrire » ne s'affichent que si la session est lue **et** absente (`loggedOut`).
+- Vérifié : typecheck OK, ESLint inchangé (0 erreur, 19 avertissements). HTML servi par `npm run dev`
+  sur `/map`, `/evenements`, `/auth/login` : la barre du haut et le menu ne contiennent plus « Connexion ».
+  Rendu non vérifié à l'écran (MCP Chrome DevTools absent de la session).
+
 ## 2026-10-09 — Déconnecté, même règle sur le web (branche `refonte-verre`)
 
 Demande : « sur la partie web, fais pareil ».
