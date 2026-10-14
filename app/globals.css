@@ -135,6 +135,9 @@
   .nav-ghost-avatar::before { content: var(--nav-initials); }
   html.nav-account-xs .nav-ghost-avatar { font-size: 0.75rem; line-height: 1rem; }
   .nav-ghost-name::before { content: var(--nav-name); }
+  /* Sans cookie de session, personne n'est connecté : « Connexion » dès le premier affichage. */
+  .nav-ghost-guest { display: none; }
+  html.nav-guest .nav-ghost-guest { display: flex; }
 }
 
 html.dark {

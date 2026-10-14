@@ -83,11 +83,25 @@ function bubbleLeft(bar: Bar, center: number, width: number) {
 
 type BadgeFn = (n: number | undefined, className?: string) => ReactNode
 
-/** Icône, pastille et libellé d'un onglet : dans la barre, et agrandis dans la loupe. */
-function TabContent({ item, badge, ref }: { item: NavItem; badge: BadgeFn; ref?: Ref<HTMLSpanElement> }) {
+/**
+ * Icône, pastille et libellé d'un onglet : dans la barre, et agrandis dans la loupe.
+ * `bubble` : bulle de l'onglet choisi tracée en CSS, le temps que la barre soit
+ * mesurée. Sans elle, le HTML du serveur arrivait sans bulle, et elle n'apparaissait
+ * qu'une fois le JavaScript chargé (2026-10-14). Même place que la bulle mesurée :
+ * PAD_X de chaque côté du contenu, toute la hauteur intérieure de la barre (62 px,
+ * moins les bordures et la marge INSET).
+ */
+function TabContent({ item, badge, bubble, ref }: { item: NavItem; badge: BadgeFn; bubble?: boolean; ref?: Ref<HTMLSpanElement> }) {
   const Icon = item.icon
   return (
     <span ref={ref} className="relative flex flex-col items-center gap-0.5 text-[10.5px] leading-[13px] font-semibold">
+      {bubble && (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute top-1/2 -z-10 -translate-y-1/2 rounded-full bg-bubble shadow-bubble"
+          style={{ left: -PAD_X, right: -PAD_X, height: 62 - 2 - INSET * 2 }}
+        />
+      )}
       <span className="relative flex">
         <Icon size={23} strokeWidth={1.9} aria-hidden="true" />
         {/* Pastille sur le coin de l'icône : hors mesure de la bulle */}
@@ -303,6 +317,7 @@ function TabBar({ items, activeIndex, badge }: {
                 <TabContent
                   item={item}
                   badge={badge}
+                  bubble={!bar && i === index}
                   ref={el => {
                     contentRefs.current[i] = el
                   }}
@@ -535,6 +550,29 @@ export function Navbar() {
     </>
   )
 
+  const topbarGuest = (
+    <>
+      <Link href="/auth/login" className="px-3 py-2 rounded-full text-sm font-medium text-gray-700 hover:bg-gray-100">
+        Connexion
+      </Link>
+      <Link href="/auth/register" className="px-3.5 py-2 rounded-full text-sm font-semibold bg-brand-600 text-white">
+        S&apos;inscrire
+      </Link>
+    </>
+  )
+
+  const sidebarGuest = (
+    <>
+      <Link href="/auth/login" className="h-10 rounded-xl flex items-center justify-center text-sm font-medium text-gray-700 hover:bg-gray-100">
+        Connexion
+      </Link>
+      <Link href="/auth/register" className="h-10 rounded-xl flex items-center justify-center text-sm font-semibold bg-gray-100 text-gray-900 hover:bg-gray-200">
+        <span className="lg:hidden">Créer</span>
+        <span className="hidden lg:inline">S&apos;inscrire</span>
+      </Link>
+    </>
+  )
+
   // Déconnecté, rien n'est accessible en dehors de l'accueil public et de la
   // connexion (2026-10-09, mobile puis web) : ni barre d'onglets, ni entrées du
   // menu latéral. La barre du haut et le menu ne proposent que « Connexion » et
@@ -552,7 +590,9 @@ export function Navbar() {
   // voisin connecté qui rouvrait l'appli voyait « Connexion », puis une pastille
   // grise aux initiales de son email, puis enfin son avatar (2026-10-14).
   // Désormais : l'avatar gardé sur l'appareil dès le premier affichage (`ghost`),
-  // sinon un emplacement vide jusqu'à ce que la pastille soit connue.
+  // sinon un emplacement vide jusqu'à ce que la pastille soit connue. Sans cookie de
+  // session, personne n'est connecté : « Connexion » s'affiche lui aussi d'emblée
+  // (`.nav-ghost-guest`, même script).
   const accountReady = user !== null && account?.userId === user.id
 
   return (
@@ -570,17 +610,11 @@ export function Navbar() {
         </Link>
         <div className="ml-auto flex items-center gap-2">
           {accountReady ? topbarAccount(false) : !authResolved ? (
-            <div className="nav-ghost items-center gap-2">{topbarAccount(true)}</div>
-          ) : loggedOut && (
             <>
-              <Link href="/auth/login" className="px-3 py-2 rounded-full text-sm font-medium text-gray-700 hover:bg-gray-100">
-                Connexion
-              </Link>
-              <Link href="/auth/register" className="px-3.5 py-2 rounded-full text-sm font-semibold bg-brand-600 text-white">
-                S&apos;inscrire
-              </Link>
+              <div className="nav-ghost items-center gap-2">{topbarAccount(true)}</div>
+              <div className="nav-ghost-guest items-center gap-2">{topbarGuest}</div>
             </>
-          )}
+          ) : loggedOut && topbarGuest}
         </div>
       </header>
 
@@ -621,18 +655,11 @@ export function Navbar() {
 
         <div className="mt-auto flex flex-col gap-1">
           {accountReady ? sidebarAccount(false) : !authResolved ? (
-            <div className="nav-ghost flex-col gap-1">{sidebarAccount(true)}</div>
-          ) : loggedOut && (
             <>
-              <Link href="/auth/login" className="h-10 rounded-xl flex items-center justify-center text-sm font-medium text-gray-700 hover:bg-gray-100">
-                Connexion
-              </Link>
-              <Link href="/auth/register" className="h-10 rounded-xl flex items-center justify-center text-sm font-semibold bg-gray-100 text-gray-900 hover:bg-gray-200">
-                <span className="lg:hidden">Créer</span>
-                <span className="hidden lg:inline">S&apos;inscrire</span>
-              </Link>
+              <div className="nav-ghost flex-col gap-1">{sidebarAccount(true)}</div>
+              <div className="nav-ghost-guest flex-col gap-1">{sidebarGuest}</div>
             </>
-          )}
+          ) : loggedOut && sidebarGuest}
         </div>
       </aside>
 

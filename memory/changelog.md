@@ -1,5 +1,41 @@
 # Historique des modifications (par session)
 
+## 2026-10-14 — Réouverture : bulle, « Connexion » et redirection d'accueil
+
+Demande : « tu peux optimiser encore l'affichage ? », après l'avatar instantané. Trois choses changeaient
+encore à l'écran, ou retardaient le premier affichage, à l'ouverture de l'appli.
+
+- **`components/layout/Navbar.tsx`** :
+  - barre d'onglets : la bulle de l'onglet choisi n'existait qu'après la mesure de la barre (JavaScript),
+    donc le HTML du serveur arrivait sans bulle, qui apparaissait ensuite. `TabContent` prend une prop
+    `bubble` : tant que `bar` est inconnu, la bulle est tracée en CSS dans le contenu de l'onglet
+    (`PAD_X` de chaque côté, 52 px de haut = 62 − bordures − `INSET`), puis la bulle mesurée prend le relais ;
+  - « Connexion » / « S'inscrire » factorisés (`topbarGuest`, `sidebarGuest`) et rendus aussi en version
+    provisoire (`.nav-ghost-guest`) avant la lecture de la session.
+- **`lib/navAccount.ts`** : `NAV_ACCOUNT_SCRIPT` teste d'abord le cookie de session. Sans cookie,
+  personne n'est connecté : classe `nav-guest` sur `<html>`, « Connexion » s'affiche d'emblée au lieu
+  d'apparaître après le JavaScript.
+- **`app/globals.css`** : `.nav-ghost-guest` masqué sauf sous `html.nav-guest`.
+- **`proxy.ts`** : l'appli installée s'ouvre sur « / » (`start_url`). Avec une session dans les cookies
+  (`getSession()`, lecture locale), le proxy redirige vers `/accueil` sans rendre la page publique ni
+  attendre le `getUser()` réseau de `app/page.tsx`, qui garde sa propre redirection. Cookies rafraîchis
+  transmis avec leurs options. Une session révoquée mène à `/accueil`, qui renvoie à la connexion.
+- **`CLAUDE.md`** : bulle provisoire, `nav-guest` et redirection du proxy, sous « Navigation ».
+- Vérifié : typecheck OK, ESLint inchangé (0 erreur, 19 avertissements), build OK (`/map` reste statique,
+  bulle provisoire et `.nav-ghost-guest` dans son HTML prérendu, `.-z-10` dans le CSS de prod).
+- Vérifié en CDP (même méthode que ci-dessous) :
+  - JavaScript de Next bloqué, sur `/map` : bulle présente, à la même position qu'après React
+    (85,36 / 5 / 48,05 × 52 px dans les deux cas), captures identiques ; avant, aucune bulle ;
+  - `/auth/login` déconnecté, JavaScript bloqué : « Connexion | S'inscrire » déjà là, identiques après React ;
+    avant, emplacement vide ;
+  - 0 erreur d'hydratation ; les cinq scénarios de l'entrée précédente repassés sans changement, sauf la
+    pastille sans cookie, qui affiche désormais « Connexion » dès la première image ;
+  - `curl` sur `/` : sans cookie 200 (page publique), avec le cookie forgé 307 → `/accueil` en 37 ms.
+- Non vérifié : le gain réel en production (aller-retour `getUser()` et rendu de « / » évités), faute de
+  vraie session. Limite connue, calculée et non mesurée : à 320 px, la bulle provisoire de « Quartier »
+  est ~3 px plus à droite que la mesurée, que `bubbleLeft()` recadre dans la barre ; elle glisse donc
+  de 3 px à l'arrivée du JavaScript (sans objet à partir de ~360 px).
+
 ## 2026-10-14 — Avatar du header instantané à la réouverture
 
 Demande : suite du correctif précédent, « go full a+b+2 » — garder la pastille sur l'appareil (A),

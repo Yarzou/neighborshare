@@ -78,12 +78,16 @@ export function publishNavAccount(account: NavAccount): void {
 }
 
 /**
- * Script inline, exécuté avant le premier affichage. Il exige aussi un cookie de
+ * Script inline, exécuté avant le premier affichage. Tout part du cookie de
  * session Supabase (`sb-<projet>-auth-token`, découpé en `.0`, `.1`… quand il est
- * long) : sans cookie, pas de compte, l'emplacement reste vide jusqu'à la lecture
- * de la session. Une session révoquée ailleurs afficherait l'avatar une fraction de
- * seconde avant « Connexion » : rien n'est accessible pour autant, le RLS décide.
+ * long) :
+ * - sans cookie, personne n'est connecté : classe `nav-guest`, « Connexion » et
+ *   « S'inscrire » s'affichent d'emblée au lieu d'apparaître après le JavaScript ;
+ * - avec un cookie et une pastille gardée, l'avatar. Avec un cookie sans pastille,
+ *   l'emplacement reste vide jusqu'à la lecture de `profiles`.
+ * Une session révoquée ailleurs afficherait l'avatar une fraction de seconde avant
+ * « Connexion » : rien n'est accessible pour autant, le RLS décide.
  *
  * Pas de barre oblique inverse dans ce script : dans un gabarit JS, `\s` deviendrait `s`.
  */
-export const NAV_ACCOUNT_SCRIPT = `(function(){try{var a=JSON.parse(localStorage.getItem('${KEY}')||'null');if(!a||typeof a.initials!=='string'||!/(^|; ?)sb-[^=;]*-auth-token[.0-9]*=/.test(document.cookie))return;var r=document.documentElement,s=r.style;s.setProperty('--nav-initials',JSON.stringify(a.initials));s.setProperty('--nav-name',JSON.stringify(a.name||'Mon profil'));s.setProperty('--nav-avatar-bg',String(a.bg));s.setProperty('--nav-avatar-fg',String(a.fg));r.classList.add('nav-account');if(a.initials.length>2)r.classList.add('nav-account-xs')}catch(e){}})()`
+export const NAV_ACCOUNT_SCRIPT = `(function(){try{var r=document.documentElement;if(!/(^|; ?)sb-[^=;]*-auth-token[.0-9]*=/.test(document.cookie)){r.classList.add('nav-guest');return}var a=JSON.parse(localStorage.getItem('${KEY}')||'null');if(!a||typeof a.initials!=='string')return;var s=r.style;s.setProperty('--nav-initials',JSON.stringify(a.initials));s.setProperty('--nav-name',JSON.stringify(a.name||'Mon profil'));s.setProperty('--nav-avatar-bg',String(a.bg));s.setProperty('--nav-avatar-fg',String(a.fg));r.classList.add('nav-account');if(a.initials.length>2)r.classList.add('nav-account-xs')}catch(e){}})()`
