@@ -124,6 +124,17 @@
     border: 1px solid var(--glass-rim);
     box-shadow: var(--glass-shadow);
   }
+
+  /* Emplacement du compte avant la lecture de la session (Navbar, `ghost`) : masqué,
+     sauf si le script inline de app/layout.tsx a trouvé sur l'appareil la pastille
+     du voisin et un cookie de session (lib/navAccount.ts). L'avatar est alors dessiné
+     dès le premier affichage, avec ses initiales et sa couleur en variables. */
+  .nav-ghost { display: none; }
+  html.nav-account .nav-ghost { display: flex; }
+  .nav-ghost-avatar { background-color: var(--nav-avatar-bg); color: var(--nav-avatar-fg); }
+  .nav-ghost-avatar::before { content: var(--nav-initials); }
+  html.nav-account-xs .nav-ghost-avatar { font-size: 0.75rem; line-height: 1rem; }
+  .nav-ghost-name::before { content: var(--nav-name); }
 }
 
 html.dark {

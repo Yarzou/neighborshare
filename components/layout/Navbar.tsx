@@ -6,24 +6,16 @@ import { usePathname, useRouter } from 'next/navigation'
 import { MapPin, MessageCircle, LogOut, ClipboardList, CalendarDays, House, TreePine } from 'lucide-react'
 import { useState, useEffect, useRef, type PointerEvent, type ReactNode, type Ref } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { cn, getAvatarStyle, getInitials } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import { useUnreadCount, usePendingRequests } from '@/lib/hooks'
+import {
+  clearNavAccount, publishNavAccount, readNavAccount, subscribeNavAccount, toNavAccount,
+  type NavAccount, type NavProfile,
+} from '@/lib/navAccount'
 import { useTheme } from '@/components/theme/ThemeProvider'
 import { useLoupe, type Lens } from '@/components/ui/useLoupe'
 import GlassLens from '@/components/ui/GlassLens'
-import type { User as SupabaseUser } from '@supabase/supabase-js'
-
-/** Le strict nécessaire pour la pastille d'avatar. */
-interface NavProfile {
-  full_name: string | null
-  username: string | null
-  avatar_color: string | null
-}
-
-/** Initiales de la pastille : nom complet, sinon pseudo, sinon email. */
-function initialsOf(p: NavProfile | null, fallback: string | undefined): string {
-  return getInitials(p?.full_name?.trim() || p?.username?.trim() || fallback)
-}
+import type { Session, User as SupabaseUser } from '@supabase/supabase-js'
 
 /**
  * Écrans « poussés », sans barre d'onglets (comme sur iOS) : ils ont leur propre
@@ -376,9 +368,10 @@ export function Navbar() {
   // Session connue (connecté ou non) : avant, on ne masque rien, pour ne pas faire
   // sauter la barre d'onglets d'un voisin connecté le temps de la lecture.
   const [authResolved, setAuthResolved] = useState(false)
-  // Pastille chargée, et pour quel compte : `data` reste `null` si la lecture échoue
-  // ou si le profil manque, la pastille retombe alors sur l'email.
-  const [profile, setProfile] = useState<{ userId: string; data: NavProfile | null } | null>(null)
+  // Pastille de compte (initiales, couleur, nom), et pour quel compte. Elle part de
+  // celle gardée sur l'appareil (`lib/navAccount.ts`), puis la lecture de
+  // `profiles` la confirme.
+  const [account, setAccount] = useState<NavAccount | null>(null)
   // Compteurs factorisés dans lib/hooks.ts : un seul magasin et un seul abonnement
   // Realtime par compteur, quel que soit le nombre de pastilles affichées.
   const unreadCount = useUnreadCount()
@@ -386,42 +379,59 @@ export function Navbar() {
   const supabase = createClient()
 
   useEffect(() => {
+    const apply = (session: Session | null) => {
+      const next = session?.user ?? null
+      setUser(next)
+      setAuthResolved(true)
+      // Pastille gardée sur l'appareil : l'avatar s'affiche sans attendre le réseau.
+      // Un simple rafraîchissement de jeton garde la pastille en cours.
+      if (next) setAccount(prev => (prev?.userId === next.id ? prev : readNavAccount(next.id)))
+      else clearNavAccount()
+    }
     // `getSession()` et non `getUser()` : lecture locale, sans aller-retour réseau.
     // Avec `getUser()`, les onglets visaient « / » et la connexion, et la barre du
     // haut affichait « Connexion », le temps que le serveur d'auth réponde. Le
     // compte ne sert ici qu'à l'interface : le RLS reste le seul verrou.
-    supabase.auth.getSession().then(({ data }) => {
-      setUser(data.session?.user ?? null)
-      setAuthResolved(true)
-    })
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
-      setUser(session?.user ?? null)
-      setAuthResolved(true)
-    })
-    return () => subscription.unsubscribe()
+    supabase.auth.getSession().then(({ data }) => apply(data.session))
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => apply(session))
+    // Nom ou couleur modifiés depuis la page Profil.
+    const unsubscribeAccount = subscribeNavAccount(setAccount)
+    return () => {
+      subscription.unsubscribe()
+      unsubscribeAccount()
+    }
   }, [])
 
   // Pastille d'avatar : une lecture légère, rejouée si le compte change.
   useEffect(() => {
     // Pas de remise à null synchrone (règle set-state-in-effect) : déconnecté, la
-    // pastille n'est pas rendue, et une nouvelle session remplace le profil.
+    // pastille n'est pas rendue, et une nouvelle session remplace l'ancienne.
     if (!user) return
     const userId = user.id
+    const email = user.email ?? undefined
     let cancelled = false
-    // Même en échec, la pastille est « chargée » : l'avatar n'attend qu'elle pour
-    // s'afficher, il ne doit pas rester masqué faute de réseau.
-    const done = (data: NavProfile | null) => { if (!cancelled) setProfile({ userId, data }) }
+    // Lecture en échec : on garde la pastille connue, sinon celle de l'email, pour
+    // que l'avatar ne reste pas masqué faute de réseau. Rien n'est gardé sur
+    // l'appareil dans ce cas : un repli ne doit pas écraser la bonne pastille.
+    const fallback = () => {
+      if (!cancelled) setAccount(prev => (prev?.userId === userId ? prev : toNavAccount(userId, null, email)))
+    }
     supabase
       .from('profiles')
       .select('full_name, username, avatar_color')
       .eq('id', userId)
       .maybeSingle()
-      .then(({ data }) => done((data as NavProfile | null) ?? null), () => done(null))
+      .then(({ data, error }) => {
+        if (cancelled) return
+        if (error) fallback()
+        else publishNavAccount(toNavAccount(userId, data as NavProfile | null, email))
+      }, fallback)
     return () => { cancelled = true }
   }, [user?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleLogout = async () => {
     setTheme('system')
+    clearNavAccount()
     await supabase.auth.signOut()
     router.push('/')
     router.refresh()
@@ -458,9 +468,6 @@ export function Navbar() {
   }, [router, warmHrefs])
 
   const isActive = (item: NavItem) => (item.matches ?? [item.href]).some(p => pathname.startsWith(p))
-  const navProfile = profile && profile.userId === user?.id ? profile.data : null
-  const initials = initialsOf(navProfile, user?.email ?? undefined)
-  const displayName = navProfile?.full_name || navProfile?.username || 'Mon profil'
 
   // Pastille de compteur : verte, détourée de blanc pour se détacher de l'icône.
   const badge = (n: number | undefined, className?: string) => (n ?? 0) > 0 && (
@@ -473,13 +480,59 @@ export function Navbar() {
     </span>
   )
 
-  const avatar = (size: string) => (
+  // `ghost` : version rendue par le serveur avant la lecture de la session. Elle est
+  // vide et masquée, sauf si le script inline de `app/layout.tsx` a trouvé une
+  // pastille sur l'appareil : globals.css l'habille alors de ses variables (`.nav-ghost`).
+  // Même balisage que la version finale, pour que rien ne bouge à la relève.
+  const avatar = (size: string, ghost: boolean) => ghost ? (
+    <span className={cn('nav-ghost-avatar rounded-full flex items-center justify-center font-bold shrink-0 text-sm', size)} />
+  ) : (
     <span
-      className={cn('rounded-full flex items-center justify-center font-bold shrink-0', size, initials.length > 2 ? 'text-xs' : 'text-sm')}
-      style={getAvatarStyle(navProfile?.avatar_color)}
+      className={cn('rounded-full flex items-center justify-center font-bold shrink-0', size, account!.initials.length > 2 ? 'text-xs' : 'text-sm')}
+      style={{ backgroundColor: account!.bg, color: account!.fg }}
     >
-      {initials}
+      {account!.initials}
     </span>
+  )
+
+  const topbarAccount = (ghost: boolean) => (
+    <>
+      <Link href="/demandes" aria-label="Mes demandes"
+        className={cn(
+          'relative w-10 h-10 rounded-full flex items-center justify-center',
+          pathname.startsWith('/demandes') ? 'bg-brand-100 text-brand-700' : 'text-gray-700 hover:bg-gray-100',
+        )}>
+        <ClipboardList size={21} />
+        {badge(pendingRequestsCount, 'absolute -top-0.5 -right-0.5')}
+      </Link>
+      <Link href="/profile" aria-label="Mon profil"
+        className={cn('rounded-full', pathname === '/profile' && 'ring-2 ring-brand-600 ring-offset-2 ring-offset-surface')}>
+        {avatar('w-10 h-10', ghost)}
+      </Link>
+    </>
+  )
+
+  const sidebarAccount = (ghost: boolean) => (
+    <>
+      <Link href="/profile" title="Mon profil"
+        className={cn(
+          'flex items-center gap-2.5 p-1.5 rounded-2xl justify-center lg:justify-start transition-colors',
+          pathname === '/profile' ? 'bg-brand-100' : 'hover:bg-gray-100',
+        )}>
+        {avatar('w-10 h-10', ghost)}
+        <span className="hidden lg:flex flex-col min-w-0">
+          {ghost
+            ? <span className="nav-ghost-name text-[15px] font-semibold text-gray-900 truncate" />
+            : <span className="text-[15px] font-semibold text-gray-900 truncate">{account!.name || 'Mon profil'}</span>}
+          <span className="text-[13px] text-gray-500">Mon profil</span>
+        </span>
+      </Link>
+      <button onClick={handleLogout} title="Déconnexion"
+        className="h-10 rounded-xl flex items-center gap-3 justify-center lg:justify-start lg:px-3 text-[15px] text-red-600 hover:bg-red-50 transition-colors">
+        <LogOut size={18} className="shrink-0" />
+        <span className="sr-only lg:not-sr-only">Déconnexion</span>
+      </button>
+    </>
   )
 
   // Déconnecté, rien n'est accessible en dehors de l'accueil public et de la
@@ -494,13 +547,13 @@ export function Navbar() {
   const navHidden = isAuthPage || loggedOut || pathname === '/'
   const showTabbar = !navHidden && !NO_TABBAR.some(re => re.test(pathname))
 
-  // Emplacement du compte (avatar, ou « Connexion » / « S'inscrire ») : vide tant
-  // qu'on ne sait pas quoi y mettre. Le HTML du serveur ne connaît pas la session,
-  // donc avant, un voisin connecté qui rouvrait l'appli voyait « Connexion », puis
-  // une pastille grise aux initiales de son email, puis enfin son avatar
-  // (2026-10-14). Désormais l'emplacement reste vide, puis l'avatar arrive d'un
-  // coup, une fois la pastille chargée.
-  const accountReady = user !== null && profile?.userId === user.id
+  // Emplacement du compte (avatar, ou « Connexion » / « S'inscrire ») : jamais de
+  // contenu faux. Le HTML du serveur ne connaît pas la session, donc avant, un
+  // voisin connecté qui rouvrait l'appli voyait « Connexion », puis une pastille
+  // grise aux initiales de son email, puis enfin son avatar (2026-10-14).
+  // Désormais : l'avatar gardé sur l'appareil dès le premier affichage (`ghost`),
+  // sinon un emplacement vide jusqu'à ce que la pastille soit connue.
+  const accountReady = user !== null && account?.userId === user.id
 
   return (
     <>
@@ -516,21 +569,8 @@ export function Navbar() {
           <span className="truncate">Les voisins du Cèdre</span>
         </Link>
         <div className="ml-auto flex items-center gap-2">
-          {accountReady ? (
-            <>
-              <Link href="/demandes" aria-label="Mes demandes"
-                className={cn(
-                  'relative w-10 h-10 rounded-full flex items-center justify-center',
-                  pathname.startsWith('/demandes') ? 'bg-brand-100 text-brand-700' : 'text-gray-700 hover:bg-gray-100',
-                )}>
-                <ClipboardList size={21} />
-                {badge(pendingRequestsCount, 'absolute -top-0.5 -right-0.5')}
-              </Link>
-              <Link href="/profile" aria-label="Mon profil"
-                className={cn('rounded-full', pathname === '/profile' && 'ring-2 ring-brand-600 ring-offset-2 ring-offset-surface')}>
-                {avatar('w-10 h-10')}
-              </Link>
-            </>
+          {accountReady ? topbarAccount(false) : !authResolved ? (
+            <div className="nav-ghost items-center gap-2">{topbarAccount(true)}</div>
           ) : loggedOut && (
             <>
               <Link href="/auth/login" className="px-3 py-2 rounded-full text-sm font-medium text-gray-700 hover:bg-gray-100">
@@ -580,25 +620,8 @@ export function Navbar() {
         </nav>}
 
         <div className="mt-auto flex flex-col gap-1">
-          {accountReady ? (
-            <>
-              <Link href="/profile" title="Mon profil"
-                className={cn(
-                  'flex items-center gap-2.5 p-1.5 rounded-2xl justify-center lg:justify-start transition-colors',
-                  pathname === '/profile' ? 'bg-brand-100' : 'hover:bg-gray-100',
-                )}>
-                {avatar('w-10 h-10')}
-                <span className="hidden lg:flex flex-col min-w-0">
-                  <span className="text-[15px] font-semibold text-gray-900 truncate">{displayName}</span>
-                  <span className="text-[13px] text-gray-500">Mon profil</span>
-                </span>
-              </Link>
-              <button onClick={handleLogout} title="Déconnexion"
-                className="h-10 rounded-xl flex items-center gap-3 justify-center lg:justify-start lg:px-3 text-[15px] text-red-600 hover:bg-red-50 transition-colors">
-                <LogOut size={18} className="shrink-0" />
-                <span className="sr-only lg:not-sr-only">Déconnexion</span>
-              </button>
-            </>
+          {accountReady ? sidebarAccount(false) : !authResolved ? (
+            <div className="nav-ghost flex-col gap-1">{sidebarAccount(true)}</div>
           ) : loggedOut && (
             <>
               <Link href="/auth/login" className="h-10 rounded-xl flex items-center justify-center text-sm font-medium text-gray-700 hover:bg-gray-100">

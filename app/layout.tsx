@@ -5,6 +5,7 @@ import './globals.css'
 import { Navbar } from '@/components/layout/Navbar'
 import FirebaseSWRegister from '@/components/layout/FirebaseSWRegister'
 import { ThemeProvider } from '@/components/theme/ThemeProvider'
+import { NAV_ACCOUNT_SCRIPT } from '@/lib/navAccount'
 
 // Bannière conditionnelle, presque toujours invisible : chargée à part pour ne
 // pas peser sur le bundle partagé du premier rendu.
@@ -45,6 +46,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||(t==='system'||!t)&&window.matchMedia('(prefers-color-scheme: dark)').matches){document.documentElement.classList.add('dark')}}catch(e){}})()`,
           }}
         />
+        {/* Même principe pour l'avatar du header : pastille gardée sur l'appareil, posée avant le premier paint */}
+        <script dangerouslySetInnerHTML={{ __html: NAV_ACCOUNT_SCRIPT }} />
       </head>
       <body
         className={`${GeistSans.variable} font-sans bg-gray-50 text-gray-900 antialiased`}

@@ -24,6 +24,7 @@ import AddressAutocomplete, { type ResolvedAddress } from '@/components/forms/Ad
 import { useTheme, type ThemeChoice } from '@/components/theme/ThemeProvider'
 import PasskeySection from '@/components/profile/PasskeySection'
 import { readPageCache, writePageCache } from '@/lib/pageCache'
+import { clearNavAccount, publishNavAccount, toNavAccount } from '@/lib/navAccount'
 
 /**
  * Cache de page (`lib/pageCache.ts`) : au retour sur le profil, il s'affiche tout
@@ -222,6 +223,12 @@ export default function ProfileClient() {
         address_lat: addressResolved?.lat ?? null,
         address_lng: addressResolved?.lon ?? null,
       }) : p)
+      // Le header suit tout de suite le nouveau nom ou la nouvelle couleur.
+      publishNavAccount(toNavAccount(userId, {
+        full_name: form.full_name.trim() || null,
+        username: form.username.trim(),
+        avatar_color: form.avatar_color,
+      }))
       setEditMode(false)
     }
     setSaving(false)
@@ -287,6 +294,7 @@ export default function ProfileClient() {
       setDeletingAccount(false)
       return
     }
+    clearNavAccount()
     await supabase.auth.signOut()
     router.push('/')
   }
@@ -295,6 +303,7 @@ export default function ProfileClient() {
   // d'onglets (refonte 2026-10-06). Sur desktop, le menu latéral la propose déjà.
   const handleLogout = async () => {
     setTheme('system')
+    clearNavAccount()
     await supabase.auth.signOut()
     router.push('/')
     router.refresh()

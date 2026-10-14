@@ -1,5 +1,46 @@
 # Historique des modifications (par session)
 
+## 2026-10-14 — Avatar du header instantané à la réouverture
+
+Demande : suite du correctif précédent, « go full a+b+2 » — garder la pastille sur l'appareil (A),
+l'afficher avant même le JavaScript (B), et faire suivre le header aux modifications du profil (2).
+
+- **`lib/navAccount.ts`** (nouveau) : pastille `{ userId, initials, name, bg, fg }` en `localStorage`
+  (`nav-account`), `toNavAccount()`, `readNavAccount()` (ignorée si autre compte),
+  `clearNavAccount()`, `publishNavAccount()` + `subscribeNavAccount()` (magasin de module), et
+  `NAV_ACCOUNT_SCRIPT`, script inline sans barre oblique inverse (un `\s` dans un gabarit JS deviendrait `s`).
+- **`app/layout.tsx`** : second script inline après celui du mode sombre. Avec une pastille gardée et un
+  cookie `sb-…-auth-token` (découpé en `.0`, `.1`… s'il est long), il pose `--nav-initials`,
+  `--nav-name`, `--nav-avatar-bg`/`-fg` et les classes `nav-account` (+ `nav-account-xs` au-delà de
+  deux initiales) sur `<html>`.
+- **`app/globals.css`** : `.nav-ghost` masqué sauf sous `html.nav-account` ; l'avatar et le nom
+  provisoires sont dessinés en `::before { content: var(--nav-…) }`.
+- **`components/layout/Navbar.tsx`** :
+  - état `account` (`NavAccount`) à la place de `profile` ; il part de la pastille gardée dès la
+    lecture de la session, puis la lecture de `profiles` la republie ;
+  - en échec de lecture, on garde la pastille connue (sinon repli email), sans rien écrire ;
+  - le balisage du compte est factorisé (`topbarAccount`, `sidebarAccount`, `avatar(size, ghost)`) :
+    la version provisoire et la finale sont identiques, rien ne bouge à la relève ;
+  - pastille effacée à la déconnexion et quand la session est absente.
+- **`app/profile/ProfileClient.tsx`** : `publishNavAccount()` après l'enregistrement du profil (le
+  header gardait l'ancien avatar jusqu'au rechargement) ; `clearNavAccount()` à la déconnexion et à la
+  suppression du compte.
+- **`CLAUDE.md`** : règle de l'emplacement du compte, sous « Navigation ».
+- Vérifié : typecheck OK, ESLint inchangé (0 erreur, 19 avertissements), build OK (règles `.nav-ghost`
+  présentes dans le CSS de prod, script dans le HTML prérendu de `/map`).
+- Vérifié dans Chrome headless piloté en CDP (script jetable, profil jetable, contextes isolés,
+  mobile 390 px, processeur ×4, 100 ms de latence), session simulée par un cookie forgé au jeton
+  invalide — la base refuse tout, aucune écriture :
+  - pastille gardée : l'avatar provisoire est là dès que la barre existe, React le relève à
+    l'identique ~1,5 s plus tard, jamais de « Connexion » ni d'emplacement vide ; 0 erreur d'hydratation ;
+  - JavaScript de Next bloqué : l'avatar est déjà dans le premier affichage (captures mobile et
+    menu latéral identiques avant/après React) ;
+  - sans pastille : emplacement vide, puis l'avatar ; un échec de lecture n'écrit rien ;
+  - déconnexion par le menu latéral : pastille et cookie effacés ;
+  - pastille qui traîne sans cookie : pas d'avatar provisoire, « Connexion », pastille effacée.
+  - Non vérifié : le chemin d'une vraie lecture de `profiles` réussie (il faut une vraie session) et
+    l'enregistrement depuis la page Profil (écriture en base).
+
 ## 2026-10-14 — Header : plus de « Connexion » à la réouverture
 
 Demande : « quand je rouvre l'application (et que je suis connecté) le header passe de connexion à je
